@@ -1,4 +1,6 @@
-/* Command Palette Modal Styles */
+/* Command Palette Modal Styles - imports shared styles from styles.css */
+
+/* Modal-specific backdrop */
 .command-palette-backdrop {
   position: fixed !important;
   top: 0 !important;
@@ -21,6 +23,7 @@
   visibility: visible !important;
 }
 
+/* Modal wrapper - applies shared container styles with !important */
 .command-palette-modal {
   width: 640px !important;
   height: 480px !important;
@@ -62,6 +65,7 @@
   ) !important;
 }
 
+/* Map modal-prefixed classes to shared styles with !important */
 .command-palette-search-container {
   padding: 24px 24px 16px 24px !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
@@ -102,7 +106,7 @@
 .command-palette-results {
   height: 400px !important;
   overflow-y: auto !important;
-  padding: 8px !important;
+  padding: 8px 8px 16px 8px !important;
 }
 
 .command-palette-result-item {
