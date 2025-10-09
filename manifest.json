@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "Command Palette",
+  "version": "1.0.0",
+  "description": "A VS Code-style command palette for Chrome",
+  "permissions": ["activeTab", "tabs", "bookmarks"],
+
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Open Command Palette (Cmd+K)"
+  },
+  "commands": {
+    "open-command-palette": {
+      "suggested_key": {
+        "default": "Ctrl+K",
+        "mac": "Command+K"
+      },
+      "description": "Open Command Palette"
+    }
+  }
+}
