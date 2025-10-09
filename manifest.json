@@ -41,6 +41,13 @@
         "mac": "Command+Shift+C"
       },
       "description": "Copy current page URL"
+    },
+    "toggle-previous-tab": {
+      "suggested_key": {
+        "default": "Ctrl+Tab",
+        "mac": "Alt+Tab"
+      },
+      "description": "Toggle between current and previous tab"
     }
   },
   "web_accessible_resources": [

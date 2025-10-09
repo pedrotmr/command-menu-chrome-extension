@@ -1,6 +1,10 @@
 // Background service worker for Command Palette
 console.log("Command Palette: Background service worker loaded");
 
+// Track the previously active tab
+let previousTabId = null;
+let currentTabId = null;
+
 // Helper function to check if URL is injectable
 function isInjectableUrl(url) {
   if (!url) return false;
@@ -61,6 +65,14 @@ function isInjectableUrl(url) {
 
   return true;
 }
+
+// Track tab changes to remember the previous tab
+chrome.tabs.onActivated.addListener(async (activeInfo) => {
+  if (currentTabId !== null && currentTabId !== activeInfo.tabId) {
+    previousTabId = currentTabId;
+  }
+  currentTabId = activeInfo.tabId;
+});
 
 // Listen for keyboard command
 chrome.commands.onCommand.addListener(async (command) => {
@@ -212,6 +224,17 @@ chrome.commands.onCommand.addListener(async (command) => {
       }
     } catch (error) {
       console.error("Error handling copy-url command:", error);
+    }
+  } else if (command === "toggle-previous-tab") {
+    try {
+      if (previousTabId !== null) {
+        // Switch to the previous tab
+        await chrome.tabs.update(previousTabId, { active: true });
+      }
+    } catch (error) {
+      console.error("Error toggling to previous tab:", error);
+      // If the previous tab no longer exists, clear it
+      previousTabId = null;
     }
   }
 });
