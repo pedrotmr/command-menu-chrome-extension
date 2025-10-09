@@ -1,12 +1,12 @@
-// Enhanced popup with bookmarks and fuzzy search
-console.log("Command Palette: Enhanced popup loaded");
+// Popup script for Command Palette (fallback for restricted pages)
+console.log("Command Palette: Popup loaded");
 
 let selectedIndex = 0;
 let allItems = [];
 let filteredItems = [];
 let bookmarks = [];
 
-// Default commands (removed developer tools)
+// Default commands
 const commands = [
   { id: "reload-page", title: "Reload Page", icon: "🔄", type: "command" },
   { id: "new-tab", title: "Open New Tab", icon: "📄", type: "command" },

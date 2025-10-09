@@ -3,12 +3,30 @@
   "name": "Command Palette",
   "version": "1.0.0",
   "description": "A VS Code-style command palette for Chrome",
-  "permissions": ["activeTab", "tabs", "bookmarks"],
+  "permissions": [
+    "activeTab",
+    "tabs",
+    "bookmarks",
+    "scripting",
+    "notifications"
+  ],
+  "host_permissions": ["<all_urls>"],
 
+  "background": {
+    "service_worker": "background.js"
+  },
   "action": {
     "default_popup": "popup.html",
     "default_title": "Open Command Palette (Cmd+K)"
   },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["modal.css"],
+      "run_at": "document_end"
+    }
+  ],
   "commands": {
     "open-command-palette": {
       "suggested_key": {
@@ -17,5 +35,11 @@
       },
       "description": "Open Command Palette"
     }
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["modal.html"],
+      "matches": ["<all_urls>"]
+    }
+  ]
 }
