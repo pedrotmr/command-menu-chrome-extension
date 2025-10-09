@@ -77,23 +77,7 @@ async function loadBookmarks() {
   }
 }
 
-function extractBookmarks(bookmarkNodes, result = []) {
-  for (const node of bookmarkNodes) {
-    if (node.url) {
-      result.push({
-        id: node.id,
-        title: node.title,
-        url: node.url,
-        icon: "🔖",
-        type: "bookmark",
-      });
-    }
-    if (node.children) {
-      extractBookmarks(node.children, result);
-    }
-  }
-  return result;
-}
+// extractBookmarks is imported from utils.js via popup.html
 
 function handleKeyDown(e) {
   switch (e.key) {
@@ -142,52 +126,7 @@ function handleSearch(query) {
   updateSelection();
 }
 
-function fuzzySearch(items, query) {
-  const queryLower = query.toLowerCase();
-
-  return items
-    .map((item) => {
-      const title = item.title.toLowerCase();
-      let score = 0;
-
-      // Exact match gets highest score
-      if (title.includes(queryLower)) {
-        score += 100;
-      }
-
-      // Title starts with query gets high score
-      if (title.startsWith(queryLower)) {
-        score += 50;
-      }
-
-      // Fuzzy matching
-      let queryIndex = 0;
-      let consecutiveMatches = 0;
-
-      for (let i = 0; i < title.length && queryIndex < query.length; i++) {
-        if (title[i] === queryLower[queryIndex]) {
-          score += 1;
-          consecutiveMatches++;
-          queryIndex++;
-
-          // Bonus for consecutive matches
-          if (consecutiveMatches > 1) {
-            score += consecutiveMatches;
-          }
-        } else {
-          consecutiveMatches = 0;
-        }
-      }
-
-      // Only return items that match all characters
-      if (queryIndex === query.length) {
-        return { ...item, score };
-      }
-      return null;
-    })
-    .filter(Boolean)
-    .sort((a, b) => b.score - a.score);
-}
+// fuzzySearch is imported from utils.js via popup.html
 
 function renderItems() {
   const results = document.getElementById("results");

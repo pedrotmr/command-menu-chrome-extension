@@ -219,11 +219,18 @@ if (window.commandPaletteInjected) {
     return items
       .map((item) => {
         const title = item.title.toLowerCase();
+        const url = item.url ? item.url.toLowerCase() : "";
+        const searchText = title + " " + url;
         let score = 0;
 
-        // Exact match gets highest score
+        // Exact match in title gets highest score
         if (title.includes(queryLower)) {
           score += 100;
+        }
+
+        // Exact match in URL gets high score
+        if (url && url.includes(queryLower)) {
+          score += 80;
         }
 
         // Title starts with query gets high score
@@ -231,18 +238,25 @@ if (window.commandPaletteInjected) {
           score += 50;
         }
 
-        // Fuzzy matching
+        // URL starts with query gets good score
+        if (url && url.startsWith(queryLower)) {
+          score += 40;
+        }
+
+        // Fuzzy matching on combined title + URL
         let queryIndex = 0;
         let consecutiveMatches = 0;
+        let totalConsecutiveBonus = 0;
 
-        for (let i = 0; i < title.length && queryIndex < query.length; i++) {
-          if (title[i] === queryLower[queryIndex]) {
+        for (let i = 0; i < searchText.length && queryIndex < query.length; i++) {
+          if (searchText[i] === queryLower[queryIndex]) {
             score += 1;
             consecutiveMatches++;
             queryIndex++;
 
             // Bonus for consecutive matches
             if (consecutiveMatches > 1) {
+              totalConsecutiveBonus += consecutiveMatches;
               score += consecutiveMatches;
             }
           } else {
@@ -251,7 +265,8 @@ if (window.commandPaletteInjected) {
         }
 
         // Only return items that match all characters
-        if (queryIndex === query.length) {
+        // AND have a minimum score threshold to avoid weak fuzzy matches
+        if (queryIndex === query.length && score >= query.length * 2) {
           return { ...item, score };
         }
         return null;
