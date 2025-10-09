@@ -58,6 +58,9 @@ if (window.commandPaletteInjected) {
     if (message.action === "toggle-modal") {
       toggleModal();
       sendResponse({ success: true });
+    } else if (message.action === "copy-url") {
+      copyCurrentUrl();
+      sendResponse({ success: true });
     }
   });
 
@@ -487,6 +490,52 @@ if (window.commandPaletteInjected) {
     if (searchInput) {
       searchInput.blur();
     }
+  }
+
+  // Copy current URL function
+  function copyCurrentUrl() {
+    const url = window.location.href;
+
+    // Copy to clipboard
+    navigator.clipboard.writeText(url).then(() => {
+      showToast("URL copied to clipboard");
+    }).catch((err) => {
+      console.error("Failed to copy URL:", err);
+      showToast("Failed to copy URL", true);
+    });
+  }
+
+  // Show toast notification (Vercel-style)
+  function showToast(message, isError = false) {
+    // Create toast element
+    const toast = document.createElement("div");
+    toast.className = "command-palette-toast";
+    if (isError) {
+      toast.classList.add("error");
+    }
+
+    // Add checkmark icon and message
+    const icon = isError ? "✕" : "✓";
+    toast.innerHTML = `
+      <span class="command-palette-toast-icon">${icon}</span>
+      <span class="command-palette-toast-message">${message}</span>
+    `;
+
+    // Append to body
+    document.body.appendChild(toast);
+
+    // Trigger animation
+    setTimeout(() => {
+      toast.classList.add("show");
+    }, 10);
+
+    // Remove after 3 seconds
+    setTimeout(() => {
+      toast.classList.remove("show");
+      setTimeout(() => {
+        toast.remove();
+      }, 300);
+    }, 3000);
   }
 
   // Initialize when content script loads

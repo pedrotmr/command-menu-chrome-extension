@@ -154,6 +154,65 @@ chrome.commands.onCommand.addListener(async (command) => {
     } catch (error) {
       console.error("Error handling command:", error);
     }
+  } else if (command === "copy-url") {
+    try {
+      // Get the active tab
+      const [tab] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
+
+      if (tab && tab.id) {
+        // Check if we can inject into this URL
+        if (!isInjectableUrl(tab.url)) {
+          console.log("Cannot inject into this page:", tab.url);
+          return;
+        }
+
+        try {
+          // Try to send message to content script
+          await chrome.tabs.sendMessage(tab.id, { action: "copy-url" });
+        } catch (messageError) {
+          console.log("Content script not ready, injecting...", messageError);
+
+          // If content script is not ready, inject it manually
+          try {
+            if (!isInjectableUrl(tab.url)) {
+              console.log("URL became restricted, cannot inject:", tab.url);
+              return;
+            }
+
+            await chrome.scripting.executeScript({
+              target: { tabId: tab.id },
+              files: ["content.js"],
+            });
+
+            await chrome.scripting.insertCSS({
+              target: { tabId: tab.id },
+              files: ["modal.css"],
+            });
+
+            // Wait a bit for the script to initialize
+            setTimeout(async () => {
+              try {
+                await chrome.tabs.sendMessage(tab.id, {
+                  action: "copy-url",
+                });
+              } catch (retryError) {
+                console.error(
+                  "Failed to send message after injection:",
+                  retryError
+                );
+              }
+            }, 100);
+          } catch (injectionError) {
+            console.error("Failed to inject content script:", injectionError);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error handling copy-url command:", error);
+    }
   }
 });
 

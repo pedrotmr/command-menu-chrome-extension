@@ -8,7 +8,8 @@
     "tabs",
     "bookmarks",
     "scripting",
-    "notifications"
+    "notifications",
+    "clipboardWrite"
   ],
   "host_permissions": ["<all_urls>"],
 
@@ -34,6 +35,13 @@
         "mac": "Command+K"
       },
       "description": "Open Command Palette"
+    },
+    "copy-url": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+C",
+        "mac": "Command+Shift+C"
+      },
+      "description": "Copy current page URL"
     }
   },
   "web_accessible_resources": [

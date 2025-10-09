@@ -21,6 +21,7 @@
 .command-palette-backdrop.show {
   opacity: 1 !important;
   visibility: visible !important;
+  display: flex !important;
 }
 
 /* Modal wrapper */
@@ -255,4 +256,63 @@
 /* Prevent page scroll when modal is open */
 body.command-palette-no-scroll {
   overflow: hidden !important;
+}
+
+/* Toast Notification (Vercel-style) */
+.command-palette-toast {
+  position: fixed !important;
+  top: 20px !important;
+  right: 20px !important;
+  transform: translateX(400px) !important;
+  background: #1c1c1e !important;
+  color: #ffffff !important;
+  padding: 12px 16px !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI",
+    Roboto, sans-serif !important;
+  font-size: 14px !important;
+  font-weight: 400 !important;
+  line-height: 1 !important;
+  z-index: 2147483646 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  opacity: 0 !important;
+  transition: opacity 0.2s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  pointer-events: none !important;
+}
+
+.command-palette-toast.show {
+  opacity: 1 !important;
+  transform: translateX(0) !important;
+  display: flex !important;
+}
+
+.command-palette-toast.error {
+  background: #ff3b30 !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+.command-palette-toast-icon {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 16px !important;
+  height: 16px !important;
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-radius: 50% !important;
+  font-size: 11px !important;
+  line-height: 1 !important;
+  flex-shrink: 0 !important;
+}
+
+.command-palette-toast.error .command-palette-toast-icon {
+  background: rgba(255, 255, 255, 0.25) !important;
+}
+
+.command-palette-toast-message {
+  line-height: 1 !important;
+  letter-spacing: 0.01em !important;
 }
