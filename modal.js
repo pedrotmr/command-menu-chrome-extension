@@ -251,7 +251,11 @@ if (window.commandPaletteInjected) {
         let consecutiveMatches = 0;
         let totalConsecutiveBonus = 0;
 
-        for (let i = 0; i < searchText.length && queryIndex < query.length; i++) {
+        for (
+          let i = 0;
+          i < searchText.length && queryIndex < query.length;
+          i++
+        ) {
           if (searchText[i] === queryLower[queryIndex]) {
             score += 1;
             consecutiveMatches++;
@@ -497,12 +501,15 @@ if (window.commandPaletteInjected) {
     const url = window.location.href;
 
     // Copy to clipboard
-    navigator.clipboard.writeText(url).then(() => {
-      showToast("URL copied to clipboard");
-    }).catch((err) => {
-      console.error("Failed to copy URL:", err);
-      showToast("Failed to copy URL", true);
-    });
+    navigator.clipboard
+      .writeText(url)
+      .then(() => {
+        showToast("URL copied to clipboard");
+      })
+      .catch((err) => {
+        console.error("Failed to copy URL:", err);
+        showToast("Failed to copy URL", true);
+      });
   }
 
   // Show toast notification (Vercel-style)

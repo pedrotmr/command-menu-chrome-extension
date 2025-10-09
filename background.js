@@ -114,7 +114,7 @@ chrome.commands.onCommand.addListener(async (command) => {
 
             await chrome.scripting.executeScript({
               target: { tabId: tab.id },
-              files: ["content.js"],
+              files: ["modal.js"],
             });
 
             // Wait a bit for the script to initialize
@@ -184,7 +184,7 @@ chrome.commands.onCommand.addListener(async (command) => {
 
             await chrome.scripting.executeScript({
               target: { tabId: tab.id },
-              files: ["content.js"],
+              files: ["modal.js"],
             });
 
             await chrome.scripting.insertCSS({
@@ -255,7 +255,7 @@ chrome.action.onClicked.addListener(async (tab) => {
 
         await chrome.scripting.executeScript({
           target: { tabId: tab.id },
-          files: ["content.js"],
+          files: ["modal.js"],
         });
 
         setTimeout(async () => {
