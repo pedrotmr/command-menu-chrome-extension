@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Command Palette",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "A VS Code-style command palette for Chrome",
   "permissions": [
     "activeTab",
@@ -13,17 +13,17 @@
   ],
   "host_permissions": ["<all_urls>"],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "src/background/index.ts",
+    "type": "module"
   },
   "action": {
-    "default_popup": "popup.html",
-    "default_title": "Open Command Palette (Cmd+K)"
+    "default_popup": "src/popup/index.html",
+    "default_title": "Open Command Palette (Cmd+T)"
   },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["modal.js"],
-      "css": ["modal.css"],
+      "js": ["src/content/index.tsx"],
       "run_at": "document_end"
     }
   ],
@@ -49,11 +49,5 @@
       },
       "description": "Toggle between current and previous tab"
     }
-  },
-  "web_accessible_resources": [
-    {
-      "resources": ["modal.html", "utils.js"],
-      "matches": ["<all_urls>"]
-    }
-  ]
+  }
 }
