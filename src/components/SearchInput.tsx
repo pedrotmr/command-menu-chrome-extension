@@ -25,7 +25,7 @@ export function SearchInput({
     if (autoFocus && inputRef.current) {
       setTimeout(() => {
         inputRef.current?.focus();
-      }, 1000);
+      }, 100);
     }
   }, [autoFocus]);
 
