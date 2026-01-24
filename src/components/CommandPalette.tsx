@@ -38,7 +38,7 @@ export function CommandPalette({ onClose, isOpen }: CommandPaletteProps) {
   ) => {
     if (!searchQuery) return;
 
-    const searchUrl = searchProvider.urlTemplate.replace('%s', searchQuery);
+    const searchUrl = searchProvider.urlTemplate.replace('%s', encodeURIComponent(searchQuery));
 
     try {
       await chrome.runtime.sendMessage({
