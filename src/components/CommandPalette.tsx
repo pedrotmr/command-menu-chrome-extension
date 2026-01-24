@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Item, Command, Bookmark } from '@/types';
+import { Item, Command, Bookmark, SearchProvider } from '@/types';
 import { commands } from '@/utils/commands';
 import { executeCommand } from '@/utils/chromeHelpers';
 import { useBookmarks } from '@/hooks/useBookmarks';
@@ -15,6 +15,9 @@ interface CommandPaletteProps {
 
 export function CommandPalette({ onClose, isOpen }: CommandPaletteProps) {
   const [query, setQuery] = useState('');
+  const [activeProvider, setActiveProvider] = useState<SearchProvider | null>(
+    null
+  );
   const { bookmarks, loading } = useBookmarks();
 
   // Combine commands and bookmarks
@@ -23,7 +26,30 @@ export function CommandPalette({ onClose, isOpen }: CommandPaletteProps) {
   }, [bookmarks]);
 
   // Filter items based on search query
-  const filteredItems: Item[] = useFuzzySearch(allItems, query) as Item[];
+  const filteredItems: Item[] = useFuzzySearch(
+    allItems,
+    query,
+    activeProvider
+  ) as Item[];
+
+  const handleSearch = async (
+    searchProvider: SearchProvider,
+    searchQuery: string
+  ) => {
+    if (!searchQuery) return;
+
+    const searchUrl = searchProvider.urlTemplate.replace('%s', searchQuery);
+
+    try {
+      await chrome.runtime.sendMessage({
+        action: 'create-tab',
+        url: searchUrl,
+      });
+    } catch (error) {
+      console.error('Error creating tab:', error);
+    }
+    onClose();
+  };
 
   // Execute selected item
   const executeSelected = async () => {
@@ -60,10 +86,18 @@ export function CommandPalette({ onClose, isOpen }: CommandPaletteProps) {
     onClose();
   };
 
+  const handleEnter = () => {
+    if (activeProvider) {
+      handleSearch(activeProvider, query);
+    } else {
+      executeSelected();
+    }
+  };
+
   // Keyboard navigation
   const { selectedIndex, selectIndex } = useKeyboardNavigation({
     itemCount: filteredItems.length,
-    onExecute: executeSelected,
+    onExecute: handleEnter,
     onClose,
     isOpen,
   });
@@ -73,15 +107,23 @@ export function CommandPalette({ onClose, isOpen }: CommandPaletteProps) {
       <SearchInput
         value={query}
         onChange={setQuery}
-        placeholder={loading ? 'Loading bookmarks...' : 'Search commands and bookmarks...'}
+        placeholder={
+          loading
+            ? 'Loading bookmarks...'
+            : activeProvider
+            ? `Search on ${activeProvider.name}`
+            : 'Search commands and bookmarks...'
+        }
         autoFocus={isOpen}
+        activeProvider={activeProvider}
+        setActiveProvider={setActiveProvider}
       />
       <ResultsList
         items={filteredItems}
         selectedIndex={selectedIndex}
         onItemClick={(index) => {
           selectIndex(index);
-          executeSelected();
+          handleEnter();
         }}
       />
     </div>
