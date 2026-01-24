@@ -1,14 +1,5 @@
 @import "tailwindcss";
 
-* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  padding: 0;
-}
-
 /* Custom scrollbar styles - Minimal & Clean */
 .custom-scrollbar::-webkit-scrollbar {
   width: 4px;
@@ -29,8 +20,8 @@ body {
 }
 
 /* Prevent scroll when modal is open */
-.no-scroll {
-  overflow: hidden;
+body.no-scroll {
+  overflow: hidden !important;
 }
 
 /* Backdrop blur utility */
