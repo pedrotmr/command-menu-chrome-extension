@@ -49,5 +49,15 @@
       },
       "description": "Toggle between current and previous tab"
     }
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "index.css"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ]
 }

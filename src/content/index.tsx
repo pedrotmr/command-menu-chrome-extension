@@ -3,7 +3,6 @@ import { createRoot } from 'react-dom/client';
 import { Modal } from './Modal';
 import { ToastContainer } from '@/components/Toast';
 import { useToast } from '@/hooks/useToast';
-import '@/styles/global.css';
 
 console.log('Command Palette: Content script loaded');
 
@@ -11,10 +10,28 @@ console.log('Command Palette: Content script loaded');
 if (!(window as any).commandPaletteInjected) {
   (window as any).commandPaletteInjected = true;
 
-  // Create root element for React app
+  // Create host element
+  const host = document.createElement('div');
+  host.id = 'command-palette-host';
+  // Position host but keep it invisible/non-interfering
+  host.style.cssText = 'position: fixed; top: 0; left: 0; width: 0; height: 0; z-index: 2147483647; pointer-events: none;';
+  document.body.appendChild(host);
+
+  // Create Shadow Root
+  const shadow = host.attachShadow({ mode: 'open' });
+
+  // Create root element inside shadow
   const rootElement = document.createElement('div');
   rootElement.id = 'command-palette-root';
-  document.body.appendChild(rootElement);
+  // Ensure the root itself is positioned correctly to hold the modal
+  rootElement.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none;';
+  shadow.appendChild(rootElement);
+
+  // Inject styles into shadow DOM
+  const styleLink = document.createElement('link');
+  styleLink.rel = 'stylesheet';
+  styleLink.href = chrome.runtime.getURL('index.css');
+  shadow.appendChild(styleLink);
 
   function App() {
     const [isOpen, setIsOpen] = useState(false);
