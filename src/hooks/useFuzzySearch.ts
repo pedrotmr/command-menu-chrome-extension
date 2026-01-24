@@ -1,5 +1,11 @@
 import { useMemo } from 'react';
-import { Item, ScoredItem, WebSearchItem, UrlNavigateItem } from '@/types';
+import {
+  Item,
+  ScoredItem,
+  WebSearchItem,
+  UrlNavigateItem,
+  SearchProvider,
+} from '@/types';
 import { fuzzySearch } from '@/utils/fuzzySearch';
 
 /**
@@ -7,7 +13,7 @@ import { fuzzySearch } from '@/utils/fuzzySearch';
  */
 function getChromeUrl(input: string): string | null {
   const trimmed = input.trim().toLowerCase();
-  
+
   // Check if it starts with chrome://
   if (!trimmed.startsWith('chrome://')) {
     return null;
@@ -15,7 +21,7 @@ function getChromeUrl(input: string): string | null {
 
   // Normalize the chrome:// URL
   let chromeUrl = trimmed;
-  
+
   // Ensure it has proper format (chrome://page/)
   if (!chromeUrl.endsWith('/') && !chromeUrl.includes('?')) {
     chromeUrl = chromeUrl + '/';
@@ -84,7 +90,8 @@ function isValidUrl(input: string): string | null {
 
   // Check if it looks like a URL without protocol
   // Match patterns like: domain.com, subdomain.domain.com, localhost:3000, etc.
-  const urlPattern = /^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(:[0-9]+)?(\/.*)?$|^localhost(:[0-9]+)?(\/.*)?$/;
+  const urlPattern =
+    /^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(:[0-9]+)?(\/.*)?$|^localhost(:[0-9]+)?(\/.*)?$/;
 
   if (urlPattern.test(trimmed)) {
     return `https://${trimmed}`;
@@ -93,14 +100,33 @@ function isValidUrl(input: string): string | null {
   return null;
 }
 
-export function useFuzzySearch(items: Item[], query: string): (Item | ScoredItem | WebSearchItem | UrlNavigateItem)[] {
+export function useFuzzySearch(
+  items: Item[],
+  query: string,
+  activeProvider: SearchProvider | null
+): (Item | ScoredItem | WebSearchItem | UrlNavigateItem)[] {
   return useMemo(() => {
+    if (activeProvider) {
+      if (!query.trim()) {
+        return [];
+      }
+      return [
+        {
+          id: 'provider-search',
+          title: `Search ${activeProvider.name} for "${query.trim()}"`,
+          icon: '🔍',
+          type: 'web-search' as const,
+          query: query.trim(),
+        },
+      ];
+    }
+
     if (!query.trim()) {
       return items;
     }
 
     const trimmedQuery = query.trim();
-    
+
     // Check for chrome:// URLs first - always prioritize navigation over search
     const chromeUrl = getChromeUrl(trimmedQuery);
     if (chromeUrl) {
@@ -145,5 +171,5 @@ export function useFuzzySearch(items: Item[], query: string): (Item | ScoredItem
     }
 
     return filtered;
-  }, [items, query]);
+  }, [items, query, activeProvider]);
 }

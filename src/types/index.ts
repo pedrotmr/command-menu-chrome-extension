@@ -41,3 +41,9 @@ export interface ChromeResponse {
   bookmarks?: chrome.bookmarks.BookmarkTreeNode[];
   [key: string]: any;
 }
+
+export interface SearchProvider {
+  name: string;
+  keywords: string[];
+  urlTemplate: string;
+}
