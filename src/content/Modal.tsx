@@ -28,11 +28,11 @@ export function Modal({ isOpen, onClose }: ModalProps) {
   if (!isOpen && !isVisible) return null;
 
   return (
-    <div className="fixed inset-0 z-[2147483646] flex items-start justify-center pt-[15vh] pointer-events-none">
+    <div className="fixed inset-0 z-[2147483646] flex justify-center items-center pointer-events-none">
       {/* Modal Container — frosted glass */}
       <div
         className={`
-          relative w-[600px] h-[420px]
+          relative w-[800px] h-[400px]
           rounded-2xl overflow-hidden pointer-events-auto
           transition-all ease-out
           ${isVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}
@@ -43,7 +43,6 @@ export function Modal({ isOpen, onClose }: ModalProps) {
 
         {/* Ethereal glow border system */}
         <div className="modal-glow-border" />
-        <div className="modal-corner-glow" />
         <div className="modal-edge-light" />
 
         {/* Shadow */}

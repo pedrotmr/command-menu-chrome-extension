@@ -79,7 +79,7 @@ export function SearchInput({
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
-        className="flex-1 bg-transparent text-white text-[15px] font-normal outline-none placeholder:text-white/30"
+        className="flex-1 bg-transparent text-white text-lg font-normal outline-none placeholder:text-white/30"
         spellCheck={false}
       />
       </div>

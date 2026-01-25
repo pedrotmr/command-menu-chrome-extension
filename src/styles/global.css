@@ -133,61 +133,6 @@ body.no-scroll {
   animation: border-pulse 4s ease-in-out infinite;
 }
 
-/* Inner edge highlight - top and left */
-.modal-glow-border::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 1rem;
-  background:
-    linear-gradient(180deg, rgba(180, 200, 255, 0.15) 0%, transparent 40%) top / 100% 50% no-repeat,
-    linear-gradient(90deg, rgba(180, 200, 255, 0.08) 0%, transparent 30%) left / 30% 100% no-repeat;
-  pointer-events: none;
-}
-
-/* Corner accent glows */
-.modal-corner-glow {
-  position: absolute;
-  inset: 0;
-  border-radius: 1rem;
-  pointer-events: none;
-  overflow: hidden;
-}
-
-.modal-corner-glow::before {
-  content: '';
-  position: absolute;
-  top: -20px;
-  left: -20px;
-  width: 80px;
-  height: 80px;
-  background: radial-gradient(
-    circle at center,
-    rgba(140, 160, 255, 0.25) 0%,
-    rgba(140, 160, 255, 0.1) 40%,
-    transparent 70%
-  );
-  filter: blur(10px);
-  animation: corner-pulse 4s ease-in-out infinite;
-}
-
-.modal-corner-glow::after {
-  content: '';
-  position: absolute;
-  bottom: -20px;
-  right: -20px;
-  width: 80px;
-  height: 80px;
-  background: radial-gradient(
-    circle at center,
-    rgba(140, 160, 255, 0.25) 0%,
-    rgba(140, 160, 255, 0.1) 40%,
-    transparent 70%
-  );
-  filter: blur(10px);
-  animation: corner-pulse 4s ease-in-out infinite 2s;
-}
-
 /* Traveling light effect along border */
 .modal-edge-light {
   position: absolute;
