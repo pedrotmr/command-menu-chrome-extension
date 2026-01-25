@@ -90,3 +90,195 @@ body.no-scroll {
     opacity: 1;
   }
 }
+
+/* ============================================
+   Modal Ethereal Border Glow
+   ============================================ */
+
+.modal-glow-border {
+  position: absolute;
+  inset: 0;
+  border-radius: 1rem;
+  pointer-events: none;
+
+  /* Base gradient border using mask technique */
+  border: 1px solid transparent;
+  background:
+    linear-gradient(rgba(12, 12, 16, 0.92), rgba(12, 12, 16, 0.92)) padding-box,
+    linear-gradient(
+      135deg,
+      rgba(140, 160, 255, 0.4) 0%,
+      rgba(255, 255, 255, 0.12) 25%,
+      rgba(255, 255, 255, 0.06) 50%,
+      rgba(255, 255, 255, 0.12) 75%,
+      rgba(140, 160, 255, 0.4) 100%
+    ) border-box;
+}
+
+/* Outer ambient glow */
+.modal-glow-border::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 1rem;
+  background: linear-gradient(
+    135deg,
+    rgba(140, 160, 255, 0.15) 0%,
+    transparent 30%,
+    transparent 70%,
+    rgba(140, 160, 255, 0.15) 100%
+  );
+  filter: blur(8px);
+  opacity: 0.8;
+  animation: border-pulse 4s ease-in-out infinite;
+}
+
+/* Inner edge highlight - top and left */
+.modal-glow-border::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 1rem;
+  background:
+    linear-gradient(180deg, rgba(180, 200, 255, 0.15) 0%, transparent 40%) top / 100% 50% no-repeat,
+    linear-gradient(90deg, rgba(180, 200, 255, 0.08) 0%, transparent 30%) left / 30% 100% no-repeat;
+  pointer-events: none;
+}
+
+/* Corner accent glows */
+.modal-corner-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: 1rem;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.modal-corner-glow::before {
+  content: '';
+  position: absolute;
+  top: -20px;
+  left: -20px;
+  width: 80px;
+  height: 80px;
+  background: radial-gradient(
+    circle at center,
+    rgba(140, 160, 255, 0.25) 0%,
+    rgba(140, 160, 255, 0.1) 40%,
+    transparent 70%
+  );
+  filter: blur(10px);
+  animation: corner-pulse 4s ease-in-out infinite;
+}
+
+.modal-corner-glow::after {
+  content: '';
+  position: absolute;
+  bottom: -20px;
+  right: -20px;
+  width: 80px;
+  height: 80px;
+  background: radial-gradient(
+    circle at center,
+    rgba(140, 160, 255, 0.25) 0%,
+    rgba(140, 160, 255, 0.1) 40%,
+    transparent 70%
+  );
+  filter: blur(10px);
+  animation: corner-pulse 4s ease-in-out infinite 2s;
+}
+
+/* Traveling light effect along border */
+.modal-edge-light {
+  position: absolute;
+  inset: 0;
+  border-radius: 1rem;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.modal-edge-light::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(180, 200, 255, 0.6) 50%,
+    transparent 100%
+  );
+  animation: edge-travel-top 6s ease-in-out infinite;
+}
+
+.modal-edge-light::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  right: -100%;
+  width: 60%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(180, 200, 255, 0.4) 50%,
+    transparent 100%
+  );
+  animation: edge-travel-bottom 6s ease-in-out infinite 3s;
+}
+
+@keyframes border-pulse {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes corner-pulse {
+  0%, 100% {
+    opacity: 0.5;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes edge-travel-top {
+  0% {
+    left: -60%;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    left: 100%;
+    opacity: 0;
+  }
+}
+
+@keyframes edge-travel-bottom {
+  0% {
+    right: -60%;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    right: 100%;
+    opacity: 0;
+  }
+}

@@ -39,13 +39,15 @@ export function Modal({ isOpen, onClose }: ModalProps) {
         `}
       >
         {/* Glass background layer */}
-        <div className="absolute inset-0 bg-[rgba(12,12,16,0.92)] backdrop-blur-[20px] backdrop-saturate-150" />
-        {/* Border */}
-        <div className="absolute inset-0 rounded-2xl border border-white/[0.1] pointer-events-none" />
-        {/* Top edge highlight */}
-        <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/15 to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-[rgba(12,12,16,0.92)] backdrop-blur-[20px] backdrop-saturate-150 rounded-2xl" />
+
+        {/* Ethereal glow border system */}
+        <div className="modal-glow-border" />
+        <div className="modal-corner-glow" />
+        <div className="modal-edge-light" />
+
         {/* Shadow */}
-        <div className="absolute inset-0 rounded-2xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.45),0_8px_20px_-6px_rgba(0,0,0,0.25)] pointer-events-none" />
+        <div className="absolute inset-0 rounded-2xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.5),0_10px_25px_-8px_rgba(0,0,0,0.3),0_0_40px_-10px_rgba(100,120,200,0.15)] pointer-events-none" />
         {/* Content */}
         <div className="relative h-full">
           <CommandPalette onClose={onClose} isOpen={isOpen} />
