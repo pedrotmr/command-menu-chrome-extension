@@ -46,8 +46,9 @@ export function SearchInput({
   };
 
   return (
-    <div className="relative flex items-center px-4 pt-5 pb-3 border-b border-white/[0.08]">
-      {activeProvider ? (
+    <div className="relative">
+      <div className="flex items-center px-4 pt-5 pb-4">
+        {activeProvider ? (
         <div className="flex items-center bg-white/10 text-white text-xs font-semibold rounded-md mr-2">
           <span className="pl-2 pr-1">{activeProvider.name}</span>
           <button
@@ -81,6 +82,10 @@ export function SearchInput({
         className="flex-1 bg-transparent text-white text-[15px] font-normal outline-none placeholder:text-white/30"
         spellCheck={false}
       />
+      </div>
+
+      {/* Ethereal glow separator */}
+      <div className="separator-glow" />
     </div>
   );
 }

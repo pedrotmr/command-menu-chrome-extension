@@ -29,3 +29,64 @@ body.no-scroll {
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
+
+/* Ethereal Glow Separator */
+.separator-glow {
+  position: relative;
+  height: 1px;
+  width: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.06) 15%,
+    rgba(255, 255, 255, 0.12) 50%,
+    rgba(255, 255, 255, 0.06) 85%,
+    transparent 100%
+  );
+}
+
+.separator-glow::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 60%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(140, 160, 255, 0.3) 30%,
+    rgba(180, 200, 255, 0.5) 50%,
+    rgba(140, 160, 255, 0.3) 70%,
+    transparent 100%
+  );
+  filter: blur(0.5px);
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+.separator-glow::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 40%;
+  height: 6px;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(160, 180, 255, 0.15) 0%,
+    transparent 70%
+  );
+  filter: blur(3px);
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
