@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react';
-import { Item, Command, Bookmark, SearchProvider } from '@/types';
+import { Item, Command, Bookmark, HistoryItem, SearchProvider } from '@/types';
 import { commands } from '@/utils/commands';
 import { executeCommand } from '@/utils/chromeHelpers';
 import { useBookmarks } from '@/hooks/useBookmarks';
+import { useHistory } from '@/hooks/useHistory';
 import { useFuzzySearch } from '@/hooks/useFuzzySearch';
 import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
 import { SearchInput } from './SearchInput';
@@ -18,12 +19,18 @@ export function CommandPalette({ onClose, isOpen }: CommandPaletteProps) {
   const [activeProvider, setActiveProvider] = useState<SearchProvider | null>(
     null
   );
-  const { bookmarks, loading } = useBookmarks();
+  const { bookmarks, loading: bookmarksLoading } = useBookmarks();
+  const { history, loading: historyLoading } = useHistory();
 
-  // Combine commands and bookmarks
+  const loading = bookmarksLoading || historyLoading;
+
+  // Combine commands, bookmarks, and history
   const allItems: Item[] = useMemo(() => {
-    return [...commands, ...bookmarks];
-  }, [bookmarks]);
+    // Deduplicate: if a URL exists in both bookmarks and history, keep the bookmark
+    const bookmarkUrls = new Set(bookmarks.map((b) => b.url));
+    const uniqueHistory = history.filter((h) => !bookmarkUrls.has(h.url));
+    return [...commands, ...bookmarks, ...uniqueHistory];
+  }, [bookmarks, history]);
 
   // Filter items based on search query
   const filteredItems: Item[] = useFuzzySearch(
@@ -62,6 +69,11 @@ export function CommandPalette({ onClose, isOpen }: CommandPaletteProps) {
         await chrome.runtime.sendMessage({
           action: 'create-tab',
           url: (selectedItem as Bookmark).url,
+        });
+      } else if (selectedItem.type === 'history') {
+        await chrome.runtime.sendMessage({
+          action: 'create-tab',
+          url: (selectedItem as HistoryItem).url,
         });
       } else if (selectedItem.type === 'command') {
         await executeCommand(selectedItem as Command);
@@ -109,10 +121,10 @@ export function CommandPalette({ onClose, isOpen }: CommandPaletteProps) {
         onChange={setQuery}
         placeholder={
           loading
-            ? 'Loading bookmarks...'
+            ? 'Loading...'
             : activeProvider
             ? `Search on ${activeProvider.name}`
-            : 'Search commands and bookmarks...'
+            : 'Search commands, bookmarks, and history...'
         }
         autoFocus={isOpen}
         activeProvider={activeProvider}

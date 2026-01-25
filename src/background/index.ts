@@ -193,6 +193,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           sendResponse({ bookmarks });
           break;
 
+        case 'get-history':
+          console.log('Background: Received get-history request');
+          // Search history from the last 30 days, max 500 results
+          const oneMonthAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+          const historyItems = await chrome.history.search({
+            text: '',
+            startTime: oneMonthAgo,
+            maxResults: 500,
+          });
+          console.log('Background: Retrieved history:', historyItems.length, 'items');
+          sendResponse({ history: historyItems });
+          break;
+
         case 'create-tab':
           await chrome.tabs.create({ url: message.url });
           sendResponse({ success: true });

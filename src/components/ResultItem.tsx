@@ -45,7 +45,7 @@ export function ResultItem({ item, isSelected, onClick }: ResultItemProps) {
         )}
       </div>
       <span className="text-[10px] text-white/25 uppercase tracking-wide flex-shrink-0">
-        {item.type === 'web-search' ? 'search' : item.type === 'bookmark' ? 'link' : 'cmd'}
+        {item.type === 'web-search' ? 'search' : item.type === 'bookmark' ? 'link' : item.type === 'history' ? 'history' : 'cmd'}
       </span>
     </div>
   );

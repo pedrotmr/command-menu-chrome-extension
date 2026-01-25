@@ -1,4 +1,4 @@
-export type ItemType = 'command' | 'bookmark' | 'web-search' | 'url-navigate';
+export type ItemType = 'command' | 'bookmark' | 'history' | 'web-search' | 'url-navigate';
 
 export interface BaseItem {
   id: string;
@@ -16,6 +16,12 @@ export interface Bookmark extends BaseItem {
   url: string;
 }
 
+export interface HistoryItem extends BaseItem {
+  type: 'history';
+  url: string;
+  lastVisitTime?: number;
+}
+
 export interface WebSearchItem extends BaseItem {
   type: 'web-search';
   query: string;
@@ -26,9 +32,9 @@ export interface UrlNavigateItem extends BaseItem {
   url: string;
 }
 
-export type Item = Command | Bookmark | WebSearchItem | UrlNavigateItem;
+export type Item = Command | Bookmark | HistoryItem | WebSearchItem | UrlNavigateItem;
 
-export type ScoredItem = (Command | Bookmark | WebSearchItem | UrlNavigateItem) & { score: number };
+export type ScoredItem = (Command | Bookmark | HistoryItem | WebSearchItem | UrlNavigateItem) & { score: number };
 
 export interface ChromeMessage {
   action: string;
