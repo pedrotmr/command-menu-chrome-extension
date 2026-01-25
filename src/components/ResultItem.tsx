@@ -30,8 +30,8 @@ export function ResultItem({ item, isSelected, onClick }: ResultItemProps) {
         flex items-center gap-2.5 px-3 py-2 mx-2 my-0.5 rounded-md cursor-pointer
         transition-all duration-100 ease-out
         ${isSelected
-          ? 'bg-white/8'
-          : 'hover:bg-white/[0.03]'
+          ? 'bg-white/10'
+          : 'hover:bg-white/[0.04]'
         }
       `}
     >
