@@ -30,6 +30,13 @@ export function SearchInput({
   }, [autoFocus]);
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    // Prevent the underlying page (Linear, etc) from interpreting keystrokes
+    // as global shortcuts while the command palette is focused.
+    e.stopPropagation();
+    // React doesn't expose stopImmediatePropagation directly on the synthetic event,
+    // so we call it on the underlying native event.
+    e.nativeEvent.stopImmediatePropagation?.();
+
     if (e.key === 'Tab' && value) {
       const provider = searchProviders.find((p) =>
         p.keywords.some((k) => value.toLowerCase().trim() === k.toLowerCase().trim())
