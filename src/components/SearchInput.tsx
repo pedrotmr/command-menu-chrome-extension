@@ -42,6 +42,9 @@ export function SearchInput({
       }
     } else if (e.key === 'Backspace' && !value && activeProvider) {
       setActiveProvider(null);
+    } else if (e.key === 'Backspace' && (e.metaKey || e.ctrlKey) && value) {
+      e.preventDefault();
+      onChange('');
     }
   };
 
