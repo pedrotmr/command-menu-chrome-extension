@@ -25,24 +25,25 @@ export function useKeyboardNavigation({
     if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Stop all keydown events from reaching website handlers
-      e.stopPropagation();
-
       switch (e.key) {
         case 'ArrowDown':
           e.preventDefault();
+          e.stopPropagation();
           setSelectedIndex((prev) => Math.min(prev + 1, itemCount - 1));
           break;
         case 'ArrowUp':
           e.preventDefault();
+          e.stopPropagation();
           setSelectedIndex((prev) => Math.max(prev - 1, 0));
           break;
         case 'Enter':
           e.preventDefault();
+          e.stopPropagation();
           onExecute();
           break;
         case 'Escape':
           e.preventDefault();
+          e.stopPropagation();
           onClose();
           break;
       }
