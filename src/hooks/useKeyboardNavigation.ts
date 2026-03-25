@@ -25,6 +25,9 @@ export function useKeyboardNavigation({
     if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Stop all keydown events from reaching website handlers
+      e.stopPropagation();
+
       switch (e.key) {
         case 'ArrowDown':
           e.preventDefault();
@@ -45,8 +48,8 @@ export function useKeyboardNavigation({
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener('keydown', handleKeyDown, { capture: true });
+    return () => document.removeEventListener('keydown', handleKeyDown, { capture: true });
   }, [isOpen, itemCount, onExecute, onClose]);
 
   const selectIndex = useCallback((index: number) => {
