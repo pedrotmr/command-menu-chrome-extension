@@ -54,7 +54,7 @@ async function start(): Promise<void> {
 
   try {
     const [sessionValues, themeValues] = await Promise.all([
-      chrome.storage.session.get(['nextPaletteMode', 'nextTabSwitcherAutoSwitchOnRelease']),
+      chrome.storage.session.get(['nextPaletteMode', 'nextTabSwitcherAutoSwitchOnRelease', 'paletteRequestedAt']),
       chrome.storage.local.get(themePreferencesStorageKey),
     ]);
     storedMode = sessionValues.nextPaletteMode ?? null;
