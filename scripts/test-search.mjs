@@ -22,6 +22,7 @@ try {
   const previewHtml = await readFile(path.join(projectRoot, 'design-preview.html'), 'utf8');
   const settingsSource = await readFile(path.join(projectRoot, 'src/components/SettingsView.tsx'), 'utf8');
   const commandPaletteSource = await readFile(path.join(projectRoot, 'src/components/CommandPalette.tsx'), 'utf8');
+  const tabSwitcherSource = await readFile(path.join(projectRoot, 'src/components/TabSwitcher.tsx'), 'utf8');
   const backgroundSource = await readFile(path.join(projectRoot, 'src/background/index.ts'), 'utf8');
   const overlayHostSource = await readFile(path.join(projectRoot, 'src/overlay/surfaceHost.tsx'), 'utf8');
   const resultsSource = await readFile(path.join(projectRoot, 'src/components/ResultsList.tsx'), 'utf8');
@@ -35,6 +36,9 @@ try {
   assert.ok(manifest.optional_permissions.includes('history'), 'history search requests access only when selected');
   assert.ok(manifest.optional_permissions.includes('clipboardWrite'), 'copy commands request clipboard access only when selected');
   assert.doesNotMatch(JSON.stringify(manifest.commands), /(?:Ctrl|Command)\+Tab/, 'extension shortcuts do not suggest Tab, which Chrome excludes from supported command keys');
+  assert.match(backgroundSource, /chrome\.tabs\.sendMessage\(tabId, \{ action: 'ui:tabs-changed' \}\)/, 'tab updates are sent to injected page overlays as well as extension views');
+  assert.match(backgroundSource, /tabNameReattachmentPending = true;\s*scheduleTabNameReconciliation\(\)/, 'closing a named tab schedules stale-name reconciliation');
+  assert.doesNotMatch(tabSwitcherSource, /scheduleAfterShortcut|TabSwitcherShortcutIdleCommit/, 'holding the shortcut modifier never auto-activates a tab on idle');
   assert.deepEqual(
     manifest.web_accessible_resources?.flatMap((entry) => entry.resources),
     [
@@ -62,10 +66,9 @@ try {
     isTabSwitcherModifierKey,
     wasTabSwitcherModifierReleasedAfter,
   } = await server.ssrLoadModule('/src/utils/tabSwitcherKeyRelease.ts');
-  const { TAB_SWITCHER_SHORTCUT_IDLE_MS, TabSwitcherShortcutIdleCommit } = await server.ssrLoadModule('/src/utils/tabSwitcherShortcutIdleCommit.ts');
   const { normalizeNavigationUrl, normalizeSavedNavigationUrl } = await server.ssrLoadModule('/src/utils/chromeHelpers.ts');
   const { themeRegistry, themeTokenNames, defaultThemePreferences, normalizeThemePreferences } = await server.ssrLoadModule('/src/themes/index.ts');
-  const { reconcileTabNames } = await server.ssrLoadModule('/src/utils/tabNamePersistence.ts');
+  const { markTabNameClosed, reconcileTabNames } = await server.ssrLoadModule('/src/utils/tabNamePersistence.ts');
   const { isOverlayPage } = await server.ssrLoadModule('/src/utils/pageSupport.ts');
   const { displayDetails } = await server.ssrLoadModule('/src/components/ResultsList.tsx');
   const { isTabInSplitView, SPLIT_VIEW_ID_NONE } = await server.ssrLoadModule('/src/utils/splitViews.ts');
@@ -124,91 +127,6 @@ try {
   } finally {
     if (originalWindowDescriptor) Object.defineProperty(globalThis, 'window', originalWindowDescriptor);
     else delete globalThis.window;
-  }
-  let clock = 0;
-  let timerId = 0;
-  const pendingTimers = new Map();
-  const scheduleTimer = (callback, delayMs) => {
-    const id = ++timerId;
-    pendingTimers.set(id, { callback, deadline: clock + delayMs });
-    return id;
-  };
-  const cancelTimer = (id) => pendingTimers.delete(id);
-  const runDueTimers = () => {
-    for (const [id, timer] of pendingTimers) {
-      if (timer.deadline > clock) continue;
-      pendingTimers.delete(id);
-      timer.callback();
-    }
-  };
-  let idleCommits = 0;
-  const shortcutIdleCommit = new TabSwitcherShortcutIdleCommit(
-    () => idleCommits++,
-    TAB_SWITCHER_SHORTCUT_IDLE_MS,
-    scheduleTimer,
-    cancelTimer,
-  );
-  shortcutIdleCommit.scheduleAfterShortcut();
-  clock = 180;
-  shortcutIdleCommit.scheduleAfterShortcut();
-  clock = 180 + TAB_SWITCHER_SHORTCUT_IDLE_MS - 1;
-  runDueTimers();
-  assert.equal(idleCommits, 0, 'a repeated switcher shortcut postpones auto-activation while cycling');
-  clock++;
-  runDueTimers();
-  assert.equal(idleCommits, 1, 'the selected tab activates after the shortcut input becomes idle');
-  shortcutIdleCommit.scheduleAfterShortcut();
-  shortcutIdleCommit.cancelForManualInteraction();
-  clock += TAB_SWITCHER_SHORTCUT_IDLE_MS;
-  runDueTimers();
-  assert.equal(idleCommits, 1, 'arrow or pointer interaction cancels automatic activation');
-  shortcutIdleCommit.scheduleAfterShortcut();
-  clock += TAB_SWITCHER_SHORTCUT_IDLE_MS;
-  runDueTimers();
-  assert.equal(idleCommits, 2, 'a later shortcut cycle resumes automatic activation');
-  shortcutIdleCommit.dispose();
-  shortcutIdleCommit.scheduleAfterShortcut();
-  clock += TAB_SWITCHER_SHORTCUT_IDLE_MS;
-  runDueTimers();
-  assert.equal(idleCommits, 2, 'closing the switcher cancels pending activation');
-
-  const originalTimeoutDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'setTimeout');
-  const originalClearTimeoutDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'clearTimeout');
-  let defaultTimerCallback;
-  let clearedDefaultTimer;
-  let defaultTimerId = 0;
-  Object.defineProperty(globalThis, 'setTimeout', {
-    configurable: true,
-    value: function (callback, delay) {
-      assert.equal(this, globalThis, 'the native timeout receives its required global receiver');
-      assert.equal(delay, 0, 'the default idle commit uses its configured delay');
-      defaultTimerCallback = callback;
-      return ++defaultTimerId;
-    },
-  });
-  Object.defineProperty(globalThis, 'clearTimeout', {
-    configurable: true,
-    value: function (handle) {
-      assert.equal(this, globalThis, 'the native timeout cancellation receives its required global receiver');
-      clearedDefaultTimer = handle;
-    },
-  });
-  try {
-    let defaultSchedulerCommits = 0;
-    const defaultSchedulerCommit = new TabSwitcherShortcutIdleCommit(() => defaultSchedulerCommits++, 0);
-    defaultSchedulerCommit.scheduleAfterShortcut();
-    defaultTimerCallback();
-    assert.equal(defaultSchedulerCommits, 1, 'the default browser timeout can commit without an illegal invocation');
-    defaultSchedulerCommit.dispose();
-    const cancellableDefaultScheduler = new TabSwitcherShortcutIdleCommit(() => undefined, 0);
-    cancellableDefaultScheduler.scheduleAfterShortcut();
-    cancellableDefaultScheduler.dispose();
-    assert.equal(clearedDefaultTimer, 2, 'the default browser timeout can be cancelled without an illegal invocation');
-  } finally {
-    if (originalTimeoutDescriptor) Object.defineProperty(globalThis, 'setTimeout', originalTimeoutDescriptor);
-    else delete globalThis.setTimeout;
-    if (originalClearTimeoutDescriptor) Object.defineProperty(globalThis, 'clearTimeout', originalClearTimeoutDescriptor);
-    else delete globalThis.clearTimeout;
   }
   const renamedTab = {
     id: 'tab-4', type: 'tab', title: 'Design review', subtitle: 'Original roadmap title · https://example.com',
@@ -331,6 +249,13 @@ try {
   const renamed = {
     '12': { tabId: 12, customName: 'Research', originalTitle: 'Project notes', url: 'https://example.com/notes', updatedAt: now - 1000, closedAt: now - 500 },
   };
+  const closedTabName = { '12': { ...renamed['12'], closedAt: undefined } };
+  assert.equal(markTabNameClosed(closedTabName, 12, now), true, 'closing a named tab moves its record into the stale-key namespace');
+  assert.equal(closedTabName['12'], undefined, 'a closed tab name is no longer kept under its reusable numeric tab ID');
+  const restoredAfterClose = reconcileTabNames(closedTabName, [
+    { id: 46, title: 'Project notes', url: 'https://example.com/notes' },
+  ], now + 1);
+  assert.equal(restoredAfterClose['46']?.customName, 'Research', 'a restored tab receives its unique custom name after the old tab closes');
   const restoredName = reconcileTabNames(renamed, [{ id: 44, title: 'Project notes', url: 'https://example.com/notes' }], now);
   assert.equal(restoredName['44']?.customName, 'Research', 'a unique URL/title match restores a custom tab name');
   assert.equal(restoredName['12'], undefined, 'a restored name is removed from its stale tab ID');

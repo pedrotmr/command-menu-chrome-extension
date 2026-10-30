@@ -5,6 +5,20 @@ export type TabIdentitySnapshot = Pick<chrome.tabs.Tab, 'id' | 'url' | 'title'>;
 
 const DEFAULT_MAX_AGE = 90 * 24 * 60 * 60 * 1000;
 
+export function markTabNameClosed(savedNames: TabNameMap, tabId: number, closedAt = Date.now()): boolean {
+  const id = String(tabId);
+  const savedName = savedNames[id];
+  if (!savedName) return false;
+
+  delete savedNames[id];
+  const keyBase = `stale:${savedName.tabId}:${savedName.updatedAt}:${closedAt}`;
+  let staleKey = keyBase;
+  let suffix = 1;
+  while (savedNames[staleKey]) staleKey = `${keyBase}:${suffix++}`;
+  savedNames[staleKey] = { ...savedName, closedAt };
+  return true;
+}
+
 function identity(url: string | undefined, title: string | undefined): string | null {
   if (!url) return null;
   return `${url}\u0000${title ?? ''}`;

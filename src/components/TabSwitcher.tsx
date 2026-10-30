@@ -2,7 +2,6 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type 
 import { sendBackground } from '@/utils/chromeHelpers';
 import { ManagedTab } from '@/utils/tabItems';
 import { isTabSwitcherModifierKey, wasTabSwitcherModifierReleasedAfter } from '@/utils/tabSwitcherKeyRelease';
-import { TabSwitcherShortcutIdleCommit } from '@/utils/tabSwitcherShortcutIdleCommit';
 
 interface TabSwitcherProps {
   onClose: () => void;
@@ -54,7 +53,6 @@ export function TabSwitcher({ onClose, autoSwitchOnRelease = false, openedAt = 0
   const currentTabIdRef = useRef<number | null>(null);
   const modifierReleasedRef = useRef(false);
   const autoActivationAttemptedRef = useRef(false);
-  const shortcutIdleCommitRef = useRef<TabSwitcherShortcutIdleCommit | null>(null);
   const activateAfterShortcutRef = useRef<(tab: ManagedTab | undefined) => void>(() => undefined);
   const activationInFlightRef = useRef(false);
   const windowIdRef = useRef<number | undefined>(undefined);
@@ -83,17 +81,6 @@ export function TabSwitcher({ onClose, autoSwitchOnRelease = false, openedAt = 0
   }, [onClose]);
 
   useLayoutEffect(() => {
-    const idleCommit = new TabSwitcherShortcutIdleCommit(() => {
-      activateAfterShortcutRef.current(selectedTabRef.current);
-    });
-    shortcutIdleCommitRef.current = idleCommit;
-    return () => {
-      idleCommit.dispose();
-      if (shortcutIdleCommitRef.current === idleCommit) shortcutIdleCommitRef.current = null;
-    };
-  }, []);
-
-  useLayoutEffect(() => {
     activateAfterShortcutRef.current = activateAfterShortcut;
   });
 
@@ -106,7 +93,6 @@ export function TabSwitcher({ onClose, autoSwitchOnRelease = false, openedAt = 0
       if (!isTabSwitcherModifierKey(event.key)) return;
       event.preventDefault();
       modifierReleasedRef.current = true;
-      shortcutIdleCommitRef.current?.cancel();
       activateAfterShortcut(selectedTabRef.current);
     };
     window.addEventListener('keyup', onKeyUp, true);
@@ -146,7 +132,6 @@ export function TabSwitcher({ onClose, autoSwitchOnRelease = false, openedAt = 0
       setTabs(recentTabs);
       setSelectedIndex(nextIndex);
       if (modifierReleasedRef.current) activateAfterShortcut(recentTabs[nextIndex]);
-      else if (autoSwitchOnRelease) shortcutIdleCommitRef.current?.scheduleAfterShortcut();
       void sendBackground<Record<number, string>>('tabs:recent-previews', {
         tabIds: recentTabs.flatMap((tab) => tab.id === undefined ? [] : [tab.id]),
       }).then((previews) => {
@@ -180,12 +165,10 @@ export function TabSwitcher({ onClose, autoSwitchOnRelease = false, openedAt = 0
     const nextIndex = ((selectedIndex + cycles) % tabs.length + tabs.length) % tabs.length;
     selectedTabRef.current = tabs[nextIndex];
     setSelectedIndex(nextIndex);
-    if (autoSwitchOnRelease) shortcutIdleCommitRef.current?.scheduleAfterShortcut();
   }, [cycleVersion, selectedIndex, tabs]);
 
   const selectIndex = (index: number): void => {
     if (!tabs.length) return;
-    shortcutIdleCommitRef.current?.cancelForManualInteraction();
     setMessage('');
     const nextIndex = (index + tabs.length) % tabs.length;
     selectedTabRef.current = tabs[nextIndex];
@@ -194,7 +177,6 @@ export function TabSwitcher({ onClose, autoSwitchOnRelease = false, openedAt = 0
 
   async function activate(tab: ManagedTab): Promise<boolean> {
     if (tab.id === undefined || activationInFlightRef.current) return false;
-    shortcutIdleCommitRef.current?.cancel();
     activationInFlightRef.current = true;
     setMessage('');
     try {
@@ -237,7 +219,6 @@ export function TabSwitcher({ onClose, autoSwitchOnRelease = false, openedAt = 0
   }
 
   function closeSwitcher(): void {
-    shortcutIdleCommitRef.current?.cancel();
     hideSwitcher();
     onCloseRef.current();
   }
@@ -248,7 +229,6 @@ export function TabSwitcher({ onClose, autoSwitchOnRelease = false, openedAt = 0
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLElement>): void {
-    shortcutIdleCommitRef.current?.cancelForManualInteraction();
     event.stopPropagation();
     event.nativeEvent.stopImmediatePropagation?.();
     switch (event.key) {
@@ -356,7 +336,6 @@ export function TabSwitcher({ onClose, autoSwitchOnRelease = false, openedAt = 0
                   lastPointerRef.current = { x: event.clientX, y: event.clientY };
                   if (!previous || Math.hypot(event.clientX - previous.x, event.clientY - previous.y) > 2) {
                     if (selectedIndex !== index) {
-                      shortcutIdleCommitRef.current?.cancelForManualInteraction();
                       setMessage('');
                       selectedTabRef.current = tab;
                       setSelectedIndex(index);

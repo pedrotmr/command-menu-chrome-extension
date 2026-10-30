@@ -1,5 +1,5 @@
 import type { RenamedTab, SplitAwareTab } from '@/types';
-import { reconcileTabNames, type TabNameMap } from '@/utils/tabNamePersistence';
+import { markTabNameClosed, reconcileTabNames, type TabNameMap } from '@/utils/tabNamePersistence';
 import { normalizeNavigationUrl, normalizeSavedNavigationUrl } from '@/utils/chromeHelpers';
 import { isTabInSplitView } from '@/utils/splitViews';
 import { TAB_GROUP_ID_NONE } from '@/utils/chromeApiConstants';
@@ -24,6 +24,7 @@ let tabNameReattachmentPending = false;
 let tabNameReconcileTimer: ReturnType<typeof setTimeout> | null = null;
 let tabNameSessionSafe = true;
 let tabChangeBroadcastTimer: ReturnType<typeof setTimeout> | null = null;
+const overlayTabIds = new Set<number>();
 const tabSwitcherOpenWindows = new Set<number>();
 const tabSwitcherSurfaceByWindow = new Map<number, 'overlay' | 'popup'>();
 const tabSwitcherOpeningWindows = new Map<number, { tabId: number; pendingCycles: number; startedAt: number }>();
@@ -48,6 +49,11 @@ function broadcastTabChanges(): void {
   tabChangeBroadcastTimer = setTimeout(() => {
     tabChangeBroadcastTimer = null;
     void chrome.runtime.sendMessage({ action: 'ui:tabs-changed' }).catch(() => undefined);
+    for (const tabId of overlayTabIds) {
+      void chrome.tabs.sendMessage(tabId, { action: 'ui:tabs-changed' }).catch(() => {
+        overlayTabIds.delete(tabId);
+      });
+    }
   }, 24);
 }
 
@@ -110,7 +116,10 @@ async function openOverlay(tabId: number, mode: 'commands' | 'tabs', autoSwitchO
   const request = { action: 'overlay:open', mode, autoSwitchOnRelease, openedAt };
   try {
     const response = await chrome.tabs.sendMessage(tabId, request) as { success?: boolean } | undefined;
-    if (response?.success) return;
+    if (response?.success) {
+      overlayTabIds.add(tabId);
+      return;
+    }
   } catch {
     // The page does not have an initialized surface yet.
   }
@@ -119,6 +128,7 @@ async function openOverlay(tabId: number, mode: 'commands' | 'tabs', autoSwitchO
   await chrome.scripting.executeScript({ target: { tabId }, files: [script] });
   const response = await chrome.tabs.sendMessage(tabId, request) as { success?: boolean } | undefined;
   if (!response?.success) throw new Error('The page overlay could not be opened.');
+  overlayTabIds.add(tabId);
 }
 
 async function getLiveTabSwitcherSurface(tabId: number, windowId: number): Promise<'overlay' | 'popup' | null> {
@@ -394,6 +404,7 @@ chrome.tabs.onAttached.addListener(broadcastTabChanges);
 chrome.tabs.onDetached.addListener(broadcastTabChanges);
 chrome.tabs.onRemoved.addListener((tabId) => {
   broadcastTabChanges();
+  overlayTabIds.delete(tabId);
   void removeTabPreview(tabId).catch(() => undefined);
   for (const [windowId, opening] of tabSwitcherOpeningWindows) {
     if (opening.tabId === tabId) tabSwitcherOpeningWindows.delete(windowId);
@@ -432,14 +443,13 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   void tabNameSessionInitialization
     .then(() => {
       if (!namedTabIds.has(String(tabId))) return false;
-      return withTabNamesMutation((names) => {
-        const saved = names[String(tabId)];
-        if (!saved) return false;
-        saved.closedAt = Date.now();
-        return true;
-      });
+      return withTabNamesMutation((names) => markTabNameClosed(names, tabId));
     })
-    .then((updated) => { if (updated) scheduleTabNameReconciliation(); })
+    .then((updated) => {
+      if (!updated) return;
+      tabNameReattachmentPending = true;
+      scheduleTabNameReconciliation();
+    })
     .catch(() => undefined);
 });
 
