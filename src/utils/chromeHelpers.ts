@@ -1,92 +1,95 @@
-import { Command } from '@/types';
+import { ChromeResponse } from '@/types';
 
-export async function executeCommand(command: Command): Promise<void> {
-  const commandMap: Record<string, () => Promise<void>> = {
-    'reload-page': async () => {
-      await chrome.runtime.sendMessage({ action: 'reload-tab' });
-    },
-    'new-tab': async () => {
-      await chrome.runtime.sendMessage({ action: 'create-tab', url: 'chrome://newtab/' });
-    },
-    'go-back': async () => {
-      await chrome.runtime.sendMessage({ action: 'go-back' });
-    },
-    'go-forward': async () => {
-      await chrome.runtime.sendMessage({ action: 'go-forward' });
-    },
-    'extensions-page': async () => {
-      await chrome.runtime.sendMessage({ action: 'create-tab', url: 'chrome://extensions/' });
-    },
-    'shortcuts-page': async () => {
-      await chrome.runtime.sendMessage({ action: 'create-tab', url: 'chrome://extensions/shortcuts' });
-    },
-    'history-page': async () => {
-      await chrome.runtime.sendMessage({ action: 'create-tab', url: 'chrome://history/' });
-    },
-    'downloads-page': async () => {
-      await chrome.runtime.sendMessage({ action: 'create-tab', url: 'chrome://downloads/' });
-    },
-    'settings-page': async () => {
-      await chrome.runtime.sendMessage({ action: 'create-tab', url: 'chrome://settings/' });
-    },
-    'new-incognito-window': async () => {
-      await chrome.runtime.sendMessage({ action: 'new-incognito-window' });
-    },
-    'chrome-web-store': async () => {
-      await chrome.runtime.sendMessage({ action: 'create-tab', url: 'https://chromewebstore.google.com/' });
-    },
-  };
+export async function sendBackground<T>(
+  action: string,
+  payload: Record<string, unknown> = {}
+): Promise<T> {
+  const response = (await chrome.runtime.sendMessage({ action, ...payload })) as
+    | ChromeResponse<T>
+    | undefined;
 
-  const executor = commandMap[command.id];
-  if (executor) {
-    await executor();
-  } else {
-    console.error('Unknown command:', command.id);
+  if (!response?.success) {
+    throw new Error(response?.error ?? 'The browser action could not be completed.');
   }
+
+  return response.data as T;
 }
 
-export function isInjectableUrl(url: string): boolean {
-  if (!url) return false;
+export function formatShortcutLabel(shortcut: string): string {
+  const labels: Record<string, string> = {
+    Command: '⌘', Cmd: '⌘', Control: 'Ctrl', Ctrl: 'Ctrl', Shift: '⇧', Option: '⌥', Alt: 'Alt',
+  };
+  return shortcut.split('+').map((part) => labels[part] ?? part.toUpperCase()).join('');
+}
 
-  const restrictedProtocols = [
-    'chrome:',
-    'chrome-extension:',
-    'chrome-search:',
-    'chrome-devtools:',
-    'moz-extension:',
-    'edge:',
-    'about:',
-    'moz:',
-    'resource:',
-  ];
+export function normalizeNavigationUrl(input: string): string | null {
+  const value = input.trim();
+  if (!value) return null;
 
-  const restrictedUrls = [
-    'chrome://newtab/',
-    'chrome://new-tab-page/',
-    'chrome://extensions/',
-    'chrome://settings/',
-    'chrome://history/',
-    'chrome://downloads/',
-    'chrome://bookmarks/',
-    'chrome://flags/',
-    'edge://newtab/',
-    'about:blank',
-    'about:newtab',
-  ];
+  const chromePages: Record<string, string> = {
+    'chrome://newtab': 'chrome://newtab/',
+    'chrome://newtab/': 'chrome://newtab/',
+    'chrome://new-tab-page': 'chrome://newtab/',
+    'chrome://new-tab-page/': 'chrome://newtab/',
+    'chrome://settings': 'chrome://settings/',
+    'chrome://settings/': 'chrome://settings/',
+    'chrome://history': 'chrome://history/',
+    'chrome://history/': 'chrome://history/',
+    'chrome://bookmarks': 'chrome://bookmarks/',
+    'chrome://bookmarks/': 'chrome://bookmarks/',
+    'chrome://downloads': 'chrome://downloads/',
+    'chrome://downloads/': 'chrome://downloads/',
+    'chrome://extensions': 'chrome://extensions/',
+    'chrome://extensions/': 'chrome://extensions/',
+    'chrome://extensions/shortcuts': 'chrome://extensions/shortcuts',
+  };
 
-  const normalizedUrl = url.toLowerCase().trim();
+  const normalized = value.toLowerCase();
+  if (chromePages[normalized]) return chromePages[normalized];
 
-  if (restrictedProtocols.some((protocol) => normalizedUrl.startsWith(protocol))) {
-    return false;
+  if (normalized === 'chrome://' || normalized === 'chrome:///') return 'chrome://settings/';
+  if (normalized.startsWith('chrome://')) {
+    try {
+      const url = new URL(value);
+      if (url.protocol !== 'chrome:' || !/^[a-z0-9-]+$/i.test(url.hostname) || url.port || url.username || url.password) return null;
+      if (!url.pathname || url.pathname === '') url.pathname = '/';
+      return url.href;
+    } catch {
+      return null;
+    }
   }
 
-  if (restrictedUrls.some((restrictedUrl) => normalizedUrl.startsWith(restrictedUrl))) {
-    return false;
+  try {
+    const url = new URL(value);
+    if (url.protocol === 'http:' || url.protocol === 'https:') return url.href;
+  } catch {
+    // Continue to host parsing for addresses entered without a scheme.
   }
 
-  if (normalizedUrl.startsWith('data:') || normalizedUrl.startsWith('javascript:')) {
-    return false;
+  const isBareAddress = /^(?:([\w-]+\.)+[a-z]{2,}|localhost|(?:\d{1,3}\.){3}\d{1,3})(?::\d+)?(?:[/?#].*)?$/i.test(value);
+  if (isBareAddress) {
+    try {
+      const url = new URL(`https://${value}`);
+      if (!url.hostname || url.username || url.password) return null;
+      return url.href;
+    } catch {
+      return null;
+    }
   }
+  return null;
+}
 
-  return true;
+export function normalizeSavedNavigationUrl(input: string): string | null {
+  const webOrChromeUrl = normalizeNavigationUrl(input);
+  if (webOrChromeUrl) return webOrChromeUrl;
+
+  try {
+    const url = new URL(input.trim());
+    if (url.protocol === 'file:') return url.href;
+    if (url.protocol === 'chrome-extension:' && /^[a-p]{32}$/i.test(url.hostname)) return url.href;
+    if (url.href === 'about:blank') return url.href;
+  } catch {
+    return null;
+  }
+  return null;
 }

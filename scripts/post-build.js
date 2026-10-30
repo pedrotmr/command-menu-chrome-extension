@@ -8,29 +8,48 @@ const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..');
 const distDir = path.join(projectRoot, 'dist');
 
-// Move background script from src/background/index.js to root as background.js
-const backgroundSourceFile = path.join(distDir, 'src', 'background', 'index.js');
-const backgroundTargetFile = path.join(distDir, 'background.js');
+const sourceManifestPath = path.join(projectRoot, 'src', 'manifest.json');
+const manifestPath = path.join(distDir, 'manifest.json');
+const manifest = JSON.parse(fs.readFileSync(sourceManifestPath, 'utf8'));
 
-if (fs.existsSync(backgroundSourceFile)) {
-  fs.renameSync(backgroundSourceFile, backgroundTargetFile);
-  console.log('✓ Moved background script to background.js');
-
-  // Clean up empty directories
-  try {
-    fs.rmdirSync(path.join(distDir, 'src', 'background'));
-  } catch (e) {
-    // Ignore errors if directory is not empty
+if (!fs.existsSync(path.join(distDir, manifest.background.service_worker))) {
+  throw new Error(`Build output is missing ${manifest.background.service_worker}`);
+}
+if (!fs.existsSync(path.join(distDir, 'src', 'popup', 'index.html'))) {
+  throw new Error('Build output is missing the native extension popup.');
+}
+const uiFontFiles = [
+  ['open-sans', 'OpenSans-Latin.woff2'],
+  ['open-sans', 'OpenSans-LatinExt.woff2'],
+  ['outfit', 'Outfit-Latin.woff2'],
+  ['outfit', 'Outfit-LatinExt.woff2'],
+  ['nunito-sans', 'NunitoSans-Latin.woff2'],
+  ['nunito-sans', 'NunitoSans-LatinExt.woff2'],
+  ['sora', 'Sora-Latin.woff2'],
+  ['sora', 'Sora-LatinExt.woff2'],
+  ['ibm-plex-mono', 'IBMPlexMono-400-Latin.woff2'],
+  ['ibm-plex-mono', 'IBMPlexMono-500-Latin.woff2'],
+  ['ibm-plex-mono', 'IBMPlexMono-600-Latin.woff2'],
+  ['ibm-plex-mono', 'IBMPlexMono-700-Latin.woff2'],
+];
+if (uiFontFiles.some(([family, file]) => !fs.existsSync(path.join(distDir, 'assets', 'fonts', family, file)))) {
+  throw new Error('Build output is missing the isolated UI font asset.');
+}
+const contentBundles = ['content-command.js', 'content-tabs.js'];
+if (contentBundles.some((file) => !fs.existsSync(path.join(distDir, file)))) {
+  throw new Error('Build output is missing one of the on-demand page surfaces.');
+}
+for (const file of contentBundles) {
+  const bundle = fs.readFileSync(path.join(distDir, file), 'utf8');
+  if (/process\.env\.NODE_ENV/.test(bundle)) {
+    throw new Error(`${file} contains an unbundled NODE_ENV reference.`);
   }
 }
-
-// Update manifest.json to point to background.js at root
-const manifestPath = path.join(distDir, 'manifest.json');
-if (fs.existsSync(manifestPath)) {
-  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-  manifest.background.service_worker = 'background.js';
-  fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
-  console.log('✓ Updated manifest.json');
+if (manifest.content_scripts?.length || manifest.host_permissions?.length || manifest.optional_host_permissions?.length) {
+  throw new Error('The extension build unexpectedly includes page injection or host permissions.');
 }
+
+fs.copyFileSync(sourceManifestPath, manifestPath);
+console.log('✓ Copied and validated extension manifest');
 
 console.log('✓ Post-build steps completed');

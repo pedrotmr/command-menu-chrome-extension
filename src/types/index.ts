@@ -1,17 +1,47 @@
-export type ItemType = 'command' | 'bookmark' | 'history' | 'web-search' | 'url-navigate';
+export type PaletteMode = 'commands' | 'tabs' | 'settings';
+export type ItemType = 'command' | 'tab' | 'bookmark' | 'history' | 'search' | 'url';
+export type SplitAwareTab = chrome.tabs.Tab & { splitViewId?: number };
 
 export interface BaseItem {
   id: string;
   title: string;
+  subtitle?: string;
   icon: string;
   type: ItemType;
+  keywords?: string[];
 }
 
-export interface Command extends BaseItem {
+export interface CommandItem extends BaseItem {
   type: 'command';
+  description: string;
+  category: string;
+  permission?: chrome.permissions.Permissions;
+  action: string;
+  flow?: 'rename-active' | 'move-active' | 'group-active' | 'assign-group' | 'confirm-close' | 'settings' | 'saved-search';
 }
 
-export interface Bookmark extends BaseItem {
+export interface TabItem extends BaseItem {
+  type: 'tab';
+  tabId: number;
+  windowId: number;
+  index: number;
+  url: string;
+  originalTitle: string;
+  favIconUrl?: string;
+  active: boolean;
+  current: boolean;
+  pinned: boolean;
+  muted: boolean;
+  audible: boolean;
+  lastAccessed?: number;
+  groupId?: number;
+  groupTitle?: string;
+  groupColor?: string;
+  splitViewId?: number;
+  windowTitle?: string;
+}
+
+export interface BookmarkItem extends BaseItem {
   type: 'bookmark';
   url: string;
 }
@@ -22,34 +52,53 @@ export interface HistoryItem extends BaseItem {
   lastVisitTime?: number;
 }
 
-export interface WebSearchItem extends BaseItem {
-  type: 'web-search';
-  query: string;
-}
-
-export interface UrlNavigateItem extends BaseItem {
-  type: 'url-navigate';
+export interface SearchItem extends BaseItem {
+  type: 'search';
   url: string;
 }
 
-export type Item = Command | Bookmark | HistoryItem | WebSearchItem | UrlNavigateItem;
+export interface UrlItem extends BaseItem {
+  type: 'url';
+  url: string;
+}
 
-export type ScoredItem = (Command | Bookmark | HistoryItem | WebSearchItem | UrlNavigateItem) & { score: number };
+export type PaletteItem =
+  | CommandItem
+  | TabItem
+  | BookmarkItem
+  | HistoryItem
+  | SearchItem
+  | UrlItem;
+
+export interface RenamedTab {
+  tabId: number;
+  customName: string;
+  originalTitle: string;
+  url: string;
+  updatedAt: number;
+  closedAt?: number;
+}
+
+export type AppearanceMode = 'system' | 'light' | 'dark';
+export type CommandBarSize = 'compact' | 'standard' | 'wide';
+export type CommandBarWindowMode = 'compact' | 'expanded';
+export type CommandBarFontFamily = 'open-sans' | 'outfit' | 'nunito-sans' | 'sora' | 'ibm-plex-mono';
+
+export interface ThemePreferences {
+  appearance: AppearanceMode;
+  palette: string;
+  size: CommandBarSize;
+  windowMode: CommandBarWindowMode;
+  fontFamily: CommandBarFontFamily;
+}
 
 export interface ChromeMessage {
   action: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
-export interface ChromeResponse {
-  success?: boolean;
+export interface ChromeResponse<T = unknown> {
+  success: boolean;
+  data?: T;
   error?: string;
-  bookmarks?: chrome.bookmarks.BookmarkTreeNode[];
-  [key: string]: any;
-}
-
-export interface SearchProvider {
-  name: string;
-  keywords: string[];
-  urlTemplate: string;
 }

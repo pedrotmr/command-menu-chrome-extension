@@ -1,63 +1,66 @@
 {
   "manifest_version": 3,
-  "name": "Command Palette",
-  "version": "2.0.0",
-  "description": "A VS Code-style command palette for Chrome",
+  "name": "Command Menu",
+  "version": "3.0.0",
+  "description": "A fast, keyboard-first command menu for Chrome.",
+  "minimum_chrome_version": "127",
   "permissions": [
     "activeTab",
+    "scripting",
     "tabs",
+    "storage"
+  ],
+  "optional_permissions": [
     "bookmarks",
     "history",
-    "scripting",
-    "notifications",
+    "tabGroups",
+    "sessions",
     "clipboardWrite"
   ],
-  "host_permissions": ["<all_urls>"],
   "background": {
-    "service_worker": "src/background/index.ts",
+    "service_worker": "background.js",
     "type": "module"
   },
   "action": {
-    "default_popup": "src/popup/index.html",
-    "default_title": "Open Command Palette (Cmd+T)"
+    "default_title": "Open Command Menu"
   },
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["src/content/index.tsx"],
-      "run_at": "document_end"
-    }
-  ],
   "commands": {
     "open-command-palette": {
       "suggested_key": {
-        "default": "Ctrl+T",
-        "mac": "Command+T"
+        "windows": "Ctrl+Shift+Y",
+        "linux": "Ctrl+Shift+Y",
+        "mac": "Command+Shift+Y"
       },
-      "description": "Open Command Palette"
+      "description": "Open the command menu"
     },
-    "copy-url": {
+    "open-tab-switcher": {
       "suggested_key": {
-        "default": "Ctrl+Shift+C",
-        "mac": "Command+Shift+C"
+        "windows": "Ctrl+Shift+U",
+        "linux": "Ctrl+Shift+U",
+        "mac": "Command+Shift+U"
       },
-      "description": "Copy current page URL"
-    },
-    "toggle-previous-tab": {
-      "suggested_key": {
-        "default": "Ctrl+Tab",
-        "mac": "Alt+Tab"
-      },
-      "description": "Toggle between current and previous tab"
+      "description": "Open the tab switcher"
     }
   },
   "web_accessible_resources": [
     {
       "resources": [
-        "index.css"
+        "assets/fonts/open-sans/OpenSans-Latin.woff2",
+        "assets/fonts/open-sans/OpenSans-LatinExt.woff2",
+        "assets/fonts/outfit/Outfit-Latin.woff2",
+        "assets/fonts/outfit/Outfit-LatinExt.woff2",
+        "assets/fonts/nunito-sans/NunitoSans-Latin.woff2",
+        "assets/fonts/nunito-sans/NunitoSans-LatinExt.woff2",
+        "assets/fonts/sora/Sora-Latin.woff2",
+        "assets/fonts/sora/Sora-LatinExt.woff2",
+        "assets/fonts/ibm-plex-mono/IBMPlexMono-400-Latin.woff2",
+        "assets/fonts/ibm-plex-mono/IBMPlexMono-500-Latin.woff2",
+        "assets/fonts/ibm-plex-mono/IBMPlexMono-600-Latin.woff2",
+        "assets/fonts/ibm-plex-mono/IBMPlexMono-700-Latin.woff2"
       ],
       "matches": [
-        "<all_urls>"
+        "http://*/*",
+        "https://*/*"
       ]
     }
   ]
