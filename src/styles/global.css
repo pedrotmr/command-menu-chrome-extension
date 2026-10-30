@@ -157,6 +157,80 @@ body:has(.command-center.is-initial-expanded-view.has-action-dock),
   font: 400 calc(14px * var(--cc-font-scale)) / 1.5 var(--cc-font);
 }
 
+.cc-permission-request {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+  padding: 22px;
+  background: var(--cc-bg);
+  color: var(--cc-text);
+  font-family: var(--cc-font);
+}
+
+.cc-permission-eyebrow {
+  margin: 0 0 6px;
+  color: var(--cc-subtle);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.cc-permission-request h1 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.cc-permission-copy {
+  margin: 10px 0 0;
+  color: var(--cc-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.cc-permission-status {
+  min-height: 18px;
+  margin: auto 0 12px;
+  color: var(--cc-muted);
+  font-size: 12px;
+}
+
+.cc-permission-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.cc-permission-actions button {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--cc-border);
+  border-radius: 8px;
+  background: var(--cc-panel-raised);
+  color: var(--cc-text);
+  cursor: pointer;
+  font: inherit;
+}
+
+.cc-permission-actions .cc-permission-grant {
+  border-color: var(--cc-accent);
+  background: var(--cc-accent);
+  color: var(--cc-accent-contrast);
+  font-weight: 600;
+}
+
+.cc-permission-actions button:focus-visible {
+  outline: 2px solid var(--cc-focus);
+  outline-offset: 2px;
+}
+
+.cc-permission-actions button:disabled {
+  cursor: wait;
+  opacity: .65;
+}
+
 button,
 input,
 select { color: inherit; font: inherit; }

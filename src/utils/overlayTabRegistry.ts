@@ -1,7 +1,7 @@
 interface OverlayTabRegistryPort {
   load: () => Promise<unknown>;
   save: (tabIds: number[]) => Promise<void>;
-  notify: (tabId: number) => Promise<unknown>;
+  notify: (tabId: number, message?: unknown) => Promise<unknown>;
 }
 
 export class OverlayTabRegistry {
@@ -19,12 +19,12 @@ export class OverlayTabRegistry {
     return this.update(tabId, false);
   }
 
-  async broadcast(): Promise<void> {
+  async broadcast(message: unknown = { action: 'ui:tabs-changed' }): Promise<void> {
     await this.restore();
     await this.writes.catch(() => undefined);
     await Promise.all([...this.tabIds].map(async (tabId) => {
       try {
-        await this.port.notify(tabId);
+        await this.port.notify(tabId, message);
       } catch {
         await this.unregister(tabId).catch(() => undefined);
       }

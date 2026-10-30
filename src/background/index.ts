@@ -41,7 +41,7 @@ const overlayTabRegistry = new OverlayTabRegistry({
   save: async (tabIds) => {
     await chrome.storage.session.set({ [OVERLAY_TAB_IDS_SESSION_KEY]: tabIds });
   },
-  notify: (tabId) => chrome.tabs.sendMessage(tabId, { action: 'ui:tabs-changed' }),
+  notify: (tabId, message = { action: 'ui:tabs-changed' }) => chrome.tabs.sendMessage(tabId, message),
 });
 const tabSwitcherOpenWindows = new Set<number>();
 const tabSwitcherSurfaceByWindow = new Map<number, 'overlay' | 'popup'>();
@@ -63,6 +63,11 @@ function broadcastTabChanges(): void {
     void chrome.runtime.sendMessage({ action: 'ui:tabs-changed' }).catch(() => undefined);
     void overlayTabRegistry.broadcast().catch(() => undefined);
   }, 24);
+}
+
+function broadcastPermissionChanges(): void {
+  void chrome.runtime.sendMessage({ action: 'ui:permissions-changed' }).catch(() => undefined);
+  void overlayTabRegistry.broadcast({ action: 'ui:permissions-changed' }).catch(() => undefined);
 }
 
 function withTabNamesMutation<T>(
@@ -422,6 +427,8 @@ chrome.tabs.onUpdated.addListener((tabId, changes) => {
 chrome.tabGroups?.onCreated?.addListener(broadcastTabChanges);
 chrome.tabGroups?.onUpdated?.addListener(broadcastTabChanges);
 chrome.tabGroups?.onRemoved?.addListener(broadcastTabChanges);
+chrome.permissions.onAdded.addListener(broadcastPermissionChanges);
+chrome.permissions.onRemoved.addListener(broadcastPermissionChanges);
 
 chrome.runtime.onInstalled.addListener(() => { void configureActionForOpenTabs().catch(() => undefined); });
 chrome.runtime.onStartup.addListener(() => { void configureActionForOpenTabs().catch(() => undefined); });
@@ -505,13 +512,14 @@ async function handleRequest(message: Request, sender: chrome.runtime.MessageSen
         origins,
       });
     }
-    case 'permissions:request': {
+    case 'permissions:open-request': {
       const permissions = (Array.isArray(message.permissions) ? message.permissions : []) as chrome.permissions.Permissions['permissions'];
-      const origins = Array.isArray(message.origins) ? message.origins as string[] : [];
-      return chrome.permissions.request({
-        permissions,
-        origins,
-      });
+      const allowed = new Set(['bookmarks', 'history', 'tabGroups', 'sessions', 'clipboardWrite']);
+      const requested = [...new Set((permissions ?? []).filter((permission) => allowed.has(permission)))];
+      if (!requested.length) return false;
+      const url = chrome.runtime.getURL(`${popupPath}?mode=permission-request&permissions=${encodeURIComponent(requested.join(','))}`);
+      await chrome.windows.create({ url, type: 'popup', width: 420, height: 300, focused: true });
+      return true;
     }
     case 'permissions:remove': {
       const permissions = (Array.isArray(message.permissions) ? message.permissions : []) as chrome.permissions.Permissions['permissions'];

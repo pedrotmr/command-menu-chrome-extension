@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Popup } from './Popup';
+import { PermissionRequest } from './PermissionRequest';
 import { applyTheme, defaultThemePreferences, normalizeThemePreferences, readThemeCache, themePreferencesStorageKey } from '@/themes';
 import { PaletteMode, ThemePreferences } from '@/types';
 import { installProductFont } from '@/utils/installProductFont';
@@ -76,6 +77,17 @@ async function start(): Promise<void> {
   }
   const rootElement = document.getElementById('root');
   if (!rootElement) return;
+
+  if (fromUrl === 'permission-request') {
+    const allowedPermissions = new Set(['bookmarks', 'history', 'tabGroups', 'sessions', 'clipboardWrite']);
+    const permissions = (urlParameters.get('permissions') ?? '')
+      .split(',')
+      .filter((permission) => allowedPermissions.has(permission)) as NonNullable<chrome.permissions.Permissions['permissions']>;
+    createRoot(rootElement).render(
+      <StrictMode><PermissionRequest permissions={permissions} /></StrictMode>
+    );
+    return;
+  }
 
   createRoot(rootElement).render(
     <StrictMode>

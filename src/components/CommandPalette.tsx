@@ -253,6 +253,11 @@ export function CommandPalette({
     void requestPermissions();
     const handleRuntimeMessage = (message: { action?: string }) => {
       if (message.action === 'ui:tabs-changed') scheduleRefresh();
+      if (message.action === 'ui:permissions-changed') {
+        void sendBackground<chrome.permissions.Permissions>('permissions:get-all')
+          .then((granted) => setPermissions(new Set(granted.permissions ?? [])))
+          .catch(() => undefined);
+      }
     };
     chrome.runtime.onMessage.addListener(handleRuntimeMessage);
 
@@ -474,9 +479,12 @@ export function CommandPalette({
     if (!missing.length) return true;
 
     try {
-      const granted = surface === 'popup'
-        ? await chrome.permissions.request({ permissions: missing })
-        : await sendBackground<boolean>('permissions:request', { permissions: missing });
+      if (surface === 'overlay') {
+        await sendBackground<boolean>('permissions:open-request', { permissions: missing });
+        notify('Approve access in the Command Menu window, then choose this command again.', 'success');
+        return false;
+      }
+      const granted = await chrome.permissions.request({ permissions: missing });
       if (!granted) {
         const isSavedSearchPermission = missing.includes('bookmarks') || missing.includes('history');
         notify(isSavedSearchPermission
