@@ -2,6 +2,7 @@ import { FormEvent, KeyboardEvent, useEffect, useLayoutEffect, useMemo, useRef, 
 import { BookmarkItem, CommandBarSize, CommandItem, HistoryItem, PaletteItem, ThemePreferences } from '@/types';
 import { getCommands } from '@/utils/commands';
 import { normalizeNavigationUrl, sendBackground } from '@/utils/chromeHelpers';
+import { writeClipboardText } from '@/utils/clipboard';
 import { searchItems, searchProviderItems } from '@/utils/fuzzySearch';
 import { findSearchProvider, parseProviderQuery, SearchProviderDefinition } from '@/utils/searchProviders';
 import { ResultsEmptyState, ResultsList, resultDomId } from './ResultsList';
@@ -594,7 +595,7 @@ export function CommandPalette({
       if (command.action === 'tabs:copy-url' || command.action === 'tabs:copy-title') {
         const value = await sendBackground<string>(command.action);
         if (!value) throw new Error('There is nothing to copy from the current tab.');
-        await navigator.clipboard.writeText(value);
+        await writeClipboardText(value);
         notify(command.action === 'tabs:copy-url' ? 'URL copied.' : 'Tab title copied.', 'success');
         return;
       }
@@ -852,7 +853,7 @@ export function CommandPalette({
     try {
       const value = await sendBackground<string>(`tabs:copy-${field}`, { tabId: tab.id });
       if (!value) throw new Error(`This tab has no ${field} to copy.`);
-      await navigator.clipboard.writeText(value);
+      await writeClipboardText(value);
       notify(field === 'url' ? 'Tab URL copied.' : 'Page title copied.', 'success');
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Could not copy this value.');
