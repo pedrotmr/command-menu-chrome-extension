@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-28T00:00:00.000Z",
+  "title": "Design System: Command Bar (working label)",
+  "extensions": {
+    "shadows": [
+      {
+        "name": "overlay-light",
+        "value": "0 24px 72px rgba(22, 24, 25, 0.22)",
+        "purpose": "Native dialog and visible notice in the light palettes."
+      },
+      {
+        "name": "overlay-dark",
+        "value": "0 26px 78px rgba(0, 0, 0, 0.46)",
+        "purpose": "Native dialog and visible notice in the dark palettes."
+      }
+    ],
+    "motion": [
+      {
+        "name": "hover-state",
+        "value": "100ms ease",
+        "purpose": "Brief color feedback on hover-capable controls."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "prefers-reduced-motion: reduce",
+        "purpose": "Removes animation and smooth scrolling when requested."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "compact-popup",
+        "value": "560px",
+        "purpose": "Tightens the popup header and results when the available viewport is narrow."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The single filled action that commits a dialog or command flow.",
+      "html": "<button class=\"ds-button-primary\" type=\"button\">Save name</button>",
+      "css": ".ds-button-primary { min-height: 32px; padding: 0 10px; border: 1px solid var(--cc-accent); border-radius: 7px; background: var(--cc-accent); color: var(--cc-accent-contrast); font: 600 11px/1.3 \"Open Sans\", system-ui, sans-serif; cursor: pointer; } .ds-button-primary:hover { filter: brightness(1.05); } .ds-button-primary:focus-visible { outline: 2px solid var(--cc-focus); outline-offset: 2px; } .ds-button-primary:active { filter: brightness(0.96); }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "A neutral browser action or secondary dialog choice.",
+      "html": "<button class=\"ds-button-secondary\" type=\"button\">Move tab</button>",
+      "css": ".ds-button-secondary { min-height: 32px; padding: 0 10px; border: 1px solid var(--cc-control-border); border-radius: 7px; background: var(--cc-panel-raised); color: var(--cc-muted); font: 600 11px/1.3 \"Open Sans\", system-ui, sans-serif; cursor: pointer; } .ds-button-secondary:hover { border-color: var(--cc-border-strong); background: var(--cc-selection); color: var(--cc-text); } .ds-button-secondary:focus-visible { outline: 2px solid var(--cc-focus); outline-offset: 2px; } .ds-button-secondary:active { background: var(--cc-selection); }"
+    },
+    {
+      "name": "Search Field",
+      "kind": "input",
+      "refersTo": "search-input",
+      "description": "The always-ready combobox input for commands, tabs, and provider queries.",
+      "html": "<div class=\"ds-search-area\"><span class=\"ds-search-symbol\" aria-hidden=\"true\">⌕</span><label class=\"ds-visually-hidden\" for=\"ds-search\">Search commands and tabs</label><input class=\"ds-search-input\" id=\"ds-search\" name=\"command-query\" type=\"text\" autocomplete=\"off\" role=\"combobox\" aria-autocomplete=\"list\" aria-haspopup=\"listbox\" aria-expanded=\"true\" placeholder=\"Search commands, tabs, bookmarks…\" /><kbd class=\"ds-key\">↵</kbd></div>",
+      "css": ".ds-search-area { display: flex; min-height: 58px; align-items: center; gap: 12px; padding: 0 8px 0 17px; border-bottom: 1px solid var(--cc-border); background: var(--cc-bg); } .ds-search-symbol { display: grid; width: 28px; height: 28px; place-items: center; color: var(--cc-muted); } .ds-search-input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--cc-text); caret-color: var(--cc-accent); font: 400 18px/1.4 \"Open Sans\", system-ui, sans-serif; letter-spacing: -0.018em; } .ds-search-input::placeholder { color: var(--cc-subtle); opacity: 1; } .ds-search-input:focus-visible { outline: 0; } .ds-key { min-width: 20px; min-height: 19px; padding: 1px 5px; border: 1px solid var(--cc-border-strong); border-radius: 5px; background: var(--cc-panel-raised); color: var(--cc-muted); font: 550 10px/1.2 ui-monospace, monospace; } .ds-visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }"
+    },
+    {
+      "name": "Selected Result",
+      "kind": "custom",
+      "refersTo": "result-row-selected",
+      "description": "A keyboard-selected command or tab with clear focus and supporting identity.",
+      "html": "<div class=\"ds-result-row\" role=\"option\" aria-selected=\"true\"><span class=\"ds-result-title\">Design review</span><span class=\"ds-result-meta\">Current</span></div>",
+      "css": ".ds-result-row { display: flex; min-height: 44px; align-items: center; gap: 12px; margin: 1px 0; padding: 5px 10px; border: 1px solid transparent; border-radius: 9px; color: var(--cc-text); } .ds-result-row[aria-selected=\"true\"] { border-color: transparent; background: var(--cc-selection); } .ds-result-title { max-width: 64%; overflow: hidden; font: 500 15px/1.4 \"Open Sans\", system-ui, sans-serif; text-overflow: ellipsis; white-space: nowrap; } .ds-result-meta { flex: 0 0 auto; color: var(--cc-subtle); font: 500 13px/1.4 \"Open Sans\", system-ui, sans-serif; }"
+    },
+    {
+      "name": "Command Dialog",
+      "kind": "custom",
+      "refersTo": "dialog",
+      "description": "A native modal for renaming, moving, grouping, and confirming destructive actions.",
+      "html": "<dialog class=\"ds-dialog\" open aria-labelledby=\"ds-dialog-title\"><h2 id=\"ds-dialog-title\">Rename tab</h2><p>This name is stored by the extension.</p><button class=\"ds-button-primary\" type=\"button\">Save name</button></dialog>",
+      "css": ".ds-dialog { width: min(440px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; padding: 22px; border: 1px solid var(--cc-control-border); border-radius: 14px; background: var(--cc-panel); color: var(--cc-text); box-shadow: var(--cc-shadow); } .ds-dialog h2 { margin: 0; font: 650 20px/1.25 \"Open Sans\", system-ui, sans-serif; } .ds-dialog p { color: var(--cc-muted); font: 400 12px/1.45 \"Open Sans\", system-ui, sans-serif; } .ds-dialog::backdrop { background: rgba(4, 8, 14, 0.56); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Quiet craft, clear intent",
+    "overview": "A keyboard-first browser command surface with a distinct rhythm: a black-and-white Plain default, a broad set of Termscape palettes, and the T3 Code and Ocean palettes. Open typography and concise result rows keep destinations aligned; the selected result fills the row quietly. Every palette shares the same components in Light, Dark, and System modes.\n\nThe surface is owned by the extension and isolated from the host page. Local Open Sans, measured search, visible focus, and brief transitions support a fast and dependable interaction. The product name remains open. Keep the interface expressive through spacing, typography, icon drawing, and careful state changes rather than decorative effects.",
+    "keyCharacteristics": [
+      "Plain starts black and white; the same semantic tokens carry the Termscape and T3 palettes.",
+      "Titles, destination details, and action labels line up for one-pass scanning.",
+      "Selection, keyboard focus, and primary actions use one restrained accent.",
+      "Open Sans is bundled locally and loaded only when a surface opens; no font network requests or host-page style changes."
+    ],
+    "rules": [
+      {
+        "name": "The Accent Has a Job Rule",
+        "body": "Accent is reserved for primary action, selected state, focus, and meaningful status. It is not ambient decoration.",
+        "section": "colors"
+      },
+      {
+        "name": "The Open Sans Voice Rule",
+        "body": "Use bundled Open Sans with platform fallbacks through the hierarchy; reserve monospace for keycaps only.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-By-Default Rule",
+        "body": "Elevation marks an overlay boundary; it never decorates the command list.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do add a palette by defining every shared token in both light and dark schemes in src/themes/index.ts; the settings screen discovers registry entries automatically.",
+      "Do measure contrast on the actual semantic token pairs and keep body text at or above 4.5:1.",
+      "Do keep Command Mode, Tab Switcher, and Settings on the same token and component system.",
+      "Do preserve the extension-owned surface boundary and test focus with keyboard and assistive technology.",
+      "Do keep motion state-driven, short, and disabled or reduced by the user's motion preference."
+    ],
+    "donts": [
+      "Don't ship a wholesale clone of Raycast, Arc, or Lumno.",
+      "Don't inject overlays that change host-page styles, typography, event handling, or layout.",
+      "Don't scrape provider pages or depend on unsupported private APIs.",
+      "Don't add decorative motion, large visual effects, network-loaded fonts, or dependencies that make opening and search slower.",
+      "Don't request broad permissions, collect analytics, or send background network requests without a user-visible need."
+    ]
+  }
+}

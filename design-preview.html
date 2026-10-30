@@ -1,0 +1,693 @@
+<!doctype html>
+<html lang="en" data-theme="light" data-palette="plain">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Command Menu — Interface preview</title>
+    <style>
+      @font-face {
+        font-family: "Open Sans";
+        src: url("./public/assets/fonts/open-sans/OpenSans-Latin.woff2") format("woff2");
+        font-style: normal;
+        font-weight: 300 700;
+        font-display: swap;
+        unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+      }
+      @font-face {
+        font-family: "Open Sans";
+        src: url("./public/assets/fonts/open-sans/OpenSans-LatinExt.woff2") format("woff2");
+        font-style: normal;
+        font-weight: 300 700;
+        font-display: swap;
+        unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+      }
+      :root {
+        color-scheme: light;
+        --cc-bg: #ffffff;
+        --host: #e7e7e2;
+        --host-ink: #373a37;
+        --host-muted: #757b76;
+        --host-line: #cccec8;
+        --cc-panel: #ffffff;
+        --cc-panel-raised: #f4f4f4;
+        --cc-input: #ffffff;
+        --cc-text: #111111;
+        --cc-muted: #555555;
+        --cc-subtle: #5c5c5c;
+        --cc-border: #e4e4e4;
+        --cc-border-strong: #949494;
+        --cc-control-border: #949494;
+        --cc-accent: #111111;
+        --cc-accent-soft: #eaeaea;
+        --cc-accent-contrast: #ffffff;
+        --cc-hover: #f2f2f2;
+        --cc-selection: #e9e9e9;
+        --cc-focus: #111111;
+        --cc-danger: #b42336;
+        --cc-success: #207453;
+        --cc-overlay-scrim: rgba(26, 28, 29, 0.23);
+        --cc-shadow: 0 8px 14px rgba(22, 24, 25, 0.14);
+        --cc-font: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      }
+      :root[data-theme="dark"] {
+        color-scheme: dark;
+        --cc-bg: #050505;
+        --host: #242624;
+        --host-ink: #f1f2ee;
+        --host-muted: #b4b8b1;
+        --host-line: #515650;
+        --cc-panel: #111111;
+        --cc-panel-raised: #1d1d1d;
+        --cc-input: #111111;
+        --cc-text: #fafafa;
+        --cc-muted: #c2c2c2;
+        --cc-subtle: #b4b4b4;
+        --cc-border: #353535;
+        --cc-border-strong: #888888;
+        --cc-control-border: #888888;
+        --cc-accent: #ffffff;
+        --cc-accent-contrast: #111111;
+        --cc-accent-soft: #353535;
+        --cc-hover: #1d1d1d;
+        --cc-selection: #292929;
+        --cc-focus: #ffffff;
+        --cc-danger: #ff8b96;
+        --cc-success: #78d49b;
+        --cc-overlay-scrim: rgba(0, 0, 0, 0.42);
+        --cc-shadow: 0 8px 14px rgba(0, 0, 0, 0.34);
+      }
+      :root[data-palette="tobacco"] { --cc-bg: #f7f5f1; --cc-panel: #fffdfa; --cc-panel-raised: #f2efeb; --cc-input: #fffdfa; --cc-text: #211d18; --cc-muted: #5a5249; --cc-subtle: #615950; --cc-border: #ded9d2; --cc-border-strong: #8a8177; --cc-control-border: #8a8177; --cc-accent: #a95f12; --cc-accent-contrast: #ffffff; --cc-accent-soft: #f7ead8; --cc-hover: #f6eee3; --cc-selection: #f0e4d4; --cc-focus: #9a5310; }
+      :root[data-palette="tobacco"][data-theme="dark"] { --cc-bg: #242222; --cc-panel: #201e1c; --cc-panel-raised: #2d2a2a; --cc-input: #201e1c; --cc-text: #ededed; --cc-muted: #c5c3c1; --cc-subtle: #bcb9b6; --cc-border: #343230; --cc-border-strong: #807b75; --cc-control-border: #807b75; --cc-accent: #f2b260; --cc-accent-contrast: #17110a; --cc-accent-soft: #382c1d; --cc-hover: #302e2c; --cc-selection: #3d3b3a; --cc-focus: #f2b260; }
+      :root[data-palette="t3-code"] { --cc-bg: #fcfcfc; --cc-panel: #ffffff; --cc-panel-raised: #f4f4f5; --cc-input: #ffffff; --cc-text: #27272a; --cc-muted: #71717b; --cc-subtle: #71717b; --cc-border: #e4e4e7; --cc-border-strong: #929298; --cc-control-border: #929298; --cc-accent: #1b4ed8; --cc-accent-contrast: #ffffff; --cc-accent-soft: #e8eefc; --cc-hover: #f4f4f5; --cc-selection: #e0e6f7; --cc-focus: #1b4ed8; }
+      :root[data-palette="t3-code"][data-theme="dark"] { --cc-bg: #0a0a0a; --cc-panel: #111111; --cc-panel-raised: #141414; --cc-input: #111111; --cc-text: #f5f5f5; --cc-muted: #b5b5b5; --cc-subtle: #b5b5b5; --cc-border: #292929; --cc-border-strong: #858585; --cc-control-border: #858585; --cc-accent: #7295ff; --cc-accent-contrast: #0a0a0a; --cc-accent-soft: #222a3f; --cc-hover: #141414; --cc-selection: #1a1b1b; --cc-focus: #7295ff; }
+      :root[data-palette="t3-ocean"] { --cc-bg: #f5f7f8; --cc-panel: #f5f7f8; --cc-panel-raised: #edeff1; --cc-input: #f5f7f8; --cc-text: #241523; --cc-muted: #5a545b; --cc-subtle: #5a545b; --cc-border: #cdd4dc; --cc-border-strong: #858a8f; --cc-control-border: #858a8f; --cc-accent: #1e5a8a; --cc-accent-contrast: #ffffff; --cc-accent-soft: #e2e9ee; --cc-hover: #cdddea; --cc-selection: #b7cfe2; --cc-focus: #1e5a8a; --cc-overlay-scrim: rgba(18, 20, 22, 0.22); --cc-shadow: 0 10px 28px rgba(20, 24, 28, 0.15); }
+      :root[data-palette="t3-ocean"][data-theme="dark"] { --cc-bg: #17212b; --cc-panel: #17212b; --cc-panel-raised: #333b45; --cc-input: #17212b; --cc-text: #fffaff; --cc-muted: #bbbcc1; --cc-subtle: #bbbcc1; --cc-border: #405567; --cc-border-strong: #778693; --cc-control-border: #778693; --cc-accent: #84c3f0; --cc-accent-contrast: #111111; --cc-accent-soft: #273949; --cc-hover: #283e50; --cc-selection: #324f66; --cc-focus: #84c3f0; --cc-overlay-scrim: rgba(0, 0, 0, 0.48); --cc-shadow: 0 10px 28px rgba(0, 0, 0, 0.38); }
+      :root { --bar-width: 640px; --bar-max-height: 520px; --popup-width: 540px; --popup-height: 520px; }
+      :root[data-size="standard"] { --bar-width: 760px; --bar-max-height: 580px; --popup-width: 620px; --popup-height: 560px; }
+      :root[data-size="wide"] { --bar-width: 900px; --bar-max-height: 660px; --popup-width: 760px; --popup-height: 600px; }
+      * { box-sizing: border-box; }
+      body { margin: 0; color: #1d1d1f; font: 400 14px/1.5 var(--cc-font); -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+      button, input { color: inherit; font: inherit; }
+      button { border: 0; }
+      button:focus-visible, input:focus-visible { outline: 2px solid var(--cc-focus); outline-offset: 2px; }
+      .page { width: min(1120px, 100%); margin: 0 auto; }
+      .preview-bar { display: flex; min-height: 44px; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+      .preview-label { margin: 0; color: #777980; font-size: 11px; font-weight: 600; letter-spacing: .01em; }
+      .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+      .segmented { display: flex; align-items: center; gap: 2px; padding: 3px; border: 1px solid #dedee3; border-radius: 9px; background: #ececf0; }
+      .segmented button { min-height: 28px; padding: 0 10px; border-radius: 6px; background: transparent; color: #62636a; cursor: pointer; font-size: 11px; font-weight: 550; }
+      .segmented button[aria-pressed="true"] { background: #fff; color: #1d1d1f; box-shadow: 0 1px 3px rgb(0 0 0 / 12%); }
+      .stage { position: relative; display: grid; min-height: 660px; place-items: center; overflow: hidden; padding: 52px 28px; isolation: isolate; border: 1px solid #e2e2e7; border-radius: 18px; background: var(--host); }
+      .stage[data-location="popup"] { display: flex; align-items: flex-start; justify-content: flex-end; padding: 0; background: var(--host); }
+      .browser-page { position: absolute; z-index: -2; inset: 0; padding: 36px 48px; color: var(--host-ink); }
+      .page-nav { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+      .page-logo { width: 90px; height: 15px; border-radius: 4px; background: var(--host-line); }
+      .page-nav-links { display: flex; gap: 22px; }
+      .page-nav-links span { width: 44px; height: 7px; border-radius: 9px; background: var(--host-line); }
+      .page-content { width: min(650px, 72%); margin: 84px auto 0; }
+      .page-kicker { color: var(--host-muted); font-size: 10px; font-weight: 650; letter-spacing: .11em; text-transform: uppercase; }
+      .page-content h2 { max-width: 610px; margin: 13px 0 12px; font-size: clamp(30px, 4vw, 52px); font-weight: 570; letter-spacing: -.055em; line-height: 1.04; }
+      .page-content p { max-width: 430px; margin: 0; color: var(--host-muted); font-size: 14px; }
+      .page-actions { display: flex; gap: 9px; margin-top: 24px; }
+      .page-actions span { width: 112px; height: 34px; border: 1px solid var(--host-line); border-radius: 8px; background: color-mix(in srgb, var(--host) 72%, white); }
+      .page-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 58px; }
+      .page-cards span { min-height: 84px; border: 1px solid var(--host-line); border-radius: 11px; background: color-mix(in srgb, var(--host) 72%, white); }
+      .scrim { position: absolute; z-index: -1; inset: 0; background: var(--cc-overlay-scrim); }
+      .stage[data-location="popup"] .browser-page { z-index: 0; }
+      .stage[data-location="popup"] .scrim { display: none; }
+      .stage[data-location="popup"] #command-surface { position: relative; z-index: 1; width: min(var(--popup-width), 100%); height: var(--popup-height); max-height: 100%; align-self: flex-start; border-radius: 0 0 16px 16px; box-shadow: 0 12px 30px rgba(20, 24, 35, 0.2); --search-height: 56px; --query-size: 17px; --title-size: 14.5px; --detail-size: 12.5px; --row-height: 42px; }
+      .stage[data-location="popup"] #command-surface.is-compact-empty { height: var(--search-height); }
+      .stage[data-location="popup"] #command-surface .results { max-height: none; }
+      .stage[data-location="popup"] #tabs-surface { position: relative; z-index: 1; width: min(760px, 100%); height: 204px; min-height: 156px; align-self: flex-start; margin-top: 0; border-radius: 0 0 14px 14px; }
+      .surface { width: min(var(--bar-width), 100%); min-height: 0; overflow: hidden; border: 1px solid var(--cc-border); border-radius: 18px; background: var(--cc-bg); color: var(--cc-text); box-shadow: var(--cc-shadow); }
+      /* Mirrors src/styles/global.css: the search glyph sits in the result icon column, so query and titles share one start line. */
+      #command-surface { --list-pad: 3px; --row-pad: 10px; --row-inset: calc(var(--list-pad) + 1px + var(--row-pad)); --icon-col: 28px; --row-gap: 12px; --control: 30px; --search-height: 58px; --query-size: 18px; --title-size: 15px; --detail-size: 13px; --row-height: 44px; display: flex; height: auto; max-height: min(var(--bar-max-height), calc(100dvh - 48px)); flex-direction: column; }
+      .surface[hidden] { display: none; }
+      #command-surface[hidden] { display: none; }
+      #command-surface.is-compact-empty .results-region { display: none; }
+      /* Mirrors the overlay anchor in global.css: top edge sits where a full-height bar would be centered (stage content box is 660 - 2 × 52px), so Compact and Expanded share one y. */
+      .stage:not([data-location="popup"]) #command-surface { align-self: start; margin-top: max(0px, calc((556px - min(var(--bar-max-height), 100dvh - 48px)) / 2)); }
+      .search-row { display: flex; min-height: var(--search-height); flex: 0 0 auto; align-items: center; gap: var(--row-gap); padding: 0 var(--row-inset); border-bottom: 1px solid var(--cc-border); background: var(--cc-bg); }
+      .stage:not([data-location="popup"]) #command-surface.is-compact-empty .search-row { border-bottom-color: transparent; }
+      .search-icon { display: grid; width: var(--icon-col); height: var(--icon-col); flex: 0 0 var(--icon-col); place-items: center; color: var(--cc-muted); }
+      .search-icon > svg { width: 19px; height: 19px; }
+      .search-row input { width: 100%; flex: 1 1 0%; min-width: 0; height: var(--control); padding: 0; border: 0; outline: 0; background: transparent; color: var(--cc-text); caret-color: var(--cc-accent); font-size: var(--query-size); font-weight: 400; line-height: var(--control); letter-spacing: -.015em; }
+      .search-row input::placeholder { color: var(--cc-subtle); opacity: 1; }
+      .search-row input:focus-visible { outline: 0; }
+      .control-button { display: inline-flex; height: var(--control); min-width: var(--control); flex: 0 0 auto; align-items: center; justify-content: center; gap: 6px; padding: 0; border-radius: 8px; background: transparent; color: var(--cc-muted); cursor: pointer; font-size: 12px; font-weight: 500; line-height: 1; white-space: nowrap; }
+      .control-button.text { padding-inline: 9px; }
+      .control-button:hover { background: var(--cc-selection); color: var(--cc-text); }
+      .control-button svg { display: block; width: 16px; height: 16px; }
+      .controls-group { display: flex; flex: 0 0 auto; align-items: center; gap: 2px; }
+      .provider-mark { --provider-accent: var(--provider-accent-light); display: grid; width: 20px; height: 20px; place-items: center; color: var(--cc-text); }
+      :root[data-theme="dark"] .provider-mark, :root[data-theme="dark"] .provider-chip, :root[data-theme="dark"] .empty-state.is-provider { --provider-accent: var(--provider-accent-dark); }
+      .provider-mark svg { display: block; width: 100%; height: 100%; }
+      .provider-chip { --provider-accent: var(--provider-accent-light); display: inline-flex; height: 26px; flex: 0 0 auto; align-items: center; gap: 2px; padding: 0 3px 0 9px; border: 1px solid color-mix(in srgb, var(--provider-accent) 34%, var(--cc-border)); border-radius: 7px; background: color-mix(in srgb, var(--provider-accent) 9%, var(--cc-panel)); color: var(--cc-text); font-size: 12px; font-weight: 500; line-height: 1; white-space: nowrap; }
+      .provider-chip button { display: grid; width: 20px; height: 20px; place-items: center; padding: 0; border-radius: 5px; background: transparent; color: var(--cc-muted); }
+      .provider-chip button svg { width: 12px; height: 12px; }
+      .provider-hint { display: inline-flex; min-width: 0; flex: 0 1 auto; align-items: center; gap: 6px; margin-right: 4px; padding: 0 9px 0 4px; border: 0; border-radius: 8px; background: transparent; color: var(--cc-muted); cursor: pointer; font: 500 12px/1 var(--cc-font); white-space: nowrap; }
+      .provider-hint[hidden] { display: none; }
+      .provider-hint > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+      .provider-hint .provider-mark { width: 16px; height: 16px; flex: 0 0 16px; }
+      .result-favicon { display: grid; width: 19px; height: 19px; place-items: center; border: 1px solid var(--cc-border); border-radius: 6px; background: var(--cc-panel-raised); color: var(--cc-muted); font-size: 10px; font-weight: 600; }
+      kbd { display: inline-flex; min-width: 22px; min-height: 20px; align-items: center; justify-content: center; padding: 1px 5px; border: 1px solid var(--cc-border-strong); border-radius: 6px; background: var(--cc-panel-raised); color: var(--cc-muted); font: 500 11px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; }
+      .results-region { position: relative; height: auto; min-height: 0; flex: 0 1 auto; overflow: hidden; }
+      .results { height: auto; max-height: calc(min(var(--bar-max-height), 100dvh - 48px) - var(--search-height) - 2px); overflow: auto; padding: 10px; overscroll-behavior: contain; }
+      .results:empty, .results[hidden] { display: none; }
+      [data-scenario-show][hidden] { display: none !important; }
+      .control-button[hidden] { display: none; }
+      .result { position: relative; display: flex; min-height: var(--row-height); align-items: center; gap: var(--row-gap); margin: 0 0 4px; padding: 10px 12px; border: 1px solid transparent; border-radius: 9px; color: var(--cc-text); cursor: default; user-select: none; transition: background-color 120ms ease-out, border-color 120ms ease-out; }
+      .result[hidden] { display: none; }
+      .result[aria-selected="true"] { border-color: color-mix(in srgb, var(--cc-accent) 26%, transparent); background: var(--cc-selection); }
+      .result[aria-selected="true"] .result-action { color: var(--cc-accent); }
+      .result-icon-wrap { display: grid; width: var(--icon-col); height: var(--icon-col); flex: 0 0 var(--icon-col); place-items: center; color: var(--cc-muted); }
+      .result-icon { display: grid; width: 18px; height: 18px; place-items: center; color: inherit; }
+      .result-icon svg { display: block; width: 18px; height: 18px; }
+      .result[aria-selected="true"] .result-icon { color: var(--cc-accent); }
+      .result-copy { display: flex; min-width: 0; flex: 1; align-items: baseline; gap: 8px; }
+      .result-title { max-width: 64%; overflow: hidden; font-size: var(--title-size); font-weight: 500; line-height: 1.4; letter-spacing: -.01em; text-overflow: ellipsis; white-space: nowrap; }
+      .result-detail { min-width: 0; flex: 1; overflow: hidden; color: var(--cc-muted); font-size: var(--detail-size); line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
+      .result-action { padding: 2px 0; color: var(--cc-subtle); font-size: 12px; font-weight: 400; white-space: nowrap; }
+      mark { padding-inline: 2px; border-radius: 3px; background: var(--cc-accent-soft); color: var(--cc-accent); font-weight: 500; box-decoration-break: clone; }
+      #command-surface .empty-state { position: relative; inset: auto; min-height: 168px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 24px; text-align: center; }
+      #command-surface .empty-state[hidden] { display: none; }
+      .empty-state[hidden] { display: none; }
+      .empty-state-icon { display: grid; width: 40px; height: 40px; place-items: center; color: var(--cc-subtle); }
+      .empty-state-icon svg { width: 22px; height: 22px; }
+      .empty-state-mark { display: grid; width: 44px; height: 44px; place-items: center; border: 1px solid color-mix(in srgb, var(--provider-accent) 24%, var(--cc-border)); border-radius: 12px; background: color-mix(in srgb, var(--provider-accent) 8%, var(--cc-panel)); }
+      .empty-state.is-provider { --provider-accent: var(--provider-accent-light); }
+      .empty-state-mark .provider-mark { width: 24px; height: 24px; }
+      .empty-state-copy { display: flex; max-width: 44ch; flex-direction: column; gap: 3px; }
+      .empty-state-copy p { margin: 0; color: var(--cc-text); font-size: 14px; font-weight: 500; line-height: 1.35; }
+      .empty-state-copy span { color: var(--cc-muted); font-size: 12.5px; line-height: 1.45; }
+      .switcher { display: grid; width: min(1440px, 88vw, 100%); height: auto; min-height: 216px; grid-template-columns: repeat(5, minmax(0, 1fr)); align-content: center; gap: 7px; padding: 10px; }
+      .tab-card { display: grid; min-width: 0; grid-template-rows: minmax(0, 1fr) 25px; gap: 7px; padding: 6px; border: 1px solid var(--cc-border); border-radius: 11px; background: var(--cc-panel); color: var(--cc-text); cursor: pointer; text-align: left; user-select: none; transition: background-color 100ms ease-out, border-color 100ms ease-out; }
+      .tab-card[aria-selected="true"] { border-color: var(--cc-accent); background: var(--cc-selection); box-shadow: 0 0 0 2px color-mix(in srgb, var(--cc-accent) 22%, transparent), 0 6px 14px color-mix(in srgb, var(--cc-accent) 12%, transparent); }
+      .tab-card:not([aria-selected="true"]):hover { background: var(--cc-panel-raised); }
+      .thumbnail { display: flex; aspect-ratio: 16 / 9; flex-direction: column; align-items: center; justify-content: center; gap: 7px; overflow: hidden; padding: 8px; border: 1px solid color-mix(in srgb, var(--cc-border) 75%, transparent); border-radius: 7px; background: var(--cc-panel-raised); }
+      .thumbnail-mark { display: grid; width: 34px; height: 34px; place-items: center; border: 1px solid var(--cc-border); border-radius: 9px; background: var(--cc-panel); color: var(--cc-muted); font-size: 14px; font-weight: 500; }
+      .thumbnail-host { max-width: 100%; overflow: hidden; color: var(--cc-muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+      .tab-label { display: flex; min-width: 0; align-items: center; gap: 6px; }
+      .favicon { display: grid; width: 17px; height: 17px; flex: 0 0 17px; place-items: center; border-radius: 5px; background: var(--cc-panel-raised); color: var(--cc-muted); font-size: 9px; font-weight: 500; }
+      .tab-title { min-width: 0; flex: 1; overflow: hidden; color: var(--cc-text); font-size: 12px; font-weight: 500; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
+      .tab-status { flex: 0 0 auto; color: var(--cc-muted); font-size: 12px; line-height: 1; }
+      .tab-status.is-audible { color: var(--cc-accent); }
+      .tab-status svg { display: block; width: 13px; height: 13px; }
+      .tab-card:focus-visible { outline: 2px solid var(--cc-focus); outline-offset: 2px; }
+      .sr-status { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+      @media (max-width: 560px) {
+        .provider-hint > span:last-child { display: none; }
+        .preview-bar { align-items: flex-start; flex-direction: column; }
+        .stage { min-height: 500px; padding: 18px 10px; border-radius: 12px; }
+        .browser-page { padding: 22px; }
+        .page-content { width: 88%; margin-top: 68px; }
+        .page-cards { margin-top: 38px; }
+        .surface { width: 100%; border-radius: 18px; }
+        #command-surface { --query-size: 16px; --title-size: 14px; --detail-size: 12px; --row-gap: 9px; --row-pad: 10px; }
+        .stage[data-location="popup"] #command-surface { height: min(var(--popup-height), calc(100dvh - 24px)); }
+        .stage:not([data-location="popup"]) #command-surface { margin-top: max(0px, calc((464px - min(var(--bar-max-height), 100dvh - 48px)) / 2)); }
+        .result-title { max-width: 58%; }
+        .switcher { width: 100%; min-height: 128px; gap: 3px; padding: 6px; }
+        .tab-card { grid-template-rows: minmax(0, 1fr) 22px; gap: 4px; padding: 4px; }
+        .tab-title { font-size: 11px; }
+        .favicon { width: 13px; height: 13px; flex-basis: 13px; }
+        .tab-label { gap: 4px; }
+      }
+      @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; } }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header class="preview-bar">
+        <p class="preview-label">Interface preview</p>
+        <div class="controls">
+          <nav class="segmented" aria-label="Surface">
+            <button type="button" data-mode="commands" aria-pressed="true">Command Bar</button>
+            <button type="button" data-mode="tabs" aria-pressed="false">Tab Switcher</button>
+          </nav>
+          <div class="segmented location-controls" role="group" aria-label="Page context">
+            <button type="button" data-location="overlay" aria-pressed="true">Web page</button>
+            <button type="button" data-location="popup" aria-pressed="false">Chrome page</button>
+          </div>
+          <div class="segmented" role="group" aria-label="Appearance">
+            <button type="button" data-theme="system" aria-pressed="false">System</button>
+            <button type="button" data-theme="light" aria-pressed="true">Light</button>
+            <button type="button" data-theme="dark" aria-pressed="false">Dark</button>
+          </div>
+          <div class="segmented palette-picker" role="group" aria-label="Featured theme palettes">
+            <button type="button" data-palette="plain" aria-pressed="true">Plain</button>
+            <button type="button" data-palette="tobacco" aria-pressed="false">Tobacco</button>
+            <button type="button" data-palette="t3-code" aria-pressed="false">T3 Code</button>
+            <button type="button" data-palette="t3-ocean" aria-pressed="false">Ocean</button>
+          </div>
+          <div class="segmented size-picker" role="group" aria-label="Command Bar size">
+            <button type="button" data-size="compact" aria-pressed="true">Compact</button>
+            <button type="button" data-size="standard" aria-pressed="false">Standard</button>
+            <button type="button" data-size="wide" aria-pressed="false">Wide</button>
+          </div>
+          <div class="segmented window-mode-picker" role="group" aria-label="Window mode">
+            <button type="button" data-window-mode="compact" aria-pressed="false">Compact</button>
+            <button type="button" data-window-mode="expanded" aria-pressed="true">Expanded</button>
+          </div>
+          <div class="segmented scenario-picker" role="group" aria-label="Command Bar state">
+            <button type="button" data-scenario="results" aria-pressed="true">Results</button>
+            <button type="button" data-scenario="provider" aria-pressed="false">YouTube</button>
+          </div>
+        </div>
+      </header>
+
+      <div class="stage">
+        <div class="browser-page" aria-hidden="true">
+          <div class="page-nav"><span class="page-logo"></span><span class="page-nav-links"><span></span><span></span><span></span></span></div>
+          <div class="page-content">
+            <span class="page-kicker">A little more room to think</span>
+            <h2>Make space for the work that matters.</h2>
+            <p>A calm, focused workspace for your notes, ideas, and the projects you care about.</p>
+            <div class="page-actions"><span></span><span></span></div>
+            <div class="page-cards"><span></span><span></span><span></span></div>
+          </div>
+        </div>
+        <div class="scrim" aria-hidden="true"></div>
+
+        <section class="surface" id="command-surface" role="dialog" aria-label="Command Bar preview">
+          <div class="search-row">
+            <span class="search-icon" aria-hidden="true">
+              <svg data-scenario-show="results" viewBox="0 0 20 20" fill="none"><circle cx="8.8" cy="8.8" r="5.7" stroke="currentColor" stroke-width="1.6"/><path d="m13.1 13.1 4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+              <span class="provider-mark" data-scenario-show="provider" style="--provider-accent-light: #e0001e; --provider-accent-dark: #ff5c6c" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#FF0033" d="M23.5 6.5a3 3 0 0 0-2.1-2.1C19.5 3.9 12 3.9 12 3.9s-7.5 0-9.4.5A3 3 0 0 0 .5 6.5 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.5 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.5Z"/><path fill="#fff" d="m9.6 15.6 6.3-3.6-6.3-3.6v7.2Z"/></svg></span>
+            </span>
+            <label class="sr-status" for="command-query">Search commands, tabs, and the web</label>
+            <span class="provider-chip" data-scenario-show="provider" style="--provider-accent-light: #e0001e; --provider-accent-dark: #ff5c6c" hidden><span>YouTube</span><button type="button" aria-label="Back to command search"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.5 5.5 8l4.5 4.5"/></svg></button></span>
+            <input id="command-query" type="text" value="google" autocomplete="off" spellcheck="false" />
+            <button class="provider-hint" type="button" data-provider-hint aria-label="Search YouTube" hidden><span data-provider-hint-mark aria-hidden="true"></span><kbd aria-hidden="true">Tab</kbd><span>Search YouTube</span></button>
+            <div class="controls-group">
+
+              <button class="control-button" type="button" data-appearance-settings aria-label="Appearance settings"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M3 5.5h5M11.5 5.5H17M3 10h2M8.5 10H17M3 14.5h8M14.5 14.5H17"/><circle cx="10" cy="5.5" r="1.5"/><circle cx="7" cy="10" r="1.5"/><circle cx="13" cy="14.5" r="1.5"/></svg></button>
+            </div>
+          </div>
+          <div class="results-region">
+          <div class="results" id="results" role="listbox" aria-label="Search results">
+            <div class="result" role="option" id="direct-navigation" aria-selected="false" tabindex="-1" hidden><span class="result-icon-wrap"><span class="result-icon" aria-hidden="true">↗</span></span><span class="result-copy"><span class="result-title"></span></span><span class="result-action">Website</span></div>
+            <div class="result" role="option" id="provider-search-result" aria-selected="false" tabindex="-1" hidden><span class="result-icon-wrap"><span class="result-icon" aria-hidden="true">↗</span></span><span class="result-copy"><span class="result-title"></span><span class="result-detail"></span></span><span class="result-action">Search</span></div>
+            <div class="result" role="option" aria-selected="true" tabindex="0"><span class="result-icon-wrap"><span class="result-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none"><path d="M10 4v6l3.8 2.2M17 10a7 7 0 1 1-2.05-4.95" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span></span><span class="result-copy"><span class="result-title"><mark>Google</mark> Password Manager</span><span class="result-detail">passwords.google.com/intro</span></span><span class="result-action">History</span></div>
+            <div class="result" role="option" aria-selected="false" tabindex="-1"><span class="result-icon-wrap"><span class="provider-mark" aria-hidden="true"><svg viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg></span></span><span class="result-copy"><span class="result-title">Google Calendar</span><span class="result-detail">calendar.google.com</span></span><span class="result-action">Tab</span></div>
+            <div class="result" role="option" aria-selected="false" tabindex="-1"><span class="result-icon-wrap"><span class="result-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M3.5 10h13M10 3a11 11 0 0 1 0 14M10 3a11 11 0 0 0 0 14" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span></span><span class="result-copy"><span class="result-title">Google Maps</span></span><span class="result-action">Website</span></div>
+            <div class="result" role="option" aria-selected="false" tabindex="-1"><span class="result-icon-wrap"><span class="result-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none"><path d="M5 3.2h10v13.6l-5-3.3-5 3.3V3.2Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></span></span><span class="result-copy"><span class="result-title"><mark>Google</mark> Drive</span></span><span class="result-action">Bookmark</span></div>
+            <div class="result" role="option" aria-selected="false" tabindex="-1"><span class="result-icon-wrap"><span class="provider-mark" aria-hidden="true"><svg viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg></span></span><span class="result-copy"><span class="result-title">Google Docs</span><span class="result-detail">docs.google.com</span></span><span class="result-action">Tab</span></div>
+          </div>
+          <div class="empty-state" id="empty-state" hidden>
+            <span class="empty-state-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round"><circle cx="8.7" cy="8.7" r="5.3"/><path d="m12.6 12.6 4.1 4.1"/></svg></span>
+            <div class="empty-state-copy" role="status" aria-live="polite"><p id="empty-state-title">No matching results</p><span id="empty-state-detail">Try another query or a search provider.</span></div>
+          </div>
+          <div class="empty-state is-provider" id="provider-state" style="--provider-accent-light: #e0001e; --provider-accent-dark: #ff5c6c" hidden>
+            <span class="empty-state-mark"><span class="provider-mark" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#FF0033" d="M23.5 6.5a3 3 0 0 0-2.1-2.1C19.5 3.9 12 3.9 12 3.9s-7.5 0-9.4.5A3 3 0 0 0 .5 6.5 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.5 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.5Z"/><path fill="#fff" d="m9.6 15.6 6.3-3.6-6.3-3.6v7.2Z"/></svg></span></span>
+            <div class="empty-state-copy" role="status"><p>Search YouTube</p><span>Type what to search for, then press Enter. YouTube opens in a new tab.</span></div>
+          </div>
+          </div>
+        </section>
+
+        <section class="surface switcher" id="tabs-surface" role="dialog" aria-label="Tab Switcher preview" hidden>
+          <div class="tab-card" role="option" aria-selected="false" tabindex="0" data-title="Figma"><div class="thumbnail"><span class="thumbnail-mark">F</span><span class="thumbnail-host">figma.com</span></div><div class="tab-label"><span class="favicon">F</span><span class="tab-title">Figma · Project board</span></div></div>
+          <div class="tab-card" role="option" aria-selected="false" tabindex="-1" data-title="Gmail"><div class="thumbnail"><span class="thumbnail-mark">M</span><span class="thumbnail-host">mail.google.com</span></div><div class="tab-label"><span class="favicon">M</span><span class="tab-title">Inbox · Gmail</span></div></div>
+          <div class="tab-card" role="option" aria-selected="true" tabindex="-1" data-title="Google"><div class="thumbnail"><span class="thumbnail-mark">G</span><span class="thumbnail-host">calendar.google.com</span></div><div class="tab-label"><span class="favicon">G</span><span class="tab-title">Google Calendar</span></div></div>
+          <div class="tab-card" role="option" aria-selected="false" tabindex="-1" data-title="YouTube"><div class="thumbnail"><span class="thumbnail-mark">▶</span><span class="thumbnail-host">youtube.com</span></div><div class="tab-label"><span class="favicon">▶</span><span class="tab-title">YouTube</span><span class="tab-status is-audible" title="Playing audio">♫</span></div></div>
+          <div class="tab-card" role="option" aria-selected="false" tabindex="-1" data-title="GitHub"><div class="thumbnail"><span class="thumbnail-mark">⌘</span><span class="thumbnail-host">github.com</span></div><div class="tab-label"><span class="favicon">⌘</span><span class="tab-title">GitHub · Command Menu</span><span class="tab-status" title="Pinned"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M5.25 2.5h5.5M6.5 2.5v3.6l-2 2v1h7v-1l-2-2V2.5M8 9.1v4.4" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div></div>
+          <p class="sr-status" id="tab-announcement" role="status" aria-live="polite" aria-atomic="true">3 of 5: Google Calendar</p>
+        </section>
+      </div>
+    </main>
+
+    <script>
+      const root = document.documentElement;
+      const systemPreference = window.matchMedia('(prefers-color-scheme: dark)');
+      const appearanceButtons = [...document.querySelectorAll('[data-theme]')];
+      const paletteButtons = [...document.querySelectorAll('.palette-picker [data-palette]')];
+      const locationButtons = [...document.querySelectorAll('[data-location]')];
+      const sizeButtons = [...document.querySelectorAll('.size-picker [data-size]')];
+      const windowModeButtons = [...document.querySelectorAll('.window-mode-picker [data-window-mode]')];
+      const scenarioButtons = [...document.querySelectorAll('[data-scenario]')];
+      const stage = document.querySelector('.stage');
+      const commandSurface = document.querySelector('#command-surface');
+      const tabsSurface = document.querySelector('#tabs-surface');
+      const cards = [...document.querySelectorAll('.tab-card')];
+      const queryInput = document.querySelector('#command-query');
+      const resultsList = document.querySelector('#results');
+      const emptyState = document.querySelector('#empty-state');
+      const providerState = document.querySelector('#provider-state');
+      const providerChip = document.querySelector('.provider-chip');
+      const providerHint = document.querySelector('[data-provider-hint]');
+      const directNavigationRow = document.querySelector('#direct-navigation');
+      const providerSearchRow = document.querySelector('#provider-search-result');
+      const providerSearchMark = document.querySelector('.search-icon [data-scenario-show="provider"]');
+      const providerAliases = new Map([
+        ['g', { id: 'google', name: 'Google', verb: 'Search', hint: 'Search the web', accent: '#1a73e8', darkAccent: '#8ab4f8' }],
+        ['go', { id: 'google', name: 'Google', verb: 'Search', hint: 'Search the web', accent: '#1a73e8', darkAccent: '#8ab4f8' }],
+        ['goo', { id: 'google', name: 'Google', verb: 'Search', hint: 'Search the web', accent: '#1a73e8', darkAccent: '#8ab4f8' }],
+        ['google', { id: 'google', name: 'Google', verb: 'Search', hint: 'Search the web', accent: '#1a73e8', darkAccent: '#8ab4f8' }],
+        ['yt', { id: 'youtube', name: 'YouTube', verb: 'Search', hint: 'Search videos', accent: '#e0001e', darkAccent: '#ff5c6c' }],
+        ['you', { id: 'youtube', name: 'YouTube', verb: 'Search', hint: 'Search videos', accent: '#e0001e', darkAccent: '#ff5c6c' }],
+        ['youtube', { id: 'youtube', name: 'YouTube', verb: 'Search', hint: 'Search videos', accent: '#e0001e', darkAccent: '#ff5c6c' }],
+        ['ai', { id: 'chatgpt', name: 'ChatGPT', verb: 'Ask', hint: 'Open ChatGPT with a question', accent: '#10a37f', darkAccent: '#4fd1a8' }],
+        ['chatgpt', { id: 'chatgpt', name: 'ChatGPT', verb: 'Ask', hint: 'Open ChatGPT with a question', accent: '#10a37f', darkAccent: '#4fd1a8' }],
+        ['cl', { id: 'claude', name: 'Claude', verb: 'Ask', hint: 'Open Claude with a question', accent: '#c8623f', darkAccent: '#e98d6b' }],
+        ['claude', { id: 'claude', name: 'Claude', verb: 'Ask', hint: 'Open Claude with a question', accent: '#c8623f', darkAccent: '#e98d6b' }],
+        ['p', { id: 'perplexity', name: 'Perplexity', verb: 'Ask', hint: 'Get an answer with sources', accent: '#1b7f8c', darkAccent: '#2fc1d3' }],
+        ['perplexity', { id: 'perplexity', name: 'Perplexity', verb: 'Ask', hint: 'Get an answer with sources', accent: '#1b7f8c', darkAccent: '#2fc1d3' }],
+        ['x', { id: 'x', name: 'X', verb: 'Search', hint: 'Search posts', accent: '#0f1419', darkAccent: '#e7e9ea' }],
+        ['twitter', { id: 'x', name: 'X', verb: 'Search', hint: 'Search posts', accent: '#0f1419', darkAccent: '#e7e9ea' }],
+        ['y', { id: 'yahoo', name: 'Yahoo', verb: 'Search', hint: 'Search Yahoo', accent: '#6001d2', darkAccent: '#b18cff' }],
+        ['yahoo', { id: 'yahoo', name: 'Yahoo', verb: 'Search', hint: 'Search Yahoo', accent: '#6001d2', darkAccent: '#b18cff' }],
+      ]);
+      const providerPrefixes = new Map([
+        ['g', providerAliases.get('google')], ['yt', providerAliases.get('youtube')], ['ai', providerAliases.get('chatgpt')],
+        ['cl', providerAliases.get('claude')], ['p', providerAliases.get('perplexity')], ['x', providerAliases.get('x')], ['y', providerAliases.get('yahoo')],
+      ]);
+      let activeProvider = null;
+      let providerOriginQuery = '';
+      const initialRows = [...resultsList.querySelectorAll('.result:not([id])')];
+      for (const row of initialRows) {
+        const title = row.querySelector('.result-title');
+        if (title) title.dataset.sourceText = title.textContent;
+        if (row.querySelector('.result-action')?.textContent.trim() === 'Search') { row.remove(); continue; }
+        if (row.querySelector('.result-action')?.textContent.trim() === 'Tab') {
+          const text = row.querySelector('.result-title')?.textContent.trim() ?? 'T';
+          const favicon = document.createElement('span');
+          favicon.className = 'result-favicon';
+          favicon.setAttribute('aria-hidden', 'true');
+          favicon.textContent = text.charAt(0).toLocaleUpperCase();
+          row.querySelector('.result-icon-wrap')?.replaceChildren(favicon);
+        }
+      }
+      const staticRows = [...resultsList.querySelectorAll('.result:not([id])')];
+      for (const row of staticRows) {
+        const title = row.querySelector('.result-title');
+        if (title && !title.dataset.sourceText) title.dataset.sourceText = title.textContent;
+      }
+      const providerMark = providerSearchMark.cloneNode(true);
+      providerMark.removeAttribute('hidden');
+      providerMark.removeAttribute('data-scenario-show');
+      const searchIcon = document.querySelector('.search-icon');
+      const searchGlyph = searchIcon.querySelector('svg[data-scenario-show="results"]');
+
+      function makeProviderMark(provider) {
+        if (provider.id === 'youtube') return providerMark.cloneNode(true);
+        const mark = document.createElement('span');
+        mark.className = 'provider-mark';
+        mark.setAttribute('aria-hidden', 'true');
+        mark.style.setProperty('--provider-accent-light', provider.accent);
+        mark.style.setProperty('--provider-accent-dark', provider.darkAccent);
+        mark.textContent = provider.id === 'chatgpt' ? 'AI' : provider.name.slice(0, 1);
+        return mark;
+      }
+      let appearance = localStorage.getItem('command-menu-preview-theme') || 'light';
+      let palette = localStorage.getItem('command-menu-preview-palette') || 'plain';
+      let pageContext = localStorage.getItem('command-menu-preview-location') || 'overlay';
+      let size = localStorage.getItem('command-menu-preview-size') || 'compact';
+      let windowMode = localStorage.getItem('command-menu-preview-window-mode') || 'expanded';
+      if (!['plain', 'tobacco', 't3-code', 't3-ocean'].includes(palette)) palette = 'plain';
+      let selected = 2;
+      let commandSelected = 0;
+
+      function previewAddress(input) {
+        const value = input.trim();
+        if (!value) return null;
+        try {
+          const url = new URL(value);
+          if (url.protocol === 'http:' || url.protocol === 'https:' || url.protocol === 'chrome:') return url.href;
+        } catch { /* Continue with a bare host, as the Command Bar does. */ }
+        if (!/^(?:([\w-]+\.)+[a-z]{2,}|localhost|(?:\d{1,3}\.){3}\d{1,3})(?::\d+)?(?:[/?#].*)?$/i.test(value)) return null;
+        try { return new URL(`https://${value}`).href; } catch { return null; }
+      }
+
+      function providerCandidate() {
+        return activeProvider ? null : providerAliases.get(queryInput.value.trim().toLocaleLowerCase()) ?? null;
+      }
+
+      function providerPrefixQuery() {
+        if (activeProvider) return null;
+        const match = queryInput.value.trim().match(/^(\S+)\s+(.+)$/);
+        const provider = match ? providerPrefixes.get(match[1].toLocaleLowerCase()) : null;
+        return provider && match[2].trim() ? { provider, query: match[2].trim() } : null;
+      }
+
+      function highlight(element, sourceText, value) {
+        const terms = value.trim().split(/\s+/).filter(Boolean);
+        element.replaceChildren();
+        if (!terms.length) { element.textContent = sourceText; return; }
+        const expression = new RegExp(`(${terms.map((term) => term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi');
+        const matches = sourceText.split(expression);
+        const normalizedTerms = new Set(terms.map((term) => term.toLocaleLowerCase()));
+        for (const [index, part] of matches.entries()) {
+          if (normalizedTerms.has(part.toLocaleLowerCase())) {
+            const mark = document.createElement('mark');
+            mark.textContent = part;
+            element.append(mark);
+          } else {
+            element.append(document.createTextNode(part));
+          }
+        }
+      }
+
+      function activateProvider(provider) {
+        providerOriginQuery = queryInput.value;
+        activeProvider = provider;
+        queryInput.value = '';
+        updateCommandResults();
+        queryInput.focus({ preventScroll: true });
+      }
+
+      function returnToCommandSearch() {
+        activeProvider = null;
+        queryInput.value = providerOriginQuery;
+        updateCommandResults();
+        queryInput.focus({ preventScroll: true });
+      }
+
+      function updateCommandResults() {
+        const rawQuery = queryInput.value.trim();
+        const compactEmpty = windowMode === 'compact' && !rawQuery && !activeProvider;
+        commandSurface.classList.toggle('is-compact-empty', compactEmpty);
+        const explicitProviderQuery = providerPrefixQuery();
+        const providerQuery = activeProvider && rawQuery
+          ? { provider: activeProvider, query: rawQuery }
+          : explicitProviderQuery;
+        const localQuery = (explicitProviderQuery?.query ?? rawQuery).toLocaleLowerCase();
+        const navigationUrl = explicitProviderQuery ? null : previewAddress(rawQuery);
+        const candidate = providerCandidate();
+
+        providerChip.hidden = !activeProvider;
+        providerHint.hidden = !candidate;
+        if (activeProvider) {
+          providerChip.querySelector(':scope > span').textContent = activeProvider.name;
+          providerChip.style.setProperty('--provider-accent-light', activeProvider.accent);
+          providerChip.style.setProperty('--provider-accent-dark', activeProvider.darkAccent);
+          providerState.style.setProperty('--provider-accent-light', activeProvider.accent);
+          providerState.style.setProperty('--provider-accent-dark', activeProvider.darkAccent);
+          searchIcon.replaceChildren(makeProviderMark(activeProvider));
+          providerSearchRow.querySelector('.result-icon-wrap').replaceChildren(makeProviderMark(activeProvider));
+          providerState.querySelector('.empty-state-mark').replaceChildren(makeProviderMark(activeProvider));
+        } else {
+          searchGlyph.hidden = false;
+          searchIcon.replaceChildren(searchGlyph);
+        }
+        if (candidate) {
+          providerHint.querySelector('[data-provider-hint-mark]').replaceChildren(makeProviderMark(candidate));
+          providerHint.querySelector(':scope > span:last-child').textContent = `${candidate.verb} ${candidate.name}`;
+          providerHint.setAttribute('aria-label', `${candidate.verb} ${candidate.name}`);
+          providerHint.title = `Press Tab or Enter to ${candidate.verb.toLowerCase()} ${candidate.name}`;
+        }
+        queryInput.placeholder = activeProvider ? `Search ${activeProvider.name}…` : 'Search commands or a website';
+
+        directNavigationRow.hidden = !navigationUrl;
+        if (navigationUrl) {
+          const title = directNavigationRow.querySelector('.result-title');
+          title.dataset.sourceText = `Open ${navigationUrl}`;
+          highlight(title, title.dataset.sourceText, rawQuery);
+        }
+
+        providerSearchRow.hidden = !providerQuery;
+        if (providerQuery) {
+          const title = providerSearchRow.querySelector('.result-title');
+          title.dataset.sourceText = `${providerQuery.provider.verb} ${providerQuery.provider.name} “${providerQuery.query}”`;
+          providerSearchRow.querySelector('.result-detail').textContent = providerQuery.provider.hint;
+          highlight(title, title.dataset.sourceText, providerQuery.query);
+          if (explicitProviderQuery) providerSearchRow.querySelector('.result-icon-wrap').replaceChildren(makeProviderMark(providerQuery.provider));
+        }
+
+        for (const row of staticRows) {
+          const matches = !localQuery || row.textContent.toLocaleLowerCase().includes(localQuery);
+          const visible = matches && (!activeProvider || Boolean(navigationUrl));
+          row.hidden = !visible;
+          const title = row.querySelector('.result-title');
+          if (title) highlight(title, title.dataset.sourceText ?? title.textContent, explicitProviderQuery?.query ?? rawQuery);
+        }
+
+        resultsList.hidden = Boolean(compactEmpty || (activeProvider && !rawQuery));
+        const visibleRows = [...resultsList.querySelectorAll('.result:not([hidden])')];
+        commandSelected = 0;
+        visibleRows.forEach((row, index) => {
+          row.setAttribute('aria-selected', String(index === 0));
+          row.tabIndex = index === 0 ? 0 : -1;
+        });
+
+        const isProviderEmpty = Boolean((candidate && visibleRows.length === 0) || (activeProvider && !rawQuery));
+        providerState.hidden = !isProviderEmpty;
+        if (isProviderEmpty) {
+          const provider = candidate ?? activeProvider;
+          providerState.style.setProperty('--provider-accent-light', provider.accent);
+          providerState.style.setProperty('--provider-accent-dark', provider.darkAccent);
+          providerState.querySelector('.empty-state-mark').replaceChildren(makeProviderMark(provider));
+          providerState.querySelector('.empty-state-copy p').textContent = `${provider.verb} ${provider.name}`;
+          providerState.querySelector('.empty-state-copy span').textContent = candidate
+            ? `Press Tab or Enter to ${candidate.verb.toLowerCase()} ${candidate.name}.`
+            : `Type a query, then press Enter. ${activeProvider.name} opens in a new tab.`;
+        }
+        const noMatches = Boolean(rawQuery && !isProviderEmpty && visibleRows.length === 0);
+        emptyState.hidden = !noMatches;
+        emptyState.querySelector('#empty-state-title').textContent = `No results for “${rawQuery}”`;
+        emptyState.querySelector('#empty-state-detail').textContent = 'Try another query or a provider prefix.';
+      }
+
+      function applyAppearance(next) {
+        appearance = next;
+        const isDark = next === 'dark' || (next === 'system' && systemPreference.matches);
+        root.dataset.theme = isDark ? 'dark' : 'light';
+        appearanceButtons.forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.theme === next)));
+        localStorage.setItem('command-menu-preview-theme', next);
+      }
+
+      function applyPalette(next) {
+        palette = next;
+        root.dataset.palette = next;
+        paletteButtons.forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.palette === next)));
+        localStorage.setItem('command-menu-preview-palette', next);
+      }
+
+      function applyLocation(next) {
+        pageContext = next;
+        stage.dataset.location = next;
+        locationButtons.forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.location === next)));
+        localStorage.setItem('command-menu-preview-location', next);
+      }
+
+      function applySize(next) {
+        size = next;
+        root.dataset.size = next;
+        sizeButtons.forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.size === next)));
+        localStorage.setItem('command-menu-preview-size', next);
+      }
+
+      function applyWindowMode(next) {
+        windowMode = next;
+        root.dataset.windowMode = next;
+        windowModeButtons.forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.windowMode === next)));
+        localStorage.setItem('command-menu-preview-window-mode', next);
+        updateCommandResults();
+      }
+
+      function applyScenario(next) {
+        const isProvider = next === 'provider';
+        scenarioButtons.forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.scenario === next)));
+        document.querySelectorAll('[data-scenario-show]').forEach((element) => element.toggleAttribute('hidden', element.dataset.scenarioShow !== next));
+        if (isProvider) providerOriginQuery = queryInput.value;
+        activeProvider = isProvider ? { id: 'youtube', name: 'YouTube', verb: 'Search', hint: 'Search videos', accent: '#e0001e', darkAccent: '#ff5c6c' } : null;
+        queryInput.value = isProvider ? '' : 'google';
+        updateCommandResults();
+      }
+
+      function selectCard(index) {
+        selected = (index + cards.length) % cards.length;
+        cards.forEach((card, i) => {
+          card.setAttribute('aria-selected', String(i === selected));
+          card.tabIndex = i === selected ? 0 : -1;
+        });
+        document.querySelector('#tab-announcement').textContent = `${selected + 1} of ${cards.length}: ${cards[selected].dataset.title}`;
+      }
+
+      function setMode(mode) {
+        const isTabs = mode === 'tabs';
+        commandSurface.hidden = isTabs;
+        tabsSurface.hidden = !isTabs;
+        document.querySelectorAll('[data-mode]').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.mode === mode)));
+        if (isTabs) cards[selected].focus({ preventScroll: true });
+        else document.querySelector('#command-query').focus({ preventScroll: true });
+      }
+
+      appearanceButtons.forEach((button) => button.addEventListener('click', () => applyAppearance(button.dataset.theme)));
+      locationButtons.forEach((button) => button.addEventListener('click', () => applyLocation(button.dataset.location)));
+      document.querySelectorAll('[data-mode]').forEach((button) => button.addEventListener('click', () => setMode(button.dataset.mode)));
+      document.querySelector('[data-appearance-settings]').addEventListener('click', () => {
+        const firstAppearance = document.querySelector('[data-theme="system"]');
+        firstAppearance.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' });
+        firstAppearance.focus({ preventScroll: true });
+      });
+      providerHint.addEventListener('click', () => { const provider = providerCandidate(); if (provider) activateProvider(provider); });
+      providerChip.querySelector('button').addEventListener('click', returnToCommandSearch);
+      commandSurface.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && activeProvider) {
+          event.preventDefault();
+          event.stopPropagation();
+          returnToCommandSearch();
+        }
+      }, true);
+      resultsList.addEventListener('click', (event) => {
+        if (event.target.closest('.result:not([hidden])')) commandSurface.hidden = true;
+      });
+      cards.forEach((card, index) => card.addEventListener('click', () => { selectCard(index); card.focus(); }));
+      function selectResult(index) {
+        const rows = [...resultsList.querySelectorAll('.result:not([hidden])')];
+        if (!rows.length) return;
+        commandSelected = (index + rows.length) % rows.length;
+        rows.forEach((row, rowIndex) => {
+          row.setAttribute('aria-selected', String(rowIndex === commandSelected));
+          row.tabIndex = rowIndex === commandSelected ? 0 : -1;
+        });
+        const row = rows[commandSelected];
+        const listBounds = resultsList.getBoundingClientRect();
+        const rowBounds = row.getBoundingClientRect();
+        if (rowBounds.top < listBounds.top) resultsList.scrollTop -= listBounds.top - rowBounds.top;
+        else if (rowBounds.bottom > listBounds.bottom) resultsList.scrollTop += rowBounds.bottom - listBounds.bottom;
+      }
+      queryInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Tab' && !event.shiftKey) {
+          const candidate = providerCandidate();
+          if (candidate) { event.preventDefault(); activateProvider(candidate); return; }
+        }
+        if (event.key === 'Enter') {
+          const candidate = providerCandidate();
+          if (candidate && !resultsList.querySelector('.result:not([hidden])')) {
+            event.preventDefault();
+            activateProvider(candidate);
+            return;
+          }
+          const selectedRow = resultsList.querySelector('.result[aria-selected="true"]:not([hidden])');
+          if (selectedRow) { event.preventDefault(); commandSurface.hidden = true; return; }
+        }
+        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+          event.preventDefault();
+          selectResult(commandSelected + (event.key === 'ArrowDown' ? 1 : -1));
+        }
+      });
+      tabsSurface.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowRight' || event.key === 'ArrowDown') { event.preventDefault(); selectCard(selected + 1); cards[selected].focus(); }
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') { event.preventDefault(); selectCard(selected - 1); cards[selected].focus(); }
+        if (event.key === 'Home') { event.preventDefault(); selectCard(0); cards[selected].focus(); }
+        if (event.key === 'End') { event.preventDefault(); selectCard(cards.length - 1); cards[selected].focus(); }
+      });
+      queryInput.addEventListener('input', (event) => {
+        updateCommandResults();
+      });
+      systemPreference.addEventListener('change', () => { if (appearance === 'system') applyAppearance('system'); });
+      paletteButtons.forEach((button) => button.addEventListener('click', () => applyPalette(button.dataset.palette)));
+      sizeButtons.forEach((button) => button.addEventListener('click', () => applySize(button.dataset.size)));
+      windowModeButtons.forEach((button) => button.addEventListener('click', () => applyWindowMode(button.dataset.windowMode)));
+      scenarioButtons.forEach((button) => button.addEventListener('click', () => applyScenario(button.dataset.scenario)));
+      applyAppearance(appearance);
+      applyPalette(palette);
+      applyLocation(pageContext);
+      applySize(size);
+      applyWindowMode(windowMode);
+      updateCommandResults();
+    </script>
+  </body>
+</html>
