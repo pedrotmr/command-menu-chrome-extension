@@ -392,6 +392,7 @@ chrome.tabs.onActivated.addListener(({ tabId }) => {
 });
 
 chrome.tabs.onCreated.addListener(broadcastTabChanges);
+chrome.tabs.onMoved.addListener(broadcastTabChanges);
 chrome.tabs.onAttached.addListener(broadcastTabChanges);
 chrome.tabs.onDetached.addListener(broadcastTabChanges);
 chrome.tabs.onRemoved.addListener((tabId) => {
@@ -413,6 +414,7 @@ chrome.tabs.onUpdated.addListener((_tabId, changes) => {
     changes.title !== undefined ||
     changes.favIconUrl !== undefined ||
     changes.pinned !== undefined ||
+    changes.groupId !== undefined ||
     changes.mutedInfo !== undefined ||
     changes.audible !== undefined
   ) {
