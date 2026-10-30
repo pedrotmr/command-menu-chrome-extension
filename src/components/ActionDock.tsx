@@ -72,8 +72,8 @@ export function ActionDock({ id, label, items, focusFirstItem, onDismiss }: Acti
     const elements = menuItems(menuRef.current);
     if (event.key === 'Tab') {
       event.preventDefault();
-      if (event.shiftKey) onDismiss();
-      else searchRef.current?.focus({ preventScroll: true });
+      if (event.shiftKey) searchRef.current?.focus({ preventScroll: true });
+      else onDismiss();
       return;
     }
     if (!elements.length) return;
@@ -119,9 +119,13 @@ export function ActionDock({ id, label, items, focusFirstItem, onDismiss }: Acti
       elements[0].click();
     } else if (event.key === 'Tab') {
       event.preventDefault();
-      if (event.shiftKey && elements.length) focusItem(elements[elements.length - 1]);
-      else if (event.shiftKey) onDismiss();
-      else onDismiss();
+      if (event.shiftKey) {
+        onDismiss();
+      } else if (elements.length) {
+        focusItem(elements[0]);
+      } else {
+        onDismiss();
+      }
     }
   }
 
