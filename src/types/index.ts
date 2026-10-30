@@ -77,6 +77,7 @@ export interface RenamedTab {
   url: string;
   updatedAt: number;
   closedAt?: number;
+  excludedTabIdsAtClose?: number[];
 }
 
 export type AppearanceMode = 'system' | 'light' | 'dark';

@@ -4,11 +4,13 @@ import { normalizeNavigationUrl, normalizeSavedNavigationUrl } from '@/utils/chr
 import { isTabInSplitView } from '@/utils/splitViews';
 import { TAB_GROUP_ID_NONE } from '@/utils/chromeApiConstants';
 import { isOverlayPage } from '@/utils/pageSupport';
+import { OverlayTabRegistry } from '@/utils/overlayTabRegistry';
 
 const TAB_NAMES_KEY = 'renamedTabs';
 const TAB_NAMES_SESSION_KEY = 'tabNameIdsCurrentSession';
 const TAB_PREVIEW_PREFIX = 'tabPreview:';
 const TAB_PREVIEW_IDS_KEY = 'tabPreviewIds';
+const OVERLAY_TAB_IDS_SESSION_KEY = 'commandMenuOverlayTabIds';
 const MAX_TAB_PREVIEWS = 5;
 const TAB_SWITCHER_OPENING_TIMEOUT_MS = 5000;
 const launchModeKey = 'nextPaletteMode';
@@ -24,7 +26,16 @@ let tabNameReattachmentPending = false;
 let tabNameReconcileTimer: ReturnType<typeof setTimeout> | null = null;
 let tabNameSessionSafe = true;
 let tabChangeBroadcastTimer: ReturnType<typeof setTimeout> | null = null;
-const overlayTabIds = new Set<number>();
+const overlayTabRegistry = new OverlayTabRegistry({
+  load: async () => {
+    const stored = await chrome.storage.session.get(OVERLAY_TAB_IDS_SESSION_KEY);
+    return stored[OVERLAY_TAB_IDS_SESSION_KEY];
+  },
+  save: async (tabIds) => {
+    await chrome.storage.session.set({ [OVERLAY_TAB_IDS_SESSION_KEY]: tabIds });
+  },
+  notify: (tabId) => chrome.tabs.sendMessage(tabId, { action: 'ui:tabs-changed' }),
+});
 const tabSwitcherOpenWindows = new Set<number>();
 const tabSwitcherSurfaceByWindow = new Map<number, 'overlay' | 'popup'>();
 const tabSwitcherOpeningWindows = new Map<number, { tabId: number; pendingCycles: number; startedAt: number }>();
@@ -49,11 +60,7 @@ function broadcastTabChanges(): void {
   tabChangeBroadcastTimer = setTimeout(() => {
     tabChangeBroadcastTimer = null;
     void chrome.runtime.sendMessage({ action: 'ui:tabs-changed' }).catch(() => undefined);
-    for (const tabId of overlayTabIds) {
-      void chrome.tabs.sendMessage(tabId, { action: 'ui:tabs-changed' }).catch(() => {
-        overlayTabIds.delete(tabId);
-      });
-    }
+    void overlayTabRegistry.broadcast().catch(() => undefined);
   }, 24);
 }
 
@@ -117,7 +124,7 @@ async function openOverlay(tabId: number, mode: 'commands' | 'tabs', autoSwitchO
   try {
     const response = await chrome.tabs.sendMessage(tabId, request) as { success?: boolean } | undefined;
     if (response?.success) {
-      overlayTabIds.add(tabId);
+      void overlayTabRegistry.register(tabId).catch(() => undefined);
       return;
     }
   } catch {
@@ -128,7 +135,7 @@ async function openOverlay(tabId: number, mode: 'commands' | 'tabs', autoSwitchO
   await chrome.scripting.executeScript({ target: { tabId }, files: [script] });
   const response = await chrome.tabs.sendMessage(tabId, request) as { success?: boolean } | undefined;
   if (!response?.success) throw new Error('The page overlay could not be opened.');
-  overlayTabIds.add(tabId);
+  void overlayTabRegistry.register(tabId).catch(() => undefined);
 }
 
 async function getLiveTabSwitcherSurface(tabId: number, windowId: number): Promise<'overlay' | 'popup' | null> {
@@ -404,7 +411,7 @@ chrome.tabs.onAttached.addListener(broadcastTabChanges);
 chrome.tabs.onDetached.addListener(broadcastTabChanges);
 chrome.tabs.onRemoved.addListener((tabId) => {
   broadcastTabChanges();
-  overlayTabIds.delete(tabId);
+  void overlayTabRegistry.unregister(tabId).catch(() => undefined);
   void removeTabPreview(tabId).catch(() => undefined);
   for (const [windowId, opening] of tabSwitcherOpeningWindows) {
     if (opening.tabId === tabId) tabSwitcherOpeningWindows.delete(windowId);
@@ -441,9 +448,10 @@ chrome.commands.onCommand.addListener((command, tab) => {
 chrome.tabs.onRemoved.addListener((tabId) => {
   void removeTabPreview(tabId).catch(() => undefined);
   void tabNameSessionInitialization
-    .then(() => {
+    .then(async () => {
       if (!namedTabIds.has(String(tabId))) return false;
-      return withTabNamesMutation((names) => markTabNameClosed(names, tabId));
+      const currentTabs = await chrome.tabs.query({});
+      return withTabNamesMutation((names) => markTabNameClosed(names, tabId, Date.now(), currentTabs));
     })
     .then((updated) => {
       if (!updated) return;

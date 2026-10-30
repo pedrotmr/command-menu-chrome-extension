@@ -5,7 +5,12 @@ export type TabIdentitySnapshot = Pick<chrome.tabs.Tab, 'id' | 'url' | 'title'>;
 
 const DEFAULT_MAX_AGE = 90 * 24 * 60 * 60 * 1000;
 
-export function markTabNameClosed(savedNames: TabNameMap, tabId: number, closedAt = Date.now()): boolean {
+export function markTabNameClosed(
+  savedNames: TabNameMap,
+  tabId: number,
+  closedAt = Date.now(),
+  currentTabs: TabIdentitySnapshot[] = []
+): boolean {
   const id = String(tabId);
   const savedName = savedNames[id];
   if (!savedName) return false;
@@ -15,8 +20,17 @@ export function markTabNameClosed(savedNames: TabNameMap, tabId: number, closedA
   let staleKey = keyBase;
   let suffix = 1;
   while (savedNames[staleKey]) staleKey = `${keyBase}:${suffix++}`;
-  savedNames[staleKey] = { ...savedName, closedAt };
+  const excludedTabIdsAtClose = currentTabs.flatMap((tab) =>
+    tab.id !== undefined && tab.url === savedName.url ? [tab.id] : []
+  );
+  savedNames[staleKey] = { ...savedName, closedAt, excludedTabIdsAtClose };
   return true;
+}
+
+function withoutCloseExclusions(name: RenamedTab): RenamedTab {
+  const copy = { ...name };
+  delete copy.excludedTabIdsAtClose;
+  return copy;
 }
 
 function identity(url: string | undefined, title: string | undefined): string | null {
@@ -41,7 +55,7 @@ export function reconcileTabNames(
   const names = forceIdentityMatching
     ? Object.fromEntries(Object.values(copiedNames).map((name, index) => [
       `stale:${name.tabId}:${name.updatedAt}:${index}`,
-      { ...name, closedAt: name.closedAt ?? now },
+      { ...withoutCloseExclusions(name), closedAt: name.closedAt ?? now },
     ]))
     : copiedNames;
   const activeIds = new Set(currentTabs.flatMap((tab) => tab.id === undefined ? [] : [String(tab.id)]));
@@ -55,6 +69,7 @@ export function reconcileTabNames(
       name.url = tab.url ?? name.url;
       name.originalTitle = tab.title ?? name.originalTitle;
       name.closedAt = undefined;
+      delete name.excludedTabIdsAtClose;
     }
   }
 
@@ -79,11 +94,15 @@ export function reconcileTabNames(
   }
 
   for (const [key, oldIds] of oldByIdentity) {
-    const matchingTabs = currentByIdentity.get(key) ?? [];
-    if (oldIds.length !== 1 || matchingTabs.length !== 1 || matchingTabs[0].id === undefined) continue;
+    if (oldIds.length !== 1) continue;
     const oldId = oldIds[0];
+    const excludedIds = new Set(names[oldId].excludedTabIdsAtClose ?? []);
+    const matchingTabs = (currentByIdentity.get(key) ?? []).filter((tab) =>
+      tab.id !== undefined && !excludedIds.has(tab.id)
+    );
+    if (matchingTabs.length !== 1 || matchingTabs[0].id === undefined) continue;
     const newId = String(matchingTabs[0].id);
-    names[newId] = { ...names[oldId], tabId: matchingTabs[0].id, closedAt: undefined };
+    names[newId] = { ...withoutCloseExclusions(names[oldId]), tabId: matchingTabs[0].id, closedAt: undefined };
     delete names[oldId];
   }
 
@@ -106,11 +125,20 @@ export function reconcileTabNames(
   }
 
   for (const [url, oldIds] of oldByUrl) {
-    const matchingTabs = currentByUrl.get(url) ?? [];
-    if (oldIds.length !== 1 || matchingTabs.length !== 1 || matchingTabs[0].id === undefined) continue;
+    if (oldIds.length !== 1) continue;
     const oldId = oldIds[0];
+    const excludedIds = new Set(names[oldId].excludedTabIdsAtClose ?? []);
+    const matchingTabs = (currentByUrl.get(url) ?? []).filter((tab) =>
+      tab.id !== undefined && !excludedIds.has(tab.id)
+    );
+    if (matchingTabs.length !== 1 || matchingTabs[0].id === undefined) continue;
     const newId = String(matchingTabs[0].id);
-    names[newId] = { ...names[oldId], tabId: matchingTabs[0].id, originalTitle: matchingTabs[0].title ?? names[oldId].originalTitle, closedAt: undefined };
+    names[newId] = {
+      ...withoutCloseExclusions(names[oldId]),
+      tabId: matchingTabs[0].id,
+      originalTitle: matchingTabs[0].title ?? names[oldId].originalTitle,
+      closedAt: undefined,
+    };
     delete names[oldId];
   }
 

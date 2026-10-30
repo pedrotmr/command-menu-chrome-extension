@@ -38,6 +38,8 @@ try {
   assert.doesNotMatch(JSON.stringify(manifest.commands), /(?:Ctrl|Command)\+Tab/, 'extension shortcuts do not suggest Tab, which Chrome excludes from supported command keys');
   assert.match(backgroundSource, /chrome\.tabs\.sendMessage\(tabId, \{ action: 'ui:tabs-changed' \}\)/, 'tab updates are sent to injected page overlays as well as extension views');
   assert.match(backgroundSource, /tabNameReattachmentPending = true;\s*scheduleTabNameReconciliation\(\)/, 'closing a named tab schedules stale-name reconciliation');
+  assert.match(backgroundSource, /new OverlayTabRegistry\([\s\S]*?chrome\.storage\.session\.get\(OVERLAY_TAB_IDS_SESSION_KEY\)/, 'overlay registrations restore from session storage after a service-worker restart');
+  assert.match(backgroundSource, /overlayTabRegistry\.broadcast\(\)/, 'tab-change broadcasts use the persisted overlay registry');
   assert.doesNotMatch(tabSwitcherSource, /scheduleAfterShortcut|TabSwitcherShortcutIdleCommit/, 'holding the shortcut modifier never auto-activates a tab on idle');
   assert.deepEqual(
     manifest.web_accessible_resources?.flatMap((entry) => entry.resources),
@@ -69,10 +71,24 @@ try {
   const { normalizeNavigationUrl, normalizeSavedNavigationUrl } = await server.ssrLoadModule('/src/utils/chromeHelpers.ts');
   const { themeRegistry, themeTokenNames, defaultThemePreferences, normalizeThemePreferences } = await server.ssrLoadModule('/src/themes/index.ts');
   const { markTabNameClosed, reconcileTabNames } = await server.ssrLoadModule('/src/utils/tabNamePersistence.ts');
+  const { OverlayTabRegistry } = await server.ssrLoadModule('/src/utils/overlayTabRegistry.ts');
   const { isOverlayPage } = await server.ssrLoadModule('/src/utils/pageSupport.ts');
   const { displayDetails } = await server.ssrLoadModule('/src/components/ResultsList.tsx');
   const { isTabInSplitView, SPLIT_VIEW_ID_NONE } = await server.ssrLoadModule('/src/utils/splitViews.ts');
   const { getCommands } = await server.ssrLoadModule('/src/utils/commands.ts');
+
+  const savedOverlayTabIds = [];
+  const notifiedOverlayTabIds = [];
+  const overlayRegistryPort = {
+    load: async () => savedOverlayTabIds,
+    save: async (tabIds) => { savedOverlayTabIds.splice(0, savedOverlayTabIds.length, ...tabIds); },
+    notify: async (tabId) => { notifiedOverlayTabIds.push(tabId); },
+  };
+  const firstWorkerRegistry = new OverlayTabRegistry(overlayRegistryPort);
+  await firstWorkerRegistry.register(17);
+  const restartedWorkerRegistry = new OverlayTabRegistry(overlayRegistryPort);
+  await restartedWorkerRegistry.broadcast();
+  assert.deepEqual(notifiedOverlayTabIds, [17], 'a new service-worker registry restores open overlay tabs and notifies them');
 
   const commands = [
     { id: 'reload', type: 'command', title: 'Reload current tab', subtitle: 'Reload the active page', keywords: ['refresh'], icon: '↻' },
@@ -249,6 +265,7 @@ try {
   const renamed = {
     '12': { tabId: 12, customName: 'Research', originalTitle: 'Project notes', url: 'https://example.com/notes', updatedAt: now - 1000, closedAt: now - 500 },
   };
+  assert.match(backgroundSource, /const currentTabs = await chrome\.tabs\.query\(\{\}\);\s*return withTabNamesMutation\(\(names\) => markTabNameClosed\(names, tabId, Date\.now\(\), currentTabs\)\)/, 'closing a renamed tab snapshots same-URL tabs before scheduling reattachment');
   const closedTabName = { '12': { ...renamed['12'], closedAt: undefined } };
   assert.equal(markTabNameClosed(closedTabName, 12, now), true, 'closing a named tab moves its record into the stale-key namespace');
   assert.equal(closedTabName['12'], undefined, 'a closed tab name is no longer kept under its reusable numeric tab ID');
@@ -256,6 +273,26 @@ try {
     { id: 46, title: 'Project notes', url: 'https://example.com/notes' },
   ], now + 1);
   assert.equal(restoredAfterClose['46']?.customName, 'Research', 'a restored tab receives its unique custom name after the old tab closes');
+
+  const closedBesideDuplicate = { '12': { ...renamed['12'], closedAt: undefined } };
+  markTabNameClosed(closedBesideDuplicate, 12, now, [
+    { id: 47, title: 'Project notes', url: 'https://example.com/notes' },
+  ]);
+  const duplicateStillOpen = reconcileTabNames(closedBesideDuplicate, [
+    { id: 47, title: 'Project notes', url: 'https://example.com/notes' },
+  ], now + 1);
+  assert.equal(duplicateStillOpen['47'], undefined, 'a tab that existed at closure does not inherit the closed tab name');
+  const originalRestoredBesideDuplicate = reconcileTabNames(duplicateStillOpen, [
+    { id: 47, title: 'Project notes', url: 'https://example.com/notes' },
+    { id: 48, title: 'Project notes', url: 'https://example.com/notes' },
+  ], now + 2);
+  assert.equal(originalRestoredBesideDuplicate['47'], undefined, 'the pre-existing duplicate remains unnamed after restoration');
+  assert.equal(originalRestoredBesideDuplicate['48']?.customName, 'Research', 'the restored tab receives the closed tab name');
+  const afterBrowserRestart = reconcileTabNames(duplicateStillOpen, [
+    { id: 47, title: 'Project notes', url: 'https://example.com/notes' },
+  ], now + 3, undefined, true);
+  assert.equal(afterBrowserRestart['47']?.customName, 'Research', 'close-time tab IDs are discarded when identity recovery spans a browser restart');
+
   const restoredName = reconcileTabNames(renamed, [{ id: 44, title: 'Project notes', url: 'https://example.com/notes' }], now);
   assert.equal(restoredName['44']?.customName, 'Research', 'a unique URL/title match restores a custom tab name');
   assert.equal(restoredName['12'], undefined, 'a restored name is removed from its stale tab ID');
