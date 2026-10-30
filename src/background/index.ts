@@ -6,6 +6,7 @@ import { TAB_GROUP_ID_NONE } from '@/utils/chromeApiConstants';
 import { isOverlayPage } from '@/utils/pageSupport';
 import { OverlayTabRegistry } from '@/utils/overlayTabRegistry';
 import { SerialTaskQueue } from '@/utils/serialTaskQueue';
+import { TabPreviewCache, type TabPreviewRecord } from '@/utils/tabPreviewCache';
 
 const TAB_NAMES_KEY = 'renamedTabs';
 const TAB_NAMES_SESSION_KEY = 'tabNameIdsCurrentSession';
@@ -22,6 +23,11 @@ const popupPath = 'src/popup/index.html';
 type Request = { action?: string; [key: string]: unknown };
 
 const tabNameOperations = new SerialTaskQueue();
+const tabPreviewCache = new TabPreviewCache({
+  get: (key) => chrome.storage.session.get(key),
+  set: (values) => chrome.storage.session.set(values),
+  remove: (keys) => chrome.storage.session.remove(keys),
+}, TAB_PREVIEW_IDS_KEY, TAB_PREVIEW_PREFIX, MAX_TAB_PREVIEWS);
 let namedTabIds = new Set<string>();
 let tabNameReattachmentPending = false;
 let tabNameReconcileTimer: ReturnType<typeof setTimeout> | null = null;
@@ -41,12 +47,6 @@ const tabSwitcherOpenWindows = new Set<number>();
 const tabSwitcherSurfaceByWindow = new Map<number, 'overlay' | 'popup'>();
 const tabSwitcherOpeningWindows = new Map<number, { tabId: number; pendingCycles: number; startedAt: number }>();
 const tabPreviewCaptureAt = new Map<number, number>();
-
-interface TabPreviewRecord {
-  url: string;
-  dataUrl: string;
-  capturedAt: number;
-}
 
 function respond<T>(data: T): { success: true; data: T } {
   return { success: true, data };
@@ -325,25 +325,16 @@ function isCapturablePage(url?: string): boolean {
 }
 
 async function removeTabPreview(tabId: number): Promise<void> {
-  const key = `${TAB_PREVIEW_PREFIX}${tabId}`;
-  const stored = await chrome.storage.session.get(TAB_PREVIEW_IDS_KEY);
-  const ids = (stored[TAB_PREVIEW_IDS_KEY] as number[] | undefined) ?? [];
-  if (!ids.includes(tabId)) return;
-  await chrome.storage.session.set({ [TAB_PREVIEW_IDS_KEY]: ids.filter((id) => id !== tabId) });
-  await chrome.storage.session.remove(key);
+  await tabPreviewCache.remove(tabId);
 }
 
 async function clearTabPreviews(): Promise<void> {
-  const stored = await chrome.storage.session.get(TAB_PREVIEW_IDS_KEY);
-  const ids = (stored[TAB_PREVIEW_IDS_KEY] as number[] | undefined) ?? [];
-  await chrome.storage.session.remove([
-    TAB_PREVIEW_IDS_KEY,
-    ...ids.map((id) => `${TAB_PREVIEW_PREFIX}${id}`),
-  ]);
+  await tabPreviewCache.clear();
 }
 
 async function captureTabPreview(tabId: number, windowId: number, expectedUrl?: string): Promise<void> {
   if (tabSwitcherOpenWindows.has(windowId)) return;
+  const previewGeneration = tabPreviewCache.captureGeneration();
   const now = Date.now();
   if (now - (tabPreviewCaptureAt.get(windowId) ?? 0) < 650) return;
   tabPreviewCaptureAt.set(windowId, now);
@@ -360,17 +351,7 @@ async function captureTabPreview(tabId: number, windowId: number, expectedUrl?: 
   const [stillActive] = await chrome.tabs.query({ active: true, windowId });
   if (stillActive?.id !== tabId || stillActive.url !== url) return;
 
-  const stored = await chrome.storage.session.get(TAB_PREVIEW_IDS_KEY);
-  const previousIds = (stored[TAB_PREVIEW_IDS_KEY] as number[] | undefined) ?? [];
-  const nextIds = [tabId, ...previousIds.filter((id) => id !== tabId)].slice(0, MAX_TAB_PREVIEWS);
-  const removedIds = previousIds.filter((id) => !nextIds.includes(id));
-  await chrome.storage.session.set({
-    [TAB_PREVIEW_IDS_KEY]: nextIds,
-    [`${TAB_PREVIEW_PREFIX}${tabId}`]: { url, dataUrl, capturedAt: Date.now() } satisfies TabPreviewRecord,
-  });
-  if (removedIds.length) {
-    await chrome.storage.session.remove(removedIds.map((id) => `${TAB_PREVIEW_PREFIX}${id}`));
-  }
+  await tabPreviewCache.save(tabId, { url, dataUrl, capturedAt: Date.now() } satisfies TabPreviewRecord, previewGeneration);
 }
 
 async function listRecentTabs(): Promise<Array<SplitAwareTab & { customName?: string; windowTitle?: string }>> {
