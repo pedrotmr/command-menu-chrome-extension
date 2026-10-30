@@ -1,6 +1,6 @@
 import type { RenamedTab, SplitAwareTab } from '@/types';
 import { markTabNameClosed, reconcileTabNames, type TabNameMap } from '@/utils/tabNamePersistence';
-import { normalizeNavigationUrl, normalizeSavedNavigationUrl } from '@/utils/chromeHelpers';
+import { asPositiveInteger, normalizeNavigationUrl, normalizeSavedNavigationUrl } from '@/utils/chromeHelpers';
 import { isTabInSplitView } from '@/utils/splitViews';
 import { TAB_GROUP_ID_NONE } from '@/utils/chromeApiConstants';
 import { isOverlayPage } from '@/utils/pageSupport';
@@ -543,22 +543,19 @@ async function handleRequest(message: Request, sender: chrome.runtime.MessageSen
     case 'tabs:recent-previews':
       return getTabPreviews(Array.isArray(message.tabIds) ? message.tabIds.map(Number) : []);
     case 'tabs:switcher-shown': {
-      const requestedWindowId = Number(message.windowId);
-      const windowId = Number.isInteger(requestedWindowId) ? requestedWindowId : sender.tab?.windowId;
+      const windowId = asPositiveInteger(message.windowId) ?? asPositiveInteger(sender.tab?.windowId);
       if (windowId === undefined) return { pendingCycles: 0 };
       const surface = message.surface === 'popup' ? 'popup' : 'overlay';
       const pendingCycles = await rememberTabSwitcher(windowId, surface);
       return { pendingCycles };
     }
     case 'tabs:switcher-hidden': {
-      const requestedWindowId = Number(message.windowId);
-      const windowId = Number.isInteger(requestedWindowId) ? requestedWindowId : sender.tab?.windowId;
+      const windowId = asPositiveInteger(message.windowId) ?? asPositiveInteger(sender.tab?.windowId);
       if (windowId !== undefined) await clearTabSwitcher(windowId);
       return true;
     }
     case 'popup:ready': {
-      const requestedWindowId = Number(message.windowId);
-      const windowId = Number.isInteger(requestedWindowId) ? requestedWindowId : sender.tab?.windowId;
+      const windowId = asPositiveInteger(message.windowId) ?? asPositiveInteger(sender.tab?.windowId);
       if (windowId !== undefined && message.surface !== 'tabs') await clearTabSwitcher(windowId);
       return true;
     }
@@ -566,8 +563,7 @@ async function handleRequest(message: Request, sender: chrome.runtime.MessageSen
       await clearTabPreviews();
       return true;
     case 'tabs:activate': {
-      const requestedSourceTabId = Number(message.sourceTabId ?? sender.tab?.id);
-      const sourceTabId = Number.isInteger(requestedSourceTabId) ? requestedSourceTabId : undefined;
+      const sourceTabId = asPositiveInteger(message.sourceTabId) ?? asPositiveInteger(sender.tab?.id);
       return activateTab(Number(message.tabId), sourceTabId);
     }
     case 'tabs:rename':

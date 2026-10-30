@@ -1,5 +1,9 @@
 import { ChromeResponse } from '@/types';
 
+export function asPositiveInteger(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0 ? value : undefined;
+}
+
 export async function sendBackground<T>(
   action: string,
   payload: Record<string, unknown> = {}
