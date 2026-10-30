@@ -22,9 +22,12 @@ try {
   const previewHtml = await readFile(path.join(projectRoot, 'design-preview.html'), 'utf8');
   const settingsSource = await readFile(path.join(projectRoot, 'src/components/SettingsView.tsx'), 'utf8');
   const commandPaletteSource = await readFile(path.join(projectRoot, 'src/components/CommandPalette.tsx'), 'utf8');
+  const actionDockSource = await readFile(path.join(projectRoot, 'src/components/ActionDock.tsx'), 'utf8');
   const tabSwitcherSource = await readFile(path.join(projectRoot, 'src/components/TabSwitcher.tsx'), 'utf8');
   const backgroundSource = await readFile(path.join(projectRoot, 'src/background/index.ts'), 'utf8');
   const overlayHostSource = await readFile(path.join(projectRoot, 'src/overlay/surfaceHost.tsx'), 'utf8');
+  const clipboardSource = await readFile(path.join(projectRoot, 'src/utils/clipboard.ts'), 'utf8');
+  const previewCacheSource = await readFile(path.join(projectRoot, 'src/utils/tabPreviewCache.ts'), 'utf8');
   const resultsSource = await readFile(path.join(projectRoot, 'src/components/ResultsList.tsx'), 'utf8');
   const productDoc = await readFile(path.join(projectRoot, 'PRODUCT.md'), 'utf8');
   assert.ok(!manifest.permissions.includes('bookmarks'), 'bookmark access is optional');
@@ -41,6 +44,18 @@ try {
   assert.match(backgroundSource, /new OverlayTabRegistry\([\s\S]*?chrome\.storage\.session\.get\(OVERLAY_TAB_IDS_SESSION_KEY\)/, 'overlay registrations restore from session storage after a service-worker restart');
   assert.match(backgroundSource, /overlayTabRegistry\.broadcast\(\)/, 'tab-change broadcasts use the persisted overlay registry');
   assert.match(backgroundSource, /return tabNameOperations\.enqueue\(async \(\) => \{\s*const \[tabs, stored\]/, 'name reconciliation reads storage and tabs inside the shared mutation queue');
+  assert.equal((backgroundSource.match(/asPositiveInteger\(message\.windowId\)/g) ?? []).length, 3, 'window lifecycle messages validate IDs before using them');
+  assert.match(backgroundSource, /asPositiveInteger\(message\.sourceTabId\)/, 'tab activation validates an optional source ID before using it');
+  assert.match(backgroundSource, /changes\.pinned !== undefined[\s\S]*?changes\.audible !== undefined/, 'tab updates broadcast false pinned and audible values');
+  assert.match(backgroundSource, /tabPreviewCache\.save\([\s\S]*?previewGeneration\)/, 'preview writes use the shared serialized cache');
+  assert.match(popupSource, /chrome\.storage\.session\.get\(\['nextPaletteMode', 'nextTabSwitcherAutoSwitchOnRelease', 'paletteRequestedAt'\]\)/, 'the native popup reads the shortcut launch timestamp');
+  assert.match(clipboardSource, /ownerDocument\.execCommand\('copy'\)/, 'clipboard writes have a legacy fallback for insecure pages');
+  assert.match(commandPaletteSource, /await writeClipboardText\(value\)/, 'all command-menu copy actions use the shared clipboard helper');
+  assert.match(previewCacheSource, /private readonly operations = new SerialTaskQueue\(\)/, 'preview cache mutations are serialized');
+  assert.match(previewCacheSource, /generation !== this\.generation/, 'clear and removal invalidate screenshots that were already in flight');
+  assert.match(actionDockSource, /if \(event\.shiftKey\) searchRef\.current\?\.focus\([\s\S]*?else onDismiss\(\)/, 'menu Shift+Tab returns to action search and Tab exits the dock');
+  assert.match(actionDockSource, /if \(event\.shiftKey\) \{\s*onDismiss\(\);\s*\} else if \(elements\.length\) \{\s*focusItem\(elements\[0\]\)/, 'search Tab enters the first action while Shift+Tab dismisses');
+  assert.doesNotMatch(overlayHostSource, /contenteditable/, 'the shadow host stays out of the editable accessibility tree');
   assert.doesNotMatch(tabSwitcherSource, /scheduleAfterShortcut|TabSwitcherShortcutIdleCommit/, 'holding the shortcut modifier never auto-activates a tab on idle');
   assert.deepEqual(
     manifest.web_accessible_resources?.flatMap((entry) => entry.resources),
@@ -69,11 +84,13 @@ try {
     isTabSwitcherModifierKey,
     wasTabSwitcherModifierReleasedAfter,
   } = await server.ssrLoadModule('/src/utils/tabSwitcherKeyRelease.ts');
-  const { normalizeNavigationUrl, normalizeSavedNavigationUrl } = await server.ssrLoadModule('/src/utils/chromeHelpers.ts');
+  const { asPositiveInteger, normalizeNavigationUrl, normalizeSavedNavigationUrl } = await server.ssrLoadModule('/src/utils/chromeHelpers.ts');
+  const { writeClipboardText } = await server.ssrLoadModule('/src/utils/clipboard.ts');
   const { themeRegistry, themeTokenNames, defaultThemePreferences, normalizeThemePreferences } = await server.ssrLoadModule('/src/themes/index.ts');
   const { markTabNameClosed, reconcileTabNames } = await server.ssrLoadModule('/src/utils/tabNamePersistence.ts');
   const { OverlayTabRegistry } = await server.ssrLoadModule('/src/utils/overlayTabRegistry.ts');
   const { SerialTaskQueue } = await server.ssrLoadModule('/src/utils/serialTaskQueue.ts');
+  const { TabPreviewCache } = await server.ssrLoadModule('/src/utils/tabPreviewCache.ts');
   const { isOverlayPage } = await server.ssrLoadModule('/src/utils/pageSupport.ts');
   const { displayDetails } = await server.ssrLoadModule('/src/components/ResultsList.tsx');
   const { isTabInSplitView, SPLIT_VIEW_ID_NONE } = await server.ssrLoadModule('/src/utils/splitViews.ts');
@@ -91,6 +108,85 @@ try {
   const restartedWorkerRegistry = new OverlayTabRegistry(overlayRegistryPort);
   await restartedWorkerRegistry.broadcast();
   assert.deepEqual(notifiedOverlayTabIds, [17], 'a new service-worker registry restores open overlay tabs and notifies them');
+
+  assert.equal(asPositiveInteger(17), 17, 'positive integer Chrome IDs remain usable');
+  assert.equal(asPositiveInteger(null), undefined, 'null is never coerced into Chrome ID zero');
+  assert.equal(asPositiveInteger(undefined), undefined, 'missing IDs remain absent');
+  assert.equal(asPositiveInteger(0), undefined, 'zero is rejected as an invalid Chrome window or tab ID');
+  assert.equal(asPositiveInteger('17'), undefined, 'IDs must arrive as numbers instead of coercible strings');
+
+  const previewStorage = new Map();
+  let blockPreviewRead = false;
+  let signalPreviewRead;
+  let releasePreviewRead;
+  let previewReadStarted = new Promise((resolve) => { signalPreviewRead = resolve; });
+  let previewReadGate = new Promise((resolve) => { releasePreviewRead = resolve; });
+  const previewCache = new TabPreviewCache({
+    get: async (key) => {
+      if (blockPreviewRead) {
+        blockPreviewRead = false;
+        signalPreviewRead();
+        await previewReadGate;
+      }
+      return { [key]: previewStorage.get(key) };
+    },
+    set: async (values) => { for (const [key, value] of Object.entries(values)) previewStorage.set(key, value); },
+    remove: async (keys) => { for (const key of Array.isArray(keys) ? keys : [keys]) previewStorage.delete(key); },
+  }, 'tabPreviewIds', 'tabPreview:', 5);
+  const previewRecord = (id) => ({ url: `https://example.test/${id}`, dataUrl: `data:image/jpeg;base64,${id}`, capturedAt: id });
+  const initialPreviewGeneration = previewCache.captureGeneration();
+  await Promise.all([
+    previewCache.save(1, previewRecord(1), initialPreviewGeneration),
+    previewCache.save(2, previewRecord(2), initialPreviewGeneration),
+  ]);
+  assert.deepEqual(previewStorage.get('tabPreviewIds'), [2, 1], 'overlapping preview captures preserve both IDs in the serialized index');
+  assert.ok(previewStorage.has('tabPreview:1') && previewStorage.has('tabPreview:2'), 'overlapping preview captures retain both screenshot records');
+  await previewCache.remove(1);
+  assert.deepEqual(previewStorage.get('tabPreviewIds'), [2], 'removing one preview preserves the other tracked ID');
+  assert.equal(previewStorage.has('tabPreview:1'), false, 'removing a preview deletes its image record');
+  previewStorage.set('tabPreview:99', previewRecord(99));
+  await previewCache.remove(99);
+  assert.equal(previewStorage.has('tabPreview:99'), false, 'removal also clears records missing from an inconsistent index');
+
+  const preClearGeneration = previewCache.captureGeneration();
+  blockPreviewRead = true;
+  const inFlightPreviewSave = previewCache.save(3, previewRecord(3), preClearGeneration);
+  await previewReadStarted;
+  const clearPreviews = previewCache.clear();
+  releasePreviewRead();
+  assert.equal(await inFlightPreviewSave, false, 'clearing the cache cancels a screenshot write already in flight');
+  await clearPreviews;
+  assert.equal(previewStorage.has('tabPreviewIds'), false, 'clear removes the serialized preview index');
+  assert.equal(previewStorage.has('tabPreview:3'), false, 'a stale screenshot cannot repopulate a cleared cache');
+
+  let copiedValue = '';
+  let removedFallback = false;
+  let restoredFallbackFocus = false;
+  const fallbackTextarea = {
+    value: '',
+    style: {},
+    tabIndex: 0,
+    setAttribute() {},
+    focus() {},
+    select() { copiedValue = this.value; },
+    remove() { removedFallback = true; },
+  };
+  const previouslyFocused = {
+    isConnected: true,
+    focus(options) { restoredFallbackFocus = options?.preventScroll === true; },
+  };
+  const fallbackDocument = {
+    activeElement: previouslyFocused,
+    body: { appendChild() {} },
+    createElement(tag) { assert.equal(tag, 'textarea'); return fallbackTextarea; },
+    execCommand(command) { assert.equal(command, 'copy'); return true; },
+  };
+  await writeClipboardText('copied from an HTTP page', {
+    writeText: async () => { throw new Error('insecure context'); },
+  }, fallbackDocument);
+  assert.equal(copiedValue, 'copied from an HTTP page', 'clipboard fallback selects the requested value');
+  assert.equal(removedFallback, true, 'clipboard fallback removes its temporary textarea');
+  assert.equal(restoredFallbackFocus, true, 'clipboard fallback restores the previously focused control');
 
   const commands = [
     { id: 'reload', type: 'command', title: 'Reload current tab', subtitle: 'Reload the active page', keywords: ['refresh'], icon: '↻' },
@@ -512,8 +608,6 @@ try {
   assert.match(popupEscapeGuard, /event\.key !== 'Escape' \|\| document\.querySelector\('dialog\[open\]'\)[\s\S]*?setTimeout\(\(\) => \{[\s\S]*?event\.defaultPrevented[\s\S]*?window\.close\(\)/, 'the early popup Escape guard defers to the Command Bar before closing');
   assert.match(overlayHostSource, /window\.addEventListener\('keydown', closeOnEscape, true\)/, 'the page overlay catches Escape before its React surface finishes mounting');
   assert.match(overlayHostSource, /mountPoint\.querySelector\('dialog\[open\]'\)[\s\S]*?bridge\.pendingOpen/, 'the early overlay Escape listener lets nested dialogs handle Escape and can cancel a pending open');
-  assert.match(overlayHostSource, /activeElement\?\.closest\('dialog\[open\]'\)/, 'native action dialogs do not make the page host contenteditable and steal control focus');
-  assert.match(overlayHostSource, /queueMicrotask\(\(\) => syncHostEditability\(shadowRoot\.activeElement\)\)/, 'host editability follows the new focus target after a dialog transition');
   assert.match(previewHtml, /data-window-mode="compact"/, 'the design preview includes Compact window mode');
   assert.match(previewHtml, /data-window-mode="expanded"/, 'the design preview includes Expanded window mode');
   assert.match(globalStyles, /\.cc-overlay-stage \{[^}]*align-items: center;[^}]*justify-content: center;/, 'the page overlay centers the Command Bar vertically and horizontally');
