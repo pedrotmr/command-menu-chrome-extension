@@ -793,7 +793,9 @@ async function handleRequest(message: Request, sender: chrome.runtime.MessageSen
 }
 
 async function getActiveTab(): Promise<SplitAwareTab | null> {
-  const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+  const focused = await chrome.windows.getLastFocused({ windowTypes: ['normal'] }).catch(() => undefined);
+  if (focused?.id === undefined) return null;
+  const [tab] = await chrome.tabs.query({ active: true, windowId: focused.id });
   return (tab as SplitAwareTab | undefined) ?? null;
 }
 
