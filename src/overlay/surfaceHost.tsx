@@ -152,20 +152,6 @@ function createHost(): { host: HTMLElement; mountPoint: HTMLElement } {
     wheelEvent.preventDefault();
   }, { capture: true, passive: false });
   shadowRoot.append(style, mountPoint);
-  const syncHostEditability = (target: EventTarget | null) => {
-    const activeElement = target instanceof Element ? target : null;
-    if (activeElement?.closest('dialog[open]')) {
-      host.removeAttribute('contenteditable');
-    } else if (activeElement) {
-      host.setAttribute('contenteditable', 'plaintext-only');
-    } else {
-      host.removeAttribute('contenteditable');
-    }
-  };
-  shadowRoot.addEventListener('focus', (event) => syncHostEditability(event.target), true);
-  shadowRoot.addEventListener('blur', () => {
-    queueMicrotask(() => syncHostEditability(shadowRoot.activeElement));
-  }, true);
   return { host, mountPoint };
 }
 
