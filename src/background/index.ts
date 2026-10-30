@@ -238,7 +238,7 @@ function installTabSwitcherReleaseMonitor(tabId: number): Promise<void> {
       const state = { lastModifierReleaseAt: 0 };
       isolatedWindow.__commandMenuKeyReleaseState = state;
       window.addEventListener('keyup', (event: KeyboardEvent) => {
-        if (event.key === 'Meta' || event.key === 'Control') state.lastModifierReleaseAt = Date.now();
+        if (event.key === 'Meta' || event.key === 'Control' || event.key === 'Alt') state.lastModifierReleaseAt = Date.now();
       }, true);
     },
   }).then(() => undefined).catch(() => undefined);

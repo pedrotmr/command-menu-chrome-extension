@@ -8,10 +8,10 @@ declare global {
   }
 }
 
-export function isTabSwitcherModifierKey(key: string): key is 'Meta' | 'Control' {
+export function isTabSwitcherModifierKey(key: string): key is 'Meta' | 'Control' | 'Alt' {
   // Chrome lets users customize extension shortcuts, so the modifier may differ
   // from the operating system's suggested shortcut.
-  return key === 'Meta' || key === 'Control';
+  return key === 'Meta' || key === 'Control' || key === 'Alt';
 }
 
 export function installTabSwitcherKeyReleaseMonitor(): void {
