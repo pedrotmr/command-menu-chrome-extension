@@ -45,6 +45,20 @@ function guardShortcutChordOnOpen(): void {
 
 async function start(): Promise<void> {
   const fromUrl = urlParameters.get('mode');
+  const rootElement = document.getElementById('root');
+  if (!rootElement) return;
+
+  if (fromUrl === 'permission-request') {
+    const allowedPermissions = new Set(['bookmarks', 'history', 'tabGroups', 'sessions', 'clipboardWrite']);
+    const permissions = (urlParameters.get('permissions') ?? '')
+      .split(',')
+      .filter((permission) => allowedPermissions.has(permission)) as NonNullable<chrome.permissions.Permissions['permissions']>;
+    createRoot(rootElement).render(
+      <StrictMode><PermissionRequest permissions={permissions} /></StrictMode>
+    );
+    return;
+  }
+
   const urlOpenedAt = Number(urlParameters.get('openedAt'));
   if (Number.isFinite(urlOpenedAt) && urlOpenedAt > 0) popupRequestedAt = urlOpenedAt;
   let storedMode: string | null = null;
@@ -74,19 +88,6 @@ async function start(): Promise<void> {
   const mode = isPaletteMode(fromUrl) ? fromUrl : isPaletteMode(storedMode) ? storedMode : 'commands';
   if (popupRequestedAt !== null && (mode === 'commands' || mode === 'tabs')) {
     guardShortcutChordOnOpen();
-  }
-  const rootElement = document.getElementById('root');
-  if (!rootElement) return;
-
-  if (fromUrl === 'permission-request') {
-    const allowedPermissions = new Set(['bookmarks', 'history', 'tabGroups', 'sessions', 'clipboardWrite']);
-    const permissions = (urlParameters.get('permissions') ?? '')
-      .split(',')
-      .filter((permission) => allowedPermissions.has(permission)) as NonNullable<chrome.permissions.Permissions['permissions']>;
-    createRoot(rootElement).render(
-      <StrictMode><PermissionRequest permissions={permissions} /></StrictMode>
-    );
-    return;
   }
 
   createRoot(rootElement).render(

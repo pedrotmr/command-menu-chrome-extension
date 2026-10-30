@@ -57,6 +57,7 @@ try {
   assert.match(backgroundSource, /case 'permissions:open-request'[\s\S]*?chrome\.windows\.create/, 'overlay permission prompts open an extension page');
   assert.doesNotMatch(backgroundSource, /chrome\.permissions\.request\s*\(/, 'the service worker does not request permissions outside a user gesture');
   assert.match(permissionRequestSource, /chrome\.permissions\.request\(\{ permissions \}\)/, 'the extension permission page requests access from its explicit button click');
+  assert.ok(popupSource.indexOf("if (fromUrl === 'permission-request')") < popupSource.indexOf('chrome.storage.session.get('), 'permission prompts do not consume pending shortcut launch state');
   assert.match(keyReleaseSource, /key is 'Meta' \| 'Control' \| 'Alt'/, 'Alt can act as the switcher shortcut modifier');
   assert.match(backgroundSource, /event\.key === 'Meta' \|\| event\.key === 'Control' \|\| event\.key === 'Alt'/, 'the cold-start key release monitor also recognizes Alt');
   assert.match(previewHtml, /querySelectorAll\('\.segmented button\[data-theme\]'\)/, 'appearance preview controls exclude the document root');
