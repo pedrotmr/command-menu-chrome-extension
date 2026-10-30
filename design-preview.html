@@ -320,7 +320,7 @@
     <script>
       const root = document.documentElement;
       const systemPreference = window.matchMedia('(prefers-color-scheme: dark)');
-      const appearanceButtons = [...document.querySelectorAll('[data-theme]')];
+      const appearanceButtons = [...document.querySelectorAll('.segmented button[data-theme]')];
       const paletteButtons = [...document.querySelectorAll('.palette-picker [data-palette]')];
       const locationButtons = [...document.querySelectorAll('[data-location]')];
       const sizeButtons = [...document.querySelectorAll('.size-picker [data-size]')];
