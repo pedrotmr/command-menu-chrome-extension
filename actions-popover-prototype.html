@@ -225,27 +225,49 @@
       const panel = demo.querySelector('.demo-actions');
       const rows = demo.querySelectorAll('.row:not(.row-actionless)');
       const close = demo.querySelector('.dock-close');
+      const contextTitle = panel.querySelector('.dock-context strong');
+      const syncExpanded = () => {
+        rows.forEach((item) => {
+          const isExpanded = item.classList.contains('is-selected') && !panel.hidden;
+          item.querySelector('.more')?.setAttribute('aria-expanded', String(isExpanded));
+        });
+      };
       const setOpenRow = (row) => {
+        const title = row.querySelector('.row-name')?.textContent?.trim() || 'Selected tab';
         rows.forEach((item) => {
           const isSelected = item === row;
           item.classList.toggle('is-selected', isSelected);
-          item.querySelector('.more')?.setAttribute('aria-expanded', String(isSelected));
         });
+        if (contextTitle) contextTitle.textContent = title;
+        const contextIcon = panel.querySelector('.dock-head .favicon');
+        if (contextIcon) {
+          const rowIcon = row.querySelector('.favicon');
+          if (rowIcon) contextIcon.replaceWith(rowIcon.cloneNode(true));
+        }
+        panel.setAttribute('aria-label', `Tab actions for ${title}`);
+        syncExpanded();
       };
       rows.forEach((row) => {
         row.addEventListener('pointerenter', () => setOpenRow(row));
         const button = row.querySelector('.more');
         button?.addEventListener('click', (event) => {
           event.stopPropagation();
-          if (row.classList.contains('is-selected') && !panel.hidden) panel.hidden = true;
-          else { setOpenRow(row); panel.hidden = false; }
+          if (row.classList.contains('is-selected') && !panel.hidden) {
+            panel.hidden = true;
+            syncExpanded();
+          } else {
+            setOpenRow(row);
+            panel.hidden = false;
+            syncExpanded();
+          }
         });
         row.addEventListener('focusin', () => setOpenRow(row));
       });
-      close?.addEventListener('click', () => { panel.hidden = true; });
+      close?.addEventListener('click', () => { panel.hidden = true; syncExpanded(); });
       demo.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') panel.hidden = true;
+        if (event.key === 'Escape') { panel.hidden = true; syncExpanded(); }
       });
+      syncExpanded();
     });
   </script>
 </body>
