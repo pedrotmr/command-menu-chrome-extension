@@ -422,7 +422,14 @@ chrome.windows.onRemoved?.addListener((windowId) => {
   tabPreviewCaptureAt.delete(windowId);
 });
 chrome.tabs.onUpdated.addListener((_tabId, changes) => {
-  if (changes.url || changes.title || changes.favIconUrl || changes.pinned || changes.mutedInfo || changes.audible) {
+  if (
+    changes.url !== undefined ||
+    changes.title !== undefined ||
+    changes.favIconUrl !== undefined ||
+    changes.pinned !== undefined ||
+    changes.mutedInfo !== undefined ||
+    changes.audible !== undefined
+  ) {
     broadcastTabChanges();
   }
 });
