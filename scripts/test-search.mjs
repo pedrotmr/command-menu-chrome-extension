@@ -17,14 +17,18 @@ try {
   const manifest = JSON.parse(await readFile(path.join(projectRoot, 'src/manifest.json'), 'utf8'));
   const globalStyles = await readFile(path.join(projectRoot, 'src/styles/global.css'), 'utf8');
   const popupSource = await readFile(path.join(projectRoot, 'src/popup/index.tsx'), 'utf8');
+  const permissionRequestSource = await readFile(path.join(projectRoot, 'src/popup/PermissionRequest.tsx'), 'utf8');
   const popupHtml = await readFile(path.join(projectRoot, 'src/popup/index.html'), 'utf8');
   const popupEscapeGuard = await readFile(path.join(projectRoot, 'public/escape-guard.js'), 'utf8');
   const previewHtml = await readFile(path.join(projectRoot, 'design-preview.html'), 'utf8');
+  const actionPrototypeHtml = await readFile(path.join(projectRoot, 'actions-popover-prototype.html'), 'utf8');
+  const themeGalleryHtml = await readFile(path.join(projectRoot, 'theme-gallery.html'), 'utf8');
   const settingsSource = await readFile(path.join(projectRoot, 'src/components/SettingsView.tsx'), 'utf8');
   const commandPaletteSource = await readFile(path.join(projectRoot, 'src/components/CommandPalette.tsx'), 'utf8');
   const actionDockSource = await readFile(path.join(projectRoot, 'src/components/ActionDock.tsx'), 'utf8');
   const tabSwitcherSource = await readFile(path.join(projectRoot, 'src/components/TabSwitcher.tsx'), 'utf8');
   const backgroundSource = await readFile(path.join(projectRoot, 'src/background/index.ts'), 'utf8');
+  const keyReleaseSource = await readFile(path.join(projectRoot, 'src/utils/tabSwitcherKeyRelease.ts'), 'utf8');
   const overlayHostSource = await readFile(path.join(projectRoot, 'src/overlay/surfaceHost.tsx'), 'utf8');
   const clipboardSource = await readFile(path.join(projectRoot, 'src/utils/clipboard.ts'), 'utf8');
   const previewCacheSource = await readFile(path.join(projectRoot, 'src/utils/tabPreviewCache.ts'), 'utf8');
@@ -39,7 +43,7 @@ try {
   assert.ok(manifest.optional_permissions.includes('history'), 'history search requests access only when selected');
   assert.ok(manifest.optional_permissions.includes('clipboardWrite'), 'copy commands request clipboard access only when selected');
   assert.doesNotMatch(JSON.stringify(manifest.commands), /(?:Ctrl|Command)\+Tab/, 'extension shortcuts do not suggest Tab, which Chrome excludes from supported command keys');
-  assert.match(backgroundSource, /chrome\.tabs\.sendMessage\(tabId, \{ action: 'ui:tabs-changed' \}\)/, 'tab updates are sent to injected page overlays as well as extension views');
+  assert.match(backgroundSource, /notify: \(tabId, message = \{ action: 'ui:tabs-changed' \}\) => chrome\.tabs\.sendMessage\(tabId, message\)/, 'overlay notifications use the persisted registry and support typed updates');
   assert.match(backgroundSource, /tabNameReattachmentPending = true;\s*scheduleTabNameReconciliation\(\)/, 'closing a named tab schedules stale-name reconciliation');
   assert.match(backgroundSource, /new OverlayTabRegistry\([\s\S]*?chrome\.storage\.session\.get\(OVERLAY_TAB_IDS_SESSION_KEY\)/, 'overlay registrations restore from session storage after a service-worker restart');
   assert.match(backgroundSource, /overlayTabRegistry\.broadcast\(\)/, 'tab-change broadcasts use the persisted overlay registry');
@@ -47,6 +51,20 @@ try {
   assert.equal((backgroundSource.match(/asPositiveInteger\(message\.windowId\)/g) ?? []).length, 3, 'window lifecycle messages validate IDs before using them');
   assert.match(backgroundSource, /asPositiveInteger\(message\.sourceTabId\)/, 'tab activation validates an optional source ID before using it');
   assert.match(backgroundSource, /changes\.pinned !== undefined[\s\S]*?changes\.audible !== undefined/, 'tab updates broadcast false pinned and audible values');
+  assert.match(backgroundSource, /chrome\.tabs\.onMoved\.addListener\(broadcastTabChanges\)/, 'tab reordering refreshes open command surfaces');
+  assert.match(backgroundSource, /changes\.groupId !== undefined/, 'tab group membership changes refresh open command surfaces');
+  assert.match(backgroundSource, /getLastFocused\(\{ windowTypes: \['normal'\] \}\)[\s\S]*?tabs\.query\(\{ active: true, windowId: focused\.id \}\)/, 'active-tab actions ignore extension popup windows');
+  assert.match(backgroundSource, /case 'permissions:open-request'[\s\S]*?chrome\.windows\.create/, 'overlay permission prompts open an extension page');
+  assert.doesNotMatch(backgroundSource, /chrome\.permissions\.request\s*\(/, 'the service worker does not request permissions outside a user gesture');
+  assert.match(permissionRequestSource, /chrome\.permissions\.request\(\{ permissions \}\)/, 'the extension permission page requests access from its explicit button click');
+  assert.match(keyReleaseSource, /key is 'Meta' \| 'Control' \| 'Alt'/, 'Alt can act as the switcher shortcut modifier');
+  assert.match(backgroundSource, /event\.key === 'Meta' \|\| event\.key === 'Control' \|\| event\.key === 'Alt'/, 'the cold-start key release monitor also recognizes Alt');
+  assert.match(previewHtml, /querySelectorAll\('\.segmented button\[data-theme\]'\)/, 'appearance preview controls exclude the document root');
+  assert.match(actionPrototypeHtml, /panel\.setAttribute\('aria-label', `Tab actions for \$\{title\}`\)/, 'the action prototype labels its panel from the selected tab');
+  assert.match(actionPrototypeHtml, /item\.classList\.contains\('is-selected'\) && !panel\.hidden/, 'prototype aria-expanded follows actual panel visibility');
+  for (const token of ['--foreground', '--card', '--border', '--secondary', '--muted']) {
+    assert.ok(themeGalleryHtml.includes(token), `theme gallery defines the outer-page ${token} token`);
+  }
   assert.match(backgroundSource, /tabPreviewCache\.save\([\s\S]*?previewGeneration\)/, 'preview writes use the shared serialized cache');
   assert.match(popupSource, /chrome\.storage\.session\.get\(\['nextPaletteMode', 'nextTabSwitcherAutoSwitchOnRelease', 'paletteRequestedAt'\]\)/, 'the native popup reads the shortcut launch timestamp');
   assert.match(clipboardSource, /ownerDocument\.execCommand\('copy'\)/, 'clipboard writes have a legacy fallback for insecure pages');
@@ -98,16 +116,20 @@ try {
 
   const savedOverlayTabIds = [];
   const notifiedOverlayTabIds = [];
+  const notifiedOverlayMessages = [];
   const overlayRegistryPort = {
     load: async () => savedOverlayTabIds,
     save: async (tabIds) => { savedOverlayTabIds.splice(0, savedOverlayTabIds.length, ...tabIds); },
-    notify: async (tabId) => { notifiedOverlayTabIds.push(tabId); },
+    notify: async (tabId, message) => { notifiedOverlayTabIds.push(tabId); notifiedOverlayMessages.push(message); },
   };
   const firstWorkerRegistry = new OverlayTabRegistry(overlayRegistryPort);
   await firstWorkerRegistry.register(17);
   const restartedWorkerRegistry = new OverlayTabRegistry(overlayRegistryPort);
   await restartedWorkerRegistry.broadcast();
   assert.deepEqual(notifiedOverlayTabIds, [17], 'a new service-worker registry restores open overlay tabs and notifies them');
+  assert.deepEqual(notifiedOverlayMessages[0], { action: 'ui:tabs-changed' }, 'the overlay registry keeps its default tab-change message');
+  await restartedWorkerRegistry.broadcast({ action: 'ui:permissions-changed' });
+  assert.deepEqual(notifiedOverlayMessages[1], { action: 'ui:permissions-changed' }, 'the overlay registry can broadcast permission changes');
 
   assert.equal(asPositiveInteger(17), 17, 'positive integer Chrome IDs remain usable');
   assert.equal(asPositiveInteger(null), undefined, 'null is never coerced into Chrome ID zero');
@@ -221,6 +243,7 @@ try {
   assert.equal(displayDetails({ id: 'chrome-page-clean', type: 'url', title: 'Open Chrome settings', subtitle: 'chrome://settings/', url: 'chrome://settings/' }), '', 'direct browser-page rows hide their URL beneath the title');
   assert.equal(isTabSwitcherModifierKey('Meta'), true, 'Meta release completes the default Mac tab-switcher shortcut');
   assert.equal(isTabSwitcherModifierKey('Control'), true, 'Control release completes user-customized and Windows/Linux tab-switcher shortcuts');
+  assert.equal(isTabSwitcherModifierKey('Alt'), true, 'Alt release completes Alt-based user-customized shortcuts');
   assert.equal(isTabSwitcherModifierKey('Shift'), false, 'Shift release alone does not activate the selected tab');
   const originalWindowDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'window');
   let releaseListener;
@@ -651,12 +674,16 @@ try {
     onRemoved: makeEvent(),
     onUpdated: makeEvent(),
     onCreated: makeEvent(),
+    onMoved: makeEvent(),
     onAttached: makeEvent(),
     onDetached: makeEvent(),
   };
+  const permissionEvents = { onAdded: makeEvent(), onRemoved: makeEvent() };
   const runtimeMessages = makeEvent();
   const installedEvents = { onInstalled: makeEvent(), onStartup: makeEvent() };
   const actionCalls = [];
+  let activeTabQuery;
+  let permissionWindowOptions;
   let activeBackgroundTab = { id: 42, url: 'chrome://extensions/shortcuts', windowId: 1 };
   globalThis.chrome = {
     action: {
@@ -680,10 +707,23 @@ try {
       get: async (id) => id === activeBackgroundTab.id
         ? activeBackgroundTab
         : ({ id, url: 'https://example.test/old', title: 'Old title', windowId: 1, index: 0 }),
-      query: async () => [],
+      query: async (queryInfo) => {
+        if (queryInfo?.active) {
+          activeTabQuery = queryInfo;
+          return [activeBackgroundTab];
+        }
+        return [];
+      },
     },
+    permissions: { ...permissionEvents, getAll: async () => ({ permissions: [] }) },
     scripting: { executeScript: async () => undefined },
-    windows: {},
+    windows: {
+      getLastFocused: async (filter) => {
+        assert.deepEqual(filter, { windowTypes: ['normal'] }, 'active-tab lookup excludes extension popup windows');
+        return { id: 1, type: 'normal' };
+      },
+      create: async (options) => { permissionWindowOptions = options; return { id: 99 }; },
+    },
   };
   await server.ssrLoadModule('/src/background/index.ts');
   await new Promise((resolve) => setTimeout(resolve, 0));
@@ -712,6 +752,18 @@ try {
   assert.equal(localWrites.length, 0, 'unrenamed tab title changes do not write extension storage');
 
   const messageHandler = runtimeMessages.listeners[0];
+  const currentTabResponse = await new Promise((resolve) => {
+    messageHandler({ action: 'tabs:current' }, {}, resolve);
+  });
+  assert.equal(currentTabResponse.success && currentTabResponse.data.id, activeBackgroundTab.id, 'the active-tab lookup reads from the last normal browser window');
+  assert.deepEqual(activeTabQuery, { active: true, windowId: 1 }, 'the active-tab query is scoped to the normal browser window');
+
+  const permissionPromptResponse = await new Promise((resolve) => {
+    messageHandler({ action: 'permissions:open-request', permissions: ['history'] }, {}, resolve);
+  });
+  assert.equal(permissionPromptResponse.success && permissionPromptResponse.data, true, 'overlay permission requests open an extension-owned prompt');
+  assert.match(permissionWindowOptions.url, /mode=permission-request&permissions=history/, 'the permission prompt receives only the requested optional permissions');
+
   const renameResponse = await new Promise((resolve) => {
     messageHandler({ action: 'tabs:rename', tabId: 7, name: 'Research' }, {}, resolve);
   });
