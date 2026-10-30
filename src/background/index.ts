@@ -5,6 +5,7 @@ import { isTabInSplitView } from '@/utils/splitViews';
 import { TAB_GROUP_ID_NONE } from '@/utils/chromeApiConstants';
 import { isOverlayPage } from '@/utils/pageSupport';
 import { OverlayTabRegistry } from '@/utils/overlayTabRegistry';
+import { SerialTaskQueue } from '@/utils/serialTaskQueue';
 
 const TAB_NAMES_KEY = 'renamedTabs';
 const TAB_NAMES_SESSION_KEY = 'tabNameIdsCurrentSession';
@@ -20,7 +21,7 @@ const popupPath = 'src/popup/index.html';
 
 type Request = { action?: string; [key: string]: unknown };
 
-let tabNameWriteQueue: Promise<void> = Promise.resolve();
+const tabNameOperations = new SerialTaskQueue();
 let namedTabIds = new Set<string>();
 let tabNameReattachmentPending = false;
 let tabNameReconcileTimer: ReturnType<typeof setTimeout> | null = null;
@@ -67,17 +68,15 @@ function broadcastTabChanges(): void {
 function withTabNamesMutation<T>(
   mutate: (names: TabNameMap) => Promise<T> | T
 ): Promise<T> {
-  let result!: T;
-  const write = tabNameWriteQueue.catch(() => undefined).then(async () => {
+  return tabNameOperations.enqueue(async () => {
     const stored = await chrome.storage.local.get(TAB_NAMES_KEY);
     const names = (stored[TAB_NAMES_KEY] as TabNameMap | undefined) ?? {};
-    result = await mutate(names);
-    if (result === false) return;
+    const result = await mutate(names);
+    if (result === false) return result;
     await chrome.storage.local.set({ [TAB_NAMES_KEY]: names });
     namedTabIds = getNamedTabIds(names);
+    return result;
   });
-  tabNameWriteQueue = write.then(() => undefined);
-  return write.then(() => result);
 }
 
 const tabNameSessionInitialization = initializeTabNameSession().catch(() => {
@@ -448,11 +447,11 @@ chrome.commands.onCommand.addListener((command, tab) => {
 chrome.tabs.onRemoved.addListener((tabId) => {
   void removeTabPreview(tabId).catch(() => undefined);
   void tabNameSessionInitialization
-    .then(async () => {
-      if (!namedTabIds.has(String(tabId))) return false;
+    .then(() => withTabNamesMutation(async (names) => {
+      if (!names[String(tabId)]) return false;
       const currentTabs = await chrome.tabs.query({});
-      return withTabNamesMutation((names) => markTabNameClosed(names, tabId, Date.now(), currentTabs));
-    })
+      return markTabNameClosed(names, tabId, Date.now(), currentTabs);
+    }))
     .then((updated) => {
       if (!updated) return;
       tabNameReattachmentPending = true;
@@ -823,9 +822,7 @@ async function listTabs(): Promise<Array<SplitAwareTab & { customName?: string; 
   ]);
   let names = tabNameSessionSafe ? (stored[TAB_NAMES_KEY] as TabNameMap | undefined) ?? {} : {};
   if (Object.keys(names).some(isStaleTabNameKey)) {
-    await tabNameWriteQueue.catch(() => undefined);
-    const latest = await chrome.storage.local.get(TAB_NAMES_KEY);
-    names = await persistReconciledTabNames(tabs, (latest[TAB_NAMES_KEY] as TabNameMap | undefined) ?? {});
+    names = await reconcileRenamedTabs();
   }
   const windowTitles = new Map(windows.flatMap((window, index) => {
     if (window.id === undefined) return [];
@@ -897,7 +894,7 @@ async function initializeTabNameSession(): Promise<void> {
     return;
   }
 
-  await tabNameWriteQueue.catch(() => undefined);
+  await tabNameOperations.drain();
   if (Object.keys(savedNames).length) {
     const tabs = await chrome.tabs.query({});
     await persistReconciledTabNames(tabs, savedNames, true);
@@ -918,14 +915,15 @@ async function persistReconciledTabNames(
   return names;
 }
 
-async function reconcileRenamedTabs(): Promise<void> {
-  await tabNameWriteQueue.catch(() => undefined);
-  const [tabs, stored] = await Promise.all([
-    chrome.tabs.query({}),
-    chrome.storage.local.get(TAB_NAMES_KEY),
-  ]);
-  const savedNames = (stored[TAB_NAMES_KEY] as TabNameMap | undefined) ?? {};
-  await persistReconciledTabNames(tabs, savedNames);
+async function reconcileRenamedTabs(): Promise<TabNameMap> {
+  return tabNameOperations.enqueue(async () => {
+    const [tabs, stored] = await Promise.all([
+      chrome.tabs.query({}),
+      chrome.storage.local.get(TAB_NAMES_KEY),
+    ]);
+    const savedNames = (stored[TAB_NAMES_KEY] as TabNameMap | undefined) ?? {};
+    return persistReconciledTabNames(tabs, savedNames);
+  });
 }
 
 function isStaleTabNameKey(key: string): boolean {

@@ -40,6 +40,7 @@ try {
   assert.match(backgroundSource, /tabNameReattachmentPending = true;\s*scheduleTabNameReconciliation\(\)/, 'closing a named tab schedules stale-name reconciliation');
   assert.match(backgroundSource, /new OverlayTabRegistry\([\s\S]*?chrome\.storage\.session\.get\(OVERLAY_TAB_IDS_SESSION_KEY\)/, 'overlay registrations restore from session storage after a service-worker restart');
   assert.match(backgroundSource, /overlayTabRegistry\.broadcast\(\)/, 'tab-change broadcasts use the persisted overlay registry');
+  assert.match(backgroundSource, /return tabNameOperations\.enqueue\(async \(\) => \{\s*const \[tabs, stored\]/, 'name reconciliation reads storage and tabs inside the shared mutation queue');
   assert.doesNotMatch(tabSwitcherSource, /scheduleAfterShortcut|TabSwitcherShortcutIdleCommit/, 'holding the shortcut modifier never auto-activates a tab on idle');
   assert.deepEqual(
     manifest.web_accessible_resources?.flatMap((entry) => entry.resources),
@@ -72,6 +73,7 @@ try {
   const { themeRegistry, themeTokenNames, defaultThemePreferences, normalizeThemePreferences } = await server.ssrLoadModule('/src/themes/index.ts');
   const { markTabNameClosed, reconcileTabNames } = await server.ssrLoadModule('/src/utils/tabNamePersistence.ts');
   const { OverlayTabRegistry } = await server.ssrLoadModule('/src/utils/overlayTabRegistry.ts');
+  const { SerialTaskQueue } = await server.ssrLoadModule('/src/utils/serialTaskQueue.ts');
   const { isOverlayPage } = await server.ssrLoadModule('/src/utils/pageSupport.ts');
   const { displayDetails } = await server.ssrLoadModule('/src/components/ResultsList.tsx');
   const { isTabInSplitView, SPLIT_VIEW_ID_NONE } = await server.ssrLoadModule('/src/utils/splitViews.ts');
@@ -265,7 +267,43 @@ try {
   const renamed = {
     '12': { tabId: 12, customName: 'Research', originalTitle: 'Project notes', url: 'https://example.com/notes', updatedAt: now - 1000, closedAt: now - 500 },
   };
-  assert.match(backgroundSource, /const currentTabs = await chrome\.tabs\.query\(\{\}\);\s*return withTabNamesMutation\(\(names\) => markTabNameClosed\(names, tabId, Date\.now\(\), currentTabs\)\)/, 'closing a renamed tab snapshots same-URL tabs before scheduling reattachment');
+  assert.match(backgroundSource, /withTabNamesMutation\(async \(names\) => \{\s*if \(!names\[String\(tabId\)\]\) return false;\s*const currentTabs = await chrome\.tabs\.query\(\{\}\);\s*return markTabNameClosed\(names, tabId, Date\.now\(\), currentTabs\);/, 'closing a renamed tab snapshots same-URL tabs inside the serialized mutation');
+  const openNameBesideDuplicate = { '12': { ...renamed['12'], closedAt: undefined } };
+  const duplicatePresentBeforeClose = reconcileTabNames(openNameBesideDuplicate, [
+    { id: 47, title: 'Project notes', url: 'https://example.com/notes' },
+  ], now + 1);
+  assert.equal(duplicatePresentBeforeClose['47'], undefined, 'an open tab name is not reassigned while a close event is pending');
+  assert.equal(duplicatePresentBeforeClose['12']?.customName, 'Research', 'the open tab name remains attached to its original ID during reconciliation');
+
+  const serializedNames = { '12': { ...renamed['12'], closedAt: undefined } };
+  const tabNameQueue = new SerialTaskQueue();
+  const duplicateTab = [{ id: 47, title: 'Project notes', url: 'https://example.com/notes' }];
+  let startListing;
+  let releaseListing;
+  const listingStarted = new Promise((resolve) => { startListing = resolve; });
+  const waitForListing = new Promise((resolve) => { releaseListing = resolve; });
+  const listOperation = tabNameQueue.enqueue(async () => {
+    const snapshot = structuredClone(serializedNames);
+    startListing();
+    await waitForListing;
+    const reconciled = reconcileTabNames(snapshot, duplicateTab, now + 1);
+    for (const key of Object.keys(serializedNames)) delete serializedNames[key];
+    Object.assign(serializedNames, reconciled);
+  });
+  await listingStarted;
+  let closeOperationStarted = false;
+  const closeOperation = tabNameQueue.enqueue(async () => {
+    closeOperationStarted = true;
+    assert.equal(markTabNameClosed(serializedNames, 12, now + 2, duplicateTab), true);
+  });
+  assert.equal(closeOperationStarted, false, 'the close mutation waits for the in-flight list reconciliation');
+  releaseListing();
+  await Promise.all([listOperation, closeOperation]);
+  assert.equal(serializedNames['47'], undefined, 'the overlapping list/close sequence does not rename the existing duplicate');
+  const serializedStaleName = Object.entries(serializedNames).find(([key]) => key.startsWith('stale:'))?.[1];
+  assert.equal(serializedStaleName?.customName, 'Research', 'the overlapping sequence preserves the closed tab name');
+  assert.deepEqual(serializedStaleName?.excludedTabIdsAtClose, [47], 'the close-time candidate exclusion survives the overlapping list');
+
   const closedTabName = { '12': { ...renamed['12'], closedAt: undefined } };
   assert.equal(markTabNameClosed(closedTabName, 12, now), true, 'closing a named tab moves its record into the stale-key namespace');
   assert.equal(closedTabName['12'], undefined, 'a closed tab name is no longer kept under its reusable numeric tab ID');

@@ -33,6 +33,10 @@ function withoutCloseExclusions(name: RenamedTab): RenamedTab {
   return copy;
 }
 
+function isStaleTabNameKey(key: string): boolean {
+  return key.startsWith('stale:');
+}
+
 function identity(url: string | undefined, title: string | undefined): string | null {
   if (!url) return null;
   return `${url}\u0000${title ?? ''}`;
@@ -76,6 +80,7 @@ export function reconcileTabNames(
   const oldByIdentity = new Map<string, string[]>();
   for (const [id, name] of Object.entries(names)) {
     if (activeIds.has(id)) continue;
+    if (!forceIdentityMatching && !isStaleTabNameKey(id) && name.closedAt === undefined) continue;
     const key = identity(name.url, name.originalTitle);
     if (!key) continue;
     const matches = oldByIdentity.get(key) ?? [];
@@ -111,6 +116,7 @@ export function reconcileTabNames(
   const oldByUrl = new Map<string, string[]>();
   for (const [id, name] of Object.entries(names)) {
     if (activeIds.has(id) || !name.url) continue;
+    if (!forceIdentityMatching && !isStaleTabNameKey(id) && name.closedAt === undefined) continue;
     const matches = oldByUrl.get(name.url) ?? [];
     matches.push(id);
     oldByUrl.set(name.url, matches);
