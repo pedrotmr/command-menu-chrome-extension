@@ -10,3 +10,9 @@
 /node_modules
 /build
 /coverage
+/test-results
+/playwright-report
+
+.ralph/
+
+/release/

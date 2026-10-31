@@ -4,3 +4,7 @@ build/
 coverage/
 package-lock.json
 public/**/*.svg
+.ralph/
+release/
+test-results/
+playwright-report/

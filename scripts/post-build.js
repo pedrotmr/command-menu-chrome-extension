@@ -54,6 +54,14 @@ if (
 }
 
 fs.copyFileSync(sourceManifestPath, manifestPath);
+const notices = fs
+  .readFileSync(path.join(projectRoot, 'THIRD_PARTY_NOTICES.md'), 'utf8')
+  .replaceAll('public/assets/', 'assets/');
+const runtimeLicenses = ['react', 'react-dom'].map(
+  (dependency) =>
+    `\n\n## ${dependency}\n\n${fs.readFileSync(path.join(projectRoot, 'node_modules', dependency, 'LICENSE'), 'utf8')}`,
+);
+fs.writeFileSync(path.join(distDir, 'THIRD_PARTY_NOTICES.md'), notices + runtimeLicenses.join(''));
 console.log('✓ Copied and validated extension manifest');
 
 console.log('✓ Post-build steps completed');

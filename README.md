@@ -54,7 +54,11 @@ npm run build
 npm test
 ```
 
-`npm test` checks local search behavior, tab-name recovery, provider URL construction, navigation parsing, theme-token completeness, and WCAG AA contrast for built-in light/dark palettes. It also reports p50/p95 local-search timings for synthetic sets of 2,300 and 10,000 tabs. These algorithm timings do not replace profiling the extension in Chrome.
+`npm test` exercises background message contracts, concurrent mutations, failed storage writes, safe bulk-close confirmations, search ranking, tab-name recovery, provider URLs, navigation parsing, theme completeness, and WCAG AA contrast for built-in light/dark palettes. It also reports p50/p95 local-search timings for synthetic sets of 2,300 and 10,000 tabs. These algorithm timings do not replace profiling the extension in Chrome. Hard performance budgets run separately with `npm run test:benchmark`.
+
+Install the isolated test browser with `npx playwright install chromium`, then run `npm run test:e2e`. Browser tests load the production extension and cover the overlay, keyboard activation, focus restoration, saved-page failure/retry/revocation, stale responses, bulk-close recovery, worker restart, and a complete browser restart with restored tab names. Permission/data failures and response ordering use controlled boundary simulations; real toolbar action and ordinary Chrome APIs run unchanged. No personal browser profile is used.
+
+To prepare a distributable ZIP, run `npm run package:extension`. This requires the `zip` command and runs lint, formatting, type checks, unit/integration tests, the production build, and browser tests before creating `release/command-menu-<version>.zip`. Third-party notices and font licenses ship inside the package. The command prints its SHA-256 checksum. CI runs the browser suite after building as well. Publishing to the Chrome Web Store remains a separate account and listing operation.
 
 To load the built extension, open `chrome://extensions`, enable Developer mode, choose **Load unpacked**, and select `dist/`.
 
