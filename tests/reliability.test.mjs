@@ -92,7 +92,7 @@ test('reliability contracts', { timeout: 15000 }, async (t) => {
       [1, 2],
     );
   });
-  for (const change of ['added', 'reordered', 'moved', 'closed']) {
+  for (const change of ['added', 'reordered', 'moved', 'closed', 'anchor-closed']) {
     await t.test(`bulk close refuses a stale confirmation after tabs are ${change}`, async () => {
       if (change === 'added') tabs.push({ id: 4, windowId: 10, index: 2 });
       if (change === 'reordered') tabs.find((tab) => tab.id === 3).index = -1;
@@ -100,6 +100,11 @@ test('reliability contracts', { timeout: 15000 }, async (t) => {
       if (change === 'closed')
         tabs.splice(
           tabs.findIndex((tab) => tab.id === 3),
+          1,
+        );
+      if (change === 'anchor-closed')
+        tabs.splice(
+          tabs.findIndex((tab) => tab.id === 1),
           1,
         );
       const before = structuredClone(tabs);

@@ -852,8 +852,8 @@ const handleRequest = async (rawMessage: unknown, sender: chrome.runtime.Message
       ) {
         throw new Error('Invalid tab close confirmation.');
       }
-      const anchor = await chrome.tabs.get(anchorTabId);
-      if (anchor.windowId !== message.windowId)
+      const anchor = await chrome.tabs.get(anchorTabId).catch(() => null);
+      if (!anchor || anchor.windowId !== message.windowId)
         throw new Error('Tabs changed. Cancel and review the tabs before closing.');
       const tabs = await chrome.tabs.query({ windowId: anchor.windowId });
       const currentIds = bulkCloseTabIds(tabs, anchor, message.closeAction);
