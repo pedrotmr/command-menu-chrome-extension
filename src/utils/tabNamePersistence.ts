@@ -3,6 +3,30 @@ import type { RenamedTab } from '@/types';
 export type TabNameMap = Record<string, RenamedTab>;
 export type TabIdentitySnapshot = Pick<chrome.tabs.Tab, 'id' | 'url' | 'title'>;
 
+export const normalizeTabNames = (value: unknown): TabNameMap => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value).filter(([key, entry]) => {
+      if (!/^(?:[0-9]+|stale:.+)$/.test(key) || !entry || typeof entry !== 'object') return false;
+      const name = entry as Partial<RenamedTab>;
+      return (
+        typeof name.tabId === 'number' &&
+        Number.isSafeInteger(name.tabId) &&
+        name.tabId > 0 &&
+        typeof name.customName === 'string' &&
+        typeof name.url === 'string' &&
+        typeof name.originalTitle === 'string' &&
+        typeof name.updatedAt === 'number' &&
+        Number.isFinite(name.updatedAt) &&
+        (name.closedAt === undefined || (typeof name.closedAt === 'number' && Number.isFinite(name.closedAt))) &&
+        (name.excludedTabIdsAtClose === undefined ||
+          (Array.isArray(name.excludedTabIdsAtClose) &&
+            name.excludedTabIdsAtClose.every((id) => typeof id === 'number' && Number.isSafeInteger(id) && id > 0)))
+      );
+    }),
+  );
+};
+
 const DEFAULT_MAX_AGE = 90 * 24 * 60 * 60 * 1000;
 
 export const markTabNameClosed = (
@@ -61,7 +85,9 @@ export const reconcileTabNames = (
   maxAge = DEFAULT_MAX_AGE,
   forceIdentityMatching = false,
 ): TabNameMap => {
-  const copiedNames: TabNameMap = Object.fromEntries(Object.entries(savedNames).map(([id, name]) => [id, { ...name }]));
+  const copiedNames: TabNameMap = Object.fromEntries(
+    Object.entries(normalizeTabNames(savedNames)).map(([id, name]) => [id, { ...name }]),
+  );
 
   for (const [id, name] of Object.entries(copiedNames)) {
     if (name.closedAt !== undefined && now - name.closedAt > maxAge) {

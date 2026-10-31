@@ -1,5 +1,6 @@
+import { validateRequest } from '@/utils/validateRequest';
 import type { RenamedTab, SplitAwareTab } from '@/types';
-import { markTabNameClosed, reconcileTabNames, type TabNameMap } from '@/utils/tabNamePersistence';
+import { markTabNameClosed, normalizeTabNames, reconcileTabNames, type TabNameMap } from '@/utils/tabNamePersistence';
 import { asPositiveInteger, normalizeNavigationUrl, normalizeSavedNavigationUrl } from '@/utils/chromeHelpers';
 import { isTabInSplitView } from '@/utils/splitViews';
 import { TAB_GROUP_ID_NONE } from '@/utils/chromeApiConstants';
@@ -91,7 +92,7 @@ const broadcastPermissionChanges = (): void => {
 const withTabNamesMutation = <T>(mutate: (names: TabNameMap) => Promise<T> | T): Promise<T> => {
   return tabNameOperations.enqueue(async () => {
     const stored = await chrome.storage.local.get(TAB_NAMES_KEY);
-    const names = (stored[TAB_NAMES_KEY] as TabNameMap | undefined) ?? {};
+    const names = normalizeTabNames(stored[TAB_NAMES_KEY]);
     const result = await mutate(names);
 
     if (result === false) {
@@ -110,7 +111,7 @@ const initializeTabNameSession = async (): Promise<void> => {
     chrome.storage.local.get(TAB_NAMES_KEY),
   ]);
 
-  const savedNames = (stored[TAB_NAMES_KEY] as TabNameMap | undefined) ?? {};
+  const savedNames = normalizeTabNames(stored[TAB_NAMES_KEY]);
   namedTabIds = getNamedTabIds(savedNames);
   tabNameReattachmentPending = Object.keys(savedNames).some(isStaleTabNameKey);
 
@@ -707,7 +708,7 @@ chrome.tabs.onCreated.addListener((tab) => {
   void tabNameSessionInitialization.then(scheduleTabNameReconciliation).catch(() => undefined);
 });
 
-chrome.runtime.onMessage.addListener((rawMessage: Request, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((rawMessage: unknown, sender, sendResponse) => {
   void handleRequest(rawMessage, sender)
     .then((data) => sendResponse(respond(data)))
     .catch((error: unknown) => sendResponse({ success: false, error: normalizeError(error) }));
@@ -715,7 +716,8 @@ chrome.runtime.onMessage.addListener((rawMessage: Request, sender, sendResponse)
   return true;
 });
 
-const handleRequest = async (message: Request, sender: chrome.runtime.MessageSender): Promise<unknown> => {
+const handleRequest = async (rawMessage: unknown, sender: chrome.runtime.MessageSender): Promise<unknown> => {
+  const message: Request = validateRequest(rawMessage, sender, chrome.runtime.id);
   const action = message.action;
 
   if (
@@ -882,7 +884,7 @@ const handleRequest = async (message: Request, sender: chrome.runtime.MessageSen
       if (tab?.id) {
         const duplicate = await chrome.tabs.duplicate(tab.id);
         const stored = await chrome.storage.local.get(TAB_NAMES_KEY);
-        const names = (stored[TAB_NAMES_KEY] as TabNameMap | undefined) ?? {};
+        const names = normalizeTabNames(stored[TAB_NAMES_KEY]);
         const originalName = names[String(tab.id)]?.customName;
 
         if (duplicate?.id !== undefined && originalName) {
@@ -1235,7 +1237,7 @@ const listTabs = async (): Promise<Array<SplitAwareTab & { customName?: string; 
     chrome.windows.getLastFocused(),
   ]);
 
-  let names = tabNameSessionSafe ? ((stored[TAB_NAMES_KEY] as TabNameMap | undefined) ?? {}) : {};
+  let names = tabNameSessionSafe ? normalizeTabNames(stored[TAB_NAMES_KEY]) : {};
 
   if (Object.keys(names).some(isStaleTabNameKey)) {
     names = await reconcileRenamedTabs();
@@ -1326,7 +1328,7 @@ const persistReconciledTabNames = async (
 const reconcileRenamedTabs = async (): Promise<TabNameMap> => {
   return tabNameOperations.enqueue(async () => {
     const [tabs, stored] = await Promise.all([chrome.tabs.query({}), chrome.storage.local.get(TAB_NAMES_KEY)]);
-    const savedNames = (stored[TAB_NAMES_KEY] as TabNameMap | undefined) ?? {};
+    const savedNames = normalizeTabNames(stored[TAB_NAMES_KEY]);
     return persistReconciledTabNames(tabs, savedNames);
   });
 };
