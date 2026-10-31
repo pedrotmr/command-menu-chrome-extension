@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { runInNewContext } from 'node:vm';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -29,6 +30,25 @@ try {
   const permissionRequestSource = await readFile(path.join(projectRoot, 'src/popup/PermissionRequest.tsx'), 'utf8');
   const popupHtml = await readFile(path.join(projectRoot, 'src/popup/index.html'), 'utf8');
   const popupEscapeGuard = await readFile(path.join(projectRoot, 'public/escape-guard.js'), 'utf8');
+  let escapeHandler;
+  let popupCloses = 0;
+  runInNewContext(popupEscapeGuard, {
+    window: {
+      addEventListener: (_, handler) => {
+        escapeHandler = handler;
+      },
+      setTimeout: (callback) => callback(),
+      close: () => {
+        popupCloses++;
+      },
+    },
+    document: { querySelector: () => null },
+  });
+  escapeHandler({ key: 'Escape', isTrusted: true, isComposing: true });
+  escapeHandler({ key: 'Escape', isTrusted: false });
+  assert.equal(popupCloses, 0, 'IME cancellation and synthetic Escape do not close the popup');
+  escapeHandler({ key: 'Escape', isTrusted: true });
+  assert.equal(popupCloses, 1, 'a real Escape still closes the popup');
   const previewHtml = await readFile(path.join(projectRoot, 'design-preview.html'), 'utf8');
   const actionPrototypeHtml = await readFile(path.join(projectRoot, 'actions-popover-prototype.html'), 'utf8');
   const themeGalleryHtml = await readFile(path.join(projectRoot, 'theme-gallery.html'), 'utf8');
@@ -290,6 +310,12 @@ try {
   const { themeRegistry, themeTokenNames, defaultThemePreferences, normalizeThemePreferences } =
     await server.ssrLoadModule('/src/themes/index.ts');
   const { markTabNameClosed, reconcileTabNames } = await server.ssrLoadModule('/src/utils/tabNamePersistence.ts');
+  assert.deepEqual(
+    reconcileTabNames({ 7: null, 8: { customName: 2 }, 9: [] }, []),
+    {},
+    'corrupt stored names are discarded without breaking tab initialization',
+  );
+  assert.deepEqual(reconcileTabNames(null, []), {}, 'invalid storage containers recover to an empty name map');
   const { OverlayTabRegistry } = await server.ssrLoadModule('/src/utils/overlayTabRegistry.ts');
   const { SerialTaskQueue } = await server.ssrLoadModule('/src/utils/serialTaskQueue.ts');
   const { TabPreviewCache } = await server.ssrLoadModule('/src/utils/tabPreviewCache.ts');
@@ -600,7 +626,13 @@ try {
   try {
     installTabSwitcherKeyReleaseMonitor();
     const switcherOpenedAt = Date.now() - 1000;
-    releaseListener({ key: 'Control' });
+    releaseListener({ key: 'Control', isTrusted: false });
+    assert.equal(
+      wasTabSwitcherModifierReleasedAfter(switcherOpenedAt),
+      false,
+      'page-generated keyboard events cannot prime automatic tab activation',
+    );
+    releaseListener({ key: 'Control', isTrusted: true });
     assert.equal(
       wasTabSwitcherModifierReleasedAfter(switcherOpenedAt),
       true,
@@ -1773,8 +1805,9 @@ try {
   const installedEvents = { onInstalled: makeEvent(), onStartup: makeEvent() };
   const actionCalls = [];
   let activeTabQuery;
+  const privilegedMutations = [];
   let permissionWindowOptions;
-  let activeBackgroundTab = { id: 42, url: 'chrome://extensions/shortcuts', windowId: 1 };
+  let activeBackgroundTab = { id: 42, title: 'Shortcut settings', url: 'chrome://extensions/shortcuts', windowId: 1 };
   globalThis.chrome = {
     action: {
       onClicked: makeEvent(),
@@ -1788,6 +1821,7 @@ try {
     commands: { onCommand: makeEvent() },
     runtime: {
       ...installedEvents,
+      id: 'test',
       onMessage: runtimeMessages,
       getURL: (url) => `chrome-extension://test/${url}`,
       sendMessage: async () => undefined,
@@ -1802,6 +1836,12 @@ try {
     },
     tabs: {
       ...browserEvents,
+      update: async (...args) => {
+        privilegedMutations.push(args);
+      },
+      remove: async (...args) => {
+        privilegedMutations.push(args);
+      },
       get: async (id) =>
         id === activeBackgroundTab.id
           ? activeBackgroundTab
@@ -1869,7 +1909,7 @@ try {
 
   const messageHandler = runtimeMessages.listeners[0];
   const currentTabResponse = await new Promise((resolve) => {
-    messageHandler({ action: 'tabs:current' }, {}, resolve);
+    messageHandler({ action: 'tabs:current' }, { id: 'test' }, resolve);
   });
   assert.equal(
     currentTabResponse.success && currentTabResponse.data.id,
@@ -1882,8 +1922,26 @@ try {
     'the active-tab query is scoped to the normal browser window',
   );
 
+  for (const [action, field] of [
+    ['tabs:copy-url', 'url'],
+    ['tabs:copy-title', 'title'],
+  ]) {
+    const copyResponse = await new Promise((resolve) => messageHandler({ action }, { id: 'test' }, resolve));
+    assert.equal(copyResponse.success, true, `${action} accepts the active-tab command without an ID`);
+    assert.equal(copyResponse.data, activeBackgroundTab[field] ?? '', `${action} resolves the active tab`);
+    const explicitCopyResponse = await new Promise((resolve) =>
+      messageHandler({ action, tabId: 7 }, { id: 'test' }, resolve),
+    );
+    assert.equal(explicitCopyResponse.success, true, `${action} still supports an explicit tab`);
+    assert.equal(explicitCopyResponse.data, field === 'url' ? 'https://example.test/old' : 'Old title');
+    const invalidCopyResponse = await new Promise((resolve) =>
+      messageHandler({ action, tabId: '7' }, { id: 'test' }, resolve),
+    );
+    assert.equal(invalidCopyResponse.success, false, `${action} rejects invalid explicit IDs`);
+  }
+
   const permissionPromptResponse = await new Promise((resolve) => {
-    messageHandler({ action: 'permissions:open-request', permissions: ['history'] }, {}, resolve);
+    messageHandler({ action: 'permissions:open-request', permissions: ['history'] }, { id: 'test' }, resolve);
   });
   assert.equal(
     permissionPromptResponse.success && permissionPromptResponse.data,
@@ -1896,8 +1954,25 @@ try {
     'the permission prompt receives only the requested optional permissions',
   );
 
+  for (const [payload, sender] of [
+    [null, { id: 'test' }],
+    [[], { id: 'test' }],
+    [{ action: 'tabs:current' }, { id: 'other' }],
+    [{ action: 'tabs:current' }, { id: 'test', tab: { id: 7 }, frameId: 1 }],
+    [{ action: 'tabs:rename', tabId: '7', name: 'Bad' }, { id: 'test' }],
+    [{ action: 'tabs:rename', tabId: -1, name: 'Bad' }, { id: 'test' }],
+    [{ action: 'tabs:pin', tabId: 7, pinned: 'false' }, { id: 'test' }],
+    [{ action: 'permissions:open-request', permissions: ['tabs'] }, { id: 'test' }],
+    [{ action: 'permissions:remove', permissions: ['history'], origins: ['<all_urls>'] }, { id: 'test' }],
+  ]) {
+    const response = await new Promise((resolve) => messageHandler(payload, sender, resolve));
+    assert.equal(response.success, false, 'invalid messages are rejected before any privileged operation');
+  }
+
+  assert.equal(privilegedMutations.length, 0, 'rejected payloads never reach tab mutations');
+
   const renameResponse = await new Promise((resolve) => {
-    messageHandler({ action: 'tabs:rename', tabId: 7, name: 'Research' }, {}, resolve);
+    messageHandler({ action: 'tabs:rename', tabId: 7, name: 'Research' }, { id: 'test' }, resolve);
   });
   assert.equal(renameResponse.success, true, 'the background accepts a tab rename');
   assert.equal(localStore.renamedTabs['7'].customName, 'Research', 'custom names are stored as extension metadata');

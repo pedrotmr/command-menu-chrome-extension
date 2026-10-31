@@ -109,7 +109,11 @@ export const useCommandPaletteModel = ({
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toastDismissRef = useRef<HTMLButtonElement>(null);
   const localDataRequest = useRef<Promise<void> | null>(null);
+  const localDataVersion = useRef(0);
   const handoffPending = useRef(false);
+  const executionPending = useRef(false);
+  const dialogPending = useRef(false);
+  const tabsRequestVersion = useRef(0);
 
   const restorePaletteFocus = useCallback(() => {
     requestAnimationFrame(() => {
@@ -154,6 +158,7 @@ export const useCommandPaletteModel = ({
       return localDataRequest.current;
     }
 
+    const version = ++localDataVersion.current;
     setLocalDataLoading(true);
 
     const request = Promise.all([
@@ -161,13 +166,16 @@ export const useCommandPaletteModel = ({
       sendBackground<chrome.history.HistoryItem[]>('history:list'),
     ])
       .then(([bookmarkTree, historyEntries]) => {
+        if (version !== localDataVersion.current) return;
         setBookmarks(flattenBookmarks(bookmarkTree));
         setHistory(toHistoryItems(historyEntries));
       })
       .catch(() => {
+        if (version !== localDataVersion.current) return;
         notify('Could not load bookmarks and history. Commands and open tabs are still available.');
       })
       .finally(() => {
+        if (version !== localDataVersion.current) return;
         localDataRequest.current = null;
         setLocalDataLoaded(true);
         setLocalDataLoading(false);
@@ -205,7 +213,18 @@ export const useCommandPaletteModel = ({
     }
   }, [preferences, systemDark, themeRoot, cacheThemeInLocalStorage]);
 
+  useEffect(() => {
+    const onPreferencesChanged = (changes: Record<string, chrome.storage.StorageChange>, area: string) => {
+      if (area === 'local' && changes.themePreferences) {
+        setPreferences(normalizeThemePreferences(changes.themePreferences.newValue));
+      }
+    };
+    chrome.storage.onChanged.addListener(onPreferencesChanged);
+    return () => chrome.storage.onChanged.removeListener(onPreferencesChanged);
+  }, []);
+
   const refreshTabs = async () => {
+    const version = ++tabsRequestVersion.current;
     const started = performance.now();
     const [nextTabs, currentTab, groupsAllowed, splitSupport] = await Promise.all([
       sendBackground<ManagedTab[]>('tabs:list'),
@@ -222,6 +241,10 @@ export const useCommandPaletteModel = ({
 
     if (groupsAllowed) {
       nextGroups = await sendBackground<chrome.tabGroups.TabGroup[]>('groups:list').catch(() => []);
+    }
+
+    if (version !== tabsRequestVersion.current) {
+      return;
     }
 
     const groupById = new Map(nextGroups.map((group) => [group.id, group]));
@@ -245,6 +268,7 @@ export const useCommandPaletteModel = ({
   };
 
   useEffect(() => {
+    performance.clearMarks('cc:ui-mounted');
     performance.mark('cc:ui-mounted');
 
     const requestPermissions = async () => {
@@ -291,6 +315,7 @@ export const useCommandPaletteModel = ({
     chrome.runtime.onMessage.addListener(handleRuntimeMessage);
 
     return () => {
+      tabsRequestVersion.current++;
       if (refreshTimer.current) {
         clearTimeout(refreshTimer.current);
       }
@@ -299,6 +324,16 @@ export const useCommandPaletteModel = ({
     };
     // Popup lifetime is short; refreshTabs is intentionally captured once for these browser event listeners.
   }, []);
+
+  useEffect(() => {
+    if (permissions.has('bookmarks') && permissions.has('history')) return;
+    localDataVersion.current++;
+    localDataRequest.current = null;
+    setBookmarks([]);
+    setHistory([]);
+    setLocalDataLoaded(false);
+    setLocalDataLoading(false);
+  }, [permissions]);
 
   useEffect(() => {
     if (mode !== 'commands' || activeProvider || localDataLoaded || localDataRequest.current) {
@@ -579,6 +614,8 @@ export const useCommandPaletteModel = ({
   };
 
   const handleSurfaceEscape = (event: KeyboardEvent<HTMLElement>): void => {
+    if (event.nativeEvent.isComposing || event.keyCode === 229) return;
+
     if (event.key !== 'Escape' || dialog) {
       return;
     }
@@ -751,6 +788,16 @@ export const useCommandPaletteModel = ({
   };
 
   const executeItem = async (item: PaletteItem): Promise<void> => {
+    if (executionPending.current) return;
+    executionPending.current = true;
+    try {
+      await executeItemOnce(item);
+    } finally {
+      executionPending.current = false;
+    }
+  };
+
+  const executeItemOnce = async (item: PaletteItem): Promise<void> => {
     if (item.type === 'command') {
       await executeCommand(item);
       return;
@@ -998,10 +1045,11 @@ export const useCommandPaletteModel = ({
     event.preventDefault();
     setDialogError('');
 
-    if (!dialog) {
+    if (!dialog || dialogPending.current) {
       return;
     }
 
+    dialogPending.current = true;
     try {
       if (dialog.kind === 'confirm-close') {
         await sendBackground(dialog.action);
@@ -1054,6 +1102,8 @@ export const useCommandPaletteModel = ({
       }
     } catch (error) {
       setDialogError(error instanceof Error ? error.message : 'Could not complete that action.');
+    } finally {
+      dialogPending.current = false;
     }
   };
 
@@ -1133,6 +1183,7 @@ export const useCommandPaletteModel = ({
   };
 
   const handleSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>): void => {
+    if (event.nativeEvent.isComposing || event.keyCode === 229) return;
     if (event.key === 'Tab' && !event.shiftKey && mode === 'commands' && !activeProvider) {
       const provider = findSearchProvider(query);
 

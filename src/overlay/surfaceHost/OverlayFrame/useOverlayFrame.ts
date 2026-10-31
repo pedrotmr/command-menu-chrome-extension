@@ -88,7 +88,11 @@ export const useOverlayFrame = (controller: SurfaceController): OverlayFrameStat
         Date.now() > controller.focusTargetPreservedUntil ||
         !controller.focusTarget.isConnected
       ) {
-        controller.focusTarget = document.activeElement;
+        let focused = document.activeElement;
+        while (focused?.shadowRoot?.activeElement) {
+          focused = focused.shadowRoot.activeElement;
+        }
+        controller.focusTarget = focused;
       }
 
       controller.focusTargetPreservedUntil = 0;
@@ -128,7 +132,12 @@ export const useOverlayFrame = (controller: SurfaceController): OverlayFrameStat
       controller.focusTargetPreservedUntil = 0;
 
       if (target instanceof HTMLElement && target.isConnected) {
-        requestAnimationFrame(() => target.focus({ preventScroll: true }));
+        const closeVersion = openRequestVersion.current;
+        requestAnimationFrame(() => {
+          if (!isOpenRef.current && closeVersion === openRequestVersion.current && target.isConnected) {
+            target.focus({ preventScroll: true });
+          }
+        });
       }
     };
 
