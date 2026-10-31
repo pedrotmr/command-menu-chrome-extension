@@ -579,6 +579,8 @@ export const useCommandPaletteModel = ({
   };
 
   const handleSurfaceEscape = (event: KeyboardEvent<HTMLElement>): void => {
+    if (event.nativeEvent.isComposing || event.keyCode === 229) return;
+
     if (event.key !== 'Escape' || dialog) {
       return;
     }
@@ -1133,6 +1135,7 @@ export const useCommandPaletteModel = ({
   };
 
   const handleSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>): void => {
+    if (event.nativeEvent.isComposing || event.keyCode === 229) return;
     if (event.key === 'Tab' && !event.shiftKey && mode === 'commands' && !activeProvider) {
       const provider = findSearchProvider(query);
 

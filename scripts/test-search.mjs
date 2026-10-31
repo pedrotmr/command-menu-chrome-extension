@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { runInNewContext } from 'node:vm';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -29,6 +30,25 @@ try {
   const permissionRequestSource = await readFile(path.join(projectRoot, 'src/popup/PermissionRequest.tsx'), 'utf8');
   const popupHtml = await readFile(path.join(projectRoot, 'src/popup/index.html'), 'utf8');
   const popupEscapeGuard = await readFile(path.join(projectRoot, 'public/escape-guard.js'), 'utf8');
+  let escapeHandler;
+  let popupCloses = 0;
+  runInNewContext(popupEscapeGuard, {
+    window: {
+      addEventListener: (_, handler) => {
+        escapeHandler = handler;
+      },
+      setTimeout: (callback) => callback(),
+      close: () => {
+        popupCloses++;
+      },
+    },
+    document: { querySelector: () => null },
+  });
+  escapeHandler({ key: 'Escape', isTrusted: true, isComposing: true });
+  escapeHandler({ key: 'Escape', isTrusted: false });
+  assert.equal(popupCloses, 0, 'IME cancellation and synthetic Escape do not close the popup');
+  escapeHandler({ key: 'Escape', isTrusted: true });
+  assert.equal(popupCloses, 1, 'a real Escape still closes the popup');
   const previewHtml = await readFile(path.join(projectRoot, 'design-preview.html'), 'utf8');
   const actionPrototypeHtml = await readFile(path.join(projectRoot, 'actions-popover-prototype.html'), 'utf8');
   const themeGalleryHtml = await readFile(path.join(projectRoot, 'theme-gallery.html'), 'utf8');
@@ -606,7 +626,13 @@ try {
   try {
     installTabSwitcherKeyReleaseMonitor();
     const switcherOpenedAt = Date.now() - 1000;
-    releaseListener({ key: 'Control' });
+    releaseListener({ key: 'Control', isTrusted: false });
+    assert.equal(
+      wasTabSwitcherModifierReleasedAfter(switcherOpenedAt),
+      false,
+      'page-generated keyboard events cannot prime automatic tab activation',
+    );
+    releaseListener({ key: 'Control', isTrusted: true });
     assert.equal(
       wasTabSwitcherModifierReleasedAfter(switcherOpenedAt),
       true,

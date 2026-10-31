@@ -134,6 +134,8 @@ export const useTabSwitcherModel = ({
     event.stopPropagation();
     event.nativeEvent.stopImmediatePropagation?.();
 
+    if (event.nativeEvent.isComposing || event.keyCode === 229) return;
+
     switch (event.key) {
       case 'Escape':
         event.preventDefault();
@@ -209,7 +211,7 @@ export const useTabSwitcherModel = ({
     }
 
     const onKeyUp = (event: globalThis.KeyboardEvent) => {
-      if (!isTabSwitcherModifierKey(event.key)) {
+      if (!event.isTrusted || !isTabSwitcherModifierKey(event.key)) {
         return;
       }
 

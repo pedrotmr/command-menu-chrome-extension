@@ -25,7 +25,7 @@ export const installTabSwitcherKeyReleaseMonitor = (): void => {
   window.addEventListener(
     'keyup',
     (event: KeyboardEvent) => {
-      if (isTabSwitcherModifierKey(event.key)) {
+      if (event.isTrusted && isTabSwitcherModifierKey(event.key)) {
         state.lastModifierReleaseAt = Date.now();
       }
     },

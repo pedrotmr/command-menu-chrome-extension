@@ -333,6 +333,7 @@ const installTabSwitcherReleaseMonitor = (tabId: number): Promise<void> => {
         window.addEventListener(
           'keyup',
           (event: KeyboardEvent) => {
+            if (!event.isTrusted) return;
             if (event.key === 'Meta' || event.key === 'Control' || event.key === 'Alt') {
               state.lastModifierReleaseAt = Date.now();
             }
