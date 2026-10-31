@@ -46,6 +46,8 @@ The Command Bar and Tab Switcher use the same tokens and typography, with separa
 
 ## Development
 
+For browser connection checks, build-directory verification, and the reusable CSS/focus fixture, see [Extension validation](docs/extension-validation.md).
+
 Requires Node.js 20.19+ or 22.12+ and npm.
 
 ```bash
@@ -59,6 +61,8 @@ npm test
 Install the isolated test browser with `npx playwright install chromium`, then run `npm run test:e2e`. Browser tests load the production extension and cover the overlay, keyboard activation, focus restoration, saved-page failure/retry/revocation, stale responses, bulk-close recovery, worker restart, and a complete browser restart with restored tab names. Permission/data failures and response ordering use controlled boundary simulations; real toolbar action and ordinary Chrome APIs run unchanged. No personal browser profile is used.
 
 To prepare a distributable ZIP, run `npm run package:extension`. This requires the `zip` command and runs lint, formatting, type checks, unit/integration tests, the production build, and browser tests before creating `release/command-menu-<version>.zip`. Third-party notices and font licenses ship inside the package. The command prints its SHA-256 checksum. CI runs the browser suite after building as well. Publishing to the Chrome Web Store remains a separate account and listing operation.
+
+The same command checks registered commands against the background listener and runs React lifecycle regressions with jsdom: stale replies, duplicate Enter, retry after API failure, permission revocation, IME/dialog keys, and subscription cleanup. jsdom is a development-only dependency; rendering and Chrome integration still require the browser procedure linked above.
 
 To load the built extension, open `chrome://extensions`, enable Developer mode, choose **Load unpacked**, and select `dist/`.
 
