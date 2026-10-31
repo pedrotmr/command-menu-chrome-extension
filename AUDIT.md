@@ -2,7 +2,7 @@
 
 ## Parecer
 
-**Liberação condicionada à validação com leitor de tela, reflow estreito e ciclo de vida sob falhas/suspensão.** As correções estão implementadas, os checks automatizados passaram e os fluxos principais foram exercitados no build real pelo BrowserOS neo. Isso ainda não cobre toda a matriz de produção. Não houve push, release, serviço externo novo ou alteração de permissões do manifest.
+**Liberação condicionada à validação com leitor de tela, reflow estreito e ciclo de vida sob falhas/suspensão.** As correções estão implementadas, os checks automatizados passaram e os fluxos principais foram exercitados no build real pelo BrowserOS neo. Isso ainda não cobre toda a matriz de produção. A auditoria não publicou release, não introduziu serviço externo e não alterou as permissões do manifest. A preparação posterior do PR foi autorizada pelo fluxo full-stop.
 
 A árvore de trabalho estava limpa no início. Stack preservada; nenhuma dependência adicionada e lockfile intacto.
 
@@ -73,7 +73,7 @@ Método: suíte Node/Vite SSR existente, mesma máquina e algoritmo; 2.300/10.00
 | 2.300  | 3,10 / 0,70 / 2,43          | 2,64 / 0,54 / 1,74           |
 | 10.000 | 10,90 / 2,80 / 9,06         | 7,83 / 2,21 / 7,62           |
 
-Bundle inicial antes: background 24,48 kB; popup 292,91 kB; command 325,51 kB; tabs 258,66 kB (bytes decimais reportados pelo Vite). Bundle final: background 26,74 kB; popup 293,79 kB; command 326,53 kB; tabs 258,96 kB. As validações e proteções aumentam ligeiramente os bundles. React/ReactDOM são duplicados entre os dois IIFEs; eliminar isso exigiria mudar a estratégia de injeção e não tem justificativa medida aqui. Abrir uma superfície não carrega o outro bundle antecipadamente.
+Bundle inicial antes: background 24,48 kB; popup 292,91 kB; command 325,51 kB; tabs 258,66 kB (bytes decimais reportados pelo Vite). Bundle final: background 26,79 kB; popup 293,79 kB; command 326,53 kB; tabs 258,96 kB. As validações e proteções aumentam ligeiramente os bundles. React/ReactDOM são duplicados entre os dois IIFEs; eliminar isso exigiria mudar a estratégia de injeção e não tem justificativa medida aqui. Abrir uma superfície não carrega o outro bundle antecipadamente.
 
 **Não medido:** abertura cold/warm na extensão real, input-to-paint, execução Chrome, render de 100 resultados, heap após ciclos, custo de favicons/fontes/captura, muitas janelas ou worker suspenso. Não apresentar os números de busca como latência percebida.
 
