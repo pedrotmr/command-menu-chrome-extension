@@ -62,7 +62,7 @@ Install the isolated test browser with `npx playwright install chromium`, then r
 
 To prepare a distributable ZIP, run `npm run package:extension`. This requires the `zip` command and runs lint, formatting, type checks, unit/integration tests, the production build, and browser tests before creating `release/command-menu-<version>.zip`. Third-party notices and font licenses ship inside the package. The command prints its SHA-256 checksum. CI runs the browser suite after building as well. Publishing to the Chrome Web Store remains a separate account and listing operation.
 
-The same command checks registered commands against the background listener and runs React lifecycle regressions with jsdom: stale replies, duplicate Enter, retry after API failure, permission revocation, IME/dialog keys, and subscription cleanup. jsdom is a development-only dependency; rendering and Chrome integration still require the browser procedure linked above.
+`npm test` also checks registered commands against the background listener and runs React lifecycle regressions with jsdom: stale replies, duplicate Enter, retry after API failure, permission revocation, IME/dialog keys, and subscription cleanup. jsdom is a development-only dependency; rendering and Chrome integration still require the browser procedure linked above.
 
 To load the built extension, open `chrome://extensions`, enable Developer mode, choose **Load unpacked**, and select `dist/`.
 
