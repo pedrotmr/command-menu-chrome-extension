@@ -1,0 +1,1006 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Command Menu · Row actions prototype</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --cc-bg: #111213;
+        --cc-bg-raised: #191b1d;
+        --cc-row: #1a1c1e;
+        --cc-row-active: #282b2e;
+        --cc-text: #f0f1f2;
+        --cc-muted: #a0a4a8;
+        --cc-subtle: #777c81;
+        --cc-border: #33373b;
+        --cc-border-soft: rgba(255, 255, 255, 0.065);
+        --cc-accent: #8fc9d7;
+        --cc-danger: #f08c96;
+        --cc-radius: 18px;
+        --cc-font: 'Command Menu Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        --background: #111213;
+        --foreground: #f0f1f2;
+        --muted: #a0a4a8;
+        --card: #191b1d;
+        --popover: #202224;
+        --secondary: #282b2e;
+        --border: #33373b;
+        --ring: #8fc9d7;
+        --primary: #8fc9d7;
+        --radius: 18px;
+        --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        color: var(--foreground);
+        font-family: var(--font-sans);
+      }
+      body {
+        font-size: 13px;
+        line-height: 1.45;
+      }
+      .page {
+        display: grid;
+        gap: 16px;
+        width: min(100%, 820px);
+        margin: 0 auto;
+        padding: 6px 0 18px;
+      }
+      .intro {
+        padding: 4px 2px 2px;
+      }
+      .eyebrow {
+        margin: 0 0 4px;
+        color: var(--cc-accent);
+        font: 600 10px/1.3 var(--font-mono);
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+      }
+      h1 {
+        margin: 0;
+        color: var(--foreground);
+        font-size: 23px;
+        font-weight: 620;
+        letter-spacing: -0.035em;
+        line-height: 1.16;
+      }
+      .intro p {
+        max-width: 66ch;
+        margin: 7px 0 0;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .variant {
+        overflow: hidden;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--card);
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
+      }
+      .variant-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 14px 10px;
+        border-bottom: 1px solid var(--cc-border-soft);
+      }
+      .variant-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+      }
+      .variant-number {
+        display: grid;
+        width: 20px;
+        height: 20px;
+        flex: 0 0 20px;
+        place-items: center;
+        border: 1px solid var(--cc-border);
+        border-radius: 6px;
+        color: var(--cc-accent);
+        font: 600 10px var(--font-mono);
+      }
+      .variant-title h2 {
+        margin: 0;
+        overflow: hidden;
+        color: var(--foreground);
+        font-size: 14px;
+        font-weight: 580;
+        letter-spacing: -0.015em;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .credit {
+        flex: 0 0 auto;
+        color: var(--cc-subtle);
+        font: 10px var(--font-mono);
+      }
+      .variant-note {
+        margin: 0;
+        padding: 9px 14px 0;
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .demo {
+        position: relative;
+        isolation: isolate;
+        margin: 10px;
+        overflow: hidden;
+        border: 1px solid var(--cc-border);
+        border-radius: var(--cc-radius);
+        background: var(--cc-bg);
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.32);
+      }
+      .search {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        height: 50px;
+        align-items: center;
+        gap: 11px;
+        padding: 0 13px;
+        border-bottom: 1px solid var(--cc-border-soft);
+        background: var(--cc-bg);
+      }
+      .search-icon {
+        display: grid;
+        width: 20px;
+        height: 20px;
+        flex: 0 0 20px;
+        place-items: center;
+        color: var(--cc-muted);
+      }
+      .search-icon svg {
+        width: 18px;
+        height: 18px;
+      }
+      .placeholder {
+        flex: 1;
+        color: var(--cc-muted);
+        font-size: 14px;
+      }
+      .sliders {
+        display: grid;
+        width: 26px;
+        height: 26px;
+        place-items: center;
+        border-radius: 7px;
+        color: var(--cc-muted);
+      }
+      .sliders svg {
+        width: 16px;
+        height: 16px;
+      }
+      .rows {
+        position: relative;
+        z-index: 0;
+        display: grid;
+        gap: 3px;
+        padding: 7px;
+      }
+      .row {
+        position: relative;
+        display: flex;
+        min-width: 0;
+        height: 39px;
+        align-items: center;
+        gap: 9px;
+        overflow: hidden;
+        padding: 0 9px;
+        border: 1px solid transparent;
+        border-radius: 9px;
+        color: var(--cc-text);
+        cursor: default;
+        transition:
+          background-color 170ms ease-out,
+          border-color 170ms ease-out,
+          color 140ms ease-out;
+      }
+      .row:hover,
+      .row:focus-within,
+      .row.is-selected {
+        border-color: rgba(255, 255, 255, 0.12);
+        background: var(--cc-row-active);
+      }
+      .row:focus-within {
+        outline: 2px solid var(--ring);
+        outline-offset: 1px;
+      }
+      .favicon {
+        display: grid;
+        width: 20px;
+        height: 20px;
+        flex: 0 0 20px;
+        place-items: center;
+        overflow: hidden;
+        border-radius: 5px;
+        background: #26282a;
+        color: var(--cc-text);
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .favicon.github {
+        background: #f4f4f4;
+        color: #151515;
+        font-size: 13px;
+      }
+      .favicon.linear {
+        background: #0c0d10;
+        color: white;
+        font-size: 12px;
+      }
+      .favicon.figma {
+        color: #f0f0f0;
+      }
+      .favicon.youtube {
+        background: #f00;
+        color: white;
+        font-size: 11px;
+      }
+      .favicon.chrome {
+        background: #26282a;
+        color: #aab0b6;
+      }
+      .row-copy {
+        display: flex;
+        min-width: 0;
+        flex: 1;
+        align-items: baseline;
+        gap: 8px;
+        padding-right: 2px;
+      }
+      .row-name {
+        max-width: 48%;
+        overflow: hidden;
+        color: var(--cc-text);
+        font-size: 12px;
+        font-weight: 550;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .row-detail {
+        min-width: 0;
+        flex: 1;
+        overflow: hidden;
+        color: var(--cc-muted);
+        font-size: 10.5px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .badge {
+        flex: 0 0 auto;
+        padding: 2px 6px;
+        border-radius: 5px;
+        background: rgba(255, 255, 255, 0.065);
+        color: var(--cc-muted);
+        font-size: 9px;
+        line-height: 1.25;
+      }
+      .row:hover .badge,
+      .row:focus-within .badge,
+      .row.is-selected .badge {
+        opacity: 0.55;
+      }
+      .more {
+        display: grid;
+        width: 24px;
+        height: 24px;
+        flex: 0 0 24px;
+        place-items: center;
+        padding: 0;
+        border: 0;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--cc-muted);
+        opacity: 0;
+        cursor: pointer;
+        pointer-events: none;
+        transition:
+          opacity 110ms ease,
+          background-color 110ms ease,
+          color 110ms ease,
+          transform 150ms cubic-bezier(0.2, 0.8, 0.2, 1);
+      }
+      .more svg {
+        width: 16px;
+        height: 16px;
+      }
+      .row:hover .more,
+      .row:focus-within .more,
+      .row.is-selected .more,
+      .more:focus-visible {
+        opacity: 1;
+        pointer-events: auto;
+      }
+      .more:hover,
+      .more:focus-visible,
+      .more[aria-expanded='true'] {
+        background: rgba(255, 255, 255, 0.09);
+        color: #fff;
+        outline: 0;
+      }
+      .more:active {
+        transform: scale(0.92);
+      }
+      .row-actionless .more {
+        display: none;
+      }
+      .demo-actions {
+        position: absolute;
+        z-index: 5;
+        right: 8px;
+        bottom: 8px;
+        display: grid;
+        width: 280px;
+        max-width: calc(100% - 16px);
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 12px;
+        background: rgba(29, 30, 32, 0.98);
+        color: var(--cc-text);
+        box-shadow:
+          0 16px 36px rgba(0, 0, 0, 0.5),
+          inset 0 1px 0 rgba(255, 255, 255, 0.035);
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        transform-origin: bottom right;
+        animation: dock-in 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
+      }
+      .demo-actions[hidden] {
+        display: none;
+      }
+      .dock-head {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 11px;
+        border-bottom: 1px solid var(--cc-border-soft);
+      }
+      .dock-context {
+        display: flex;
+        min-width: 0;
+        flex: 1;
+        flex-direction: column;
+        gap: 1px;
+      }
+      .dock-context strong {
+        overflow: hidden;
+        color: var(--cc-text);
+        font-size: 11px;
+        font-weight: 560;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .dock-context span {
+        overflow: hidden;
+        color: var(--cc-subtle);
+        font-size: 9px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .dock-close {
+        display: grid;
+        width: 22px;
+        height: 22px;
+        flex: 0 0 22px;
+        place-items: center;
+        border: 0;
+        border-radius: 5px;
+        background: transparent;
+        color: var(--cc-muted);
+        cursor: pointer;
+      }
+      .dock-close:hover {
+        background: rgba(255, 255, 255, 0.08);
+        color: white;
+      }
+      .dock-close svg {
+        width: 13px;
+        height: 13px;
+      }
+      .action-list {
+        display: grid;
+        gap: 1px;
+        padding: 5px;
+      }
+      .action {
+        display: flex;
+        min-width: 0;
+        min-height: 28px;
+        align-items: center;
+        gap: 8px;
+        padding: 0 7px;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        color: #e8e9ea;
+        font-size: 10.5px;
+        line-height: 1.2;
+      }
+      .action:hover {
+        background: rgba(255, 255, 255, 0.07);
+      }
+      .action-icon {
+        display: grid;
+        width: 15px;
+        height: 15px;
+        flex: 0 0 15px;
+        place-items: center;
+        color: var(--cc-muted);
+      }
+      .action-icon svg {
+        width: 14px;
+        height: 14px;
+      }
+      .action-label {
+        min-width: 0;
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      kbd {
+        flex: 0 0 auto;
+        padding: 1px 4px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 4px;
+        background: rgba(0, 0, 0, 0.2);
+        color: var(--cc-muted);
+        font: 9px/1.4 var(--font-mono);
+      }
+      .action.danger {
+        color: var(--cc-danger);
+      }
+      .action.danger .action-icon {
+        color: var(--cc-danger);
+      }
+      .dock-foot {
+        display: flex;
+        height: 29px;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 10px;
+        border-top: 1px solid var(--cc-border-soft);
+        color: var(--cc-subtle);
+        font-size: 9px;
+      }
+      .foot-search {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .foot-search svg {
+        width: 12px;
+        height: 12px;
+      }
+      .hint {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .hint kbd {
+        font-size: 8px;
+      }
+      .scan .demo-actions {
+        width: 258px;
+        right: 8px;
+        bottom: 8px;
+        border-radius: 10px;
+        animation-duration: 120ms;
+      }
+      .scan .dock-head {
+        min-height: 31px;
+        padding: 6px 9px;
+      }
+      .scan .dock-context span {
+        display: none;
+      }
+      .scan .action-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        padding: 4px;
+      }
+      .scan .action {
+        gap: 5px;
+        min-height: 26px;
+        padding: 0 5px;
+        font-size: 9.5px;
+      }
+      .scan .action-icon {
+        width: 13px;
+        height: 13px;
+        flex-basis: 13px;
+      }
+      .scan .action-icon svg {
+        width: 12px;
+        height: 12px;
+      }
+      .scan .dock-foot {
+        height: 22px;
+      }
+      .concentric .demo-actions {
+        width: 284px;
+        border-radius: 10px;
+        background: rgba(31, 32, 34, 0.95);
+        backdrop-filter: blur(12px) saturate(1.08);
+      }
+      .concentric .dock-head {
+        display: none;
+      }
+      .concentric .action-list {
+        gap: 0;
+        padding: 5px;
+      }
+      .concentric .action {
+        min-height: 28px;
+        padding-inline: 8px;
+      }
+      .concentric .action:nth-child(2),
+      .concentric .action:nth-child(4) {
+        margin-bottom: 3px;
+      }
+      .concentric .dock-foot {
+        height: 31px;
+      }
+      .concentric .rows {
+        transition: opacity 180ms ease;
+      }
+      .concentric .demo:has(.demo-actions:not([hidden])) .row:not(.is-selected) {
+        opacity: 0.58;
+      }
+      .concentric .demo:has(.demo-actions:not([hidden])) .search {
+        opacity: 0.8;
+      }
+      .concentric .row.is-selected {
+        border-color: rgba(255, 255, 255, 0.17);
+        background: #25282a;
+      }
+      .concentric .row.is-selected .badge {
+        opacity: 0;
+        width: 0;
+        padding: 0;
+        overflow: hidden;
+      }
+      .concentric .row.is-selected .more {
+        opacity: 1;
+        pointer-events: auto;
+        background: rgba(255, 255, 255, 0.1);
+        color: #fff;
+      }
+      .stage-foot {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        padding: 0 14px 12px;
+      }
+      .tag {
+        padding: 3px 7px;
+        border: 1px solid var(--cc-border);
+        border-radius: 999px;
+        color: var(--cc-muted);
+        font: 9px var(--font-mono);
+      }
+      .tip {
+        margin: 0;
+        padding: 0 14px 12px;
+        color: var(--cc-subtle);
+        font-size: 10px;
+      }
+      @keyframes dock-in {
+        from {
+          opacity: 0;
+          transform: translate(4px, 6px) scale(0.97);
+        }
+        to {
+          opacity: 1;
+          transform: translate(0) scale(1);
+        }
+      }
+      .scan .row::before {
+        position: absolute;
+        top: 50%;
+        left: 0;
+        width: 2px;
+        height: 19px;
+        border-radius: 2px;
+        background: #fff;
+        content: '';
+        opacity: 0;
+        transform: translateY(-50%) scaleY(0.35);
+        transform-origin: center;
+        transition:
+          opacity 110ms ease,
+          transform 170ms cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      .scan .row:hover::before,
+      .scan .row:focus-within::before,
+      .scan .row.is-selected::before {
+        opacity: 0.9;
+        transform: translateY(-50%) scaleY(1);
+      }
+      .concentric .row {
+        transition-duration: 220ms;
+        transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      .scan .row {
+        transition-duration: 160ms;
+      }
+      @media (max-width: 560px) {
+        .variant-head {
+          align-items: flex-start;
+        }
+        .demo {
+          margin: 8px;
+        }
+        .row-detail {
+          display: none;
+        }
+        .row-name {
+          max-width: 100%;
+        }
+        .scan .demo-actions {
+          width: min(258px, calc(100% - 16px));
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          transition-duration: 0.01ms !important;
+          scroll-behavior: auto !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header class="intro">
+        <p class="eyebrow">Interaction prototype · not connected to the extension</p>
+        <h1>Row actions, without the modal</h1>
+        <p>
+          Hover or focus a result to reveal the ellipsis button. The action panel stays attached to the command surface
+          at the lower right, like Raycast.
+        </p>
+      </header>
+
+      <section class="variant scan" aria-labelledby="scan-title">
+        <div class="variant-head">
+          <div class="variant-title">
+            <span class="variant-number">01</span>
+            <h2 id="scan-title">Scan Shelf</h2>
+          </div>
+          <span class="credit">Grok 4.7</span>
+        </div>
+        <p class="variant-note">Compact two-column shelf; keeps the query and most of the result text visible.</p>
+        <div class="demo" data-variant="scan">
+          <div class="search">
+            <span class="search-icon"
+              ><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7">
+                <circle cx="8.5" cy="8.5" r="5.8" />
+                <path d="m13 13 4 4" /></svg
+            ></span>
+            <span class="placeholder">Search commands or a website</span>
+            <span class="sliders"
+              ><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                <path d="M3 5h14M3 10h14M3 15h14" />
+                <circle cx="7" cy="5" r="1.6" fill="#111213" />
+                <circle cx="12" cy="10" r="1.6" fill="#111213" />
+                <circle cx="8" cy="15" r="1.6" fill="#111213" /></svg
+            ></span>
+          </div>
+          <div class="rows">
+            <div class="row">
+              <span class="favicon github">●</span
+              ><span class="row-copy"
+                ><span class="row-name">pedrotmr (Pedro Ramos)</span
+                ><span class="row-detail">github.com/pedrotmr</span></span
+              ><span class="badge">Pinned</span
+              ><button class="more" aria-label="More options for pedrotmr" aria-expanded="false">
+                <svg viewBox="0 0 16 16" fill="currentColor">
+                  <circle cx="3" cy="8" r="1.25" />
+                  <circle cx="8" cy="8" r="1.25" />
+                  <circle cx="13" cy="8" r="1.25" />
+                </svg>
+              </button>
+            </div>
+            <div class="row">
+              <span class="favicon linear">◒</span
+              ><span class="row-copy"
+                ><span class="row-name">Linear · LOG-2478</span
+                ><span class="row-detail">linear.app/denim/team/LOG</span></span
+              ><span class="badge">Pinned</span
+              ><button class="more" aria-label="More options for Linear" aria-expanded="false">
+                <svg viewBox="0 0 16 16" fill="currentColor">
+                  <circle cx="3" cy="8" r="1.25" />
+                  <circle cx="8" cy="8" r="1.25" />
+                  <circle cx="13" cy="8" r="1.25" />
+                </svg>
+              </button>
+            </div>
+            <div class="row is-selected">
+              <span class="favicon figma">◈</span
+              ><span class="row-copy"
+                ><span class="row-name">Figma · Command Menu actions</span
+                ><span class="row-detail">figma.com/design/command-menu</span></span
+              ><span class="badge">Tab</span
+              ><button class="more" aria-label="More options for Figma · Command Menu actions" aria-expanded="true">
+                <svg viewBox="0 0 16 16" fill="currentColor">
+                  <circle cx="3" cy="8" r="1.25" />
+                  <circle cx="8" cy="8" r="1.25" />
+                  <circle cx="13" cy="8" r="1.25" />
+                </svg>
+              </button>
+            </div>
+            <div class="row">
+              <span class="favicon youtube">▶</span
+              ><span class="row-copy"
+                ><span class="row-name">YouTube · Lo-fi beats</span
+                ><span class="row-detail">youtube.com/watch</span></span
+              ><span class="badge">Tab</span
+              ><button class="more" aria-label="More options for YouTube" aria-expanded="false">
+                <svg viewBox="0 0 16 16" fill="currentColor">
+                  <circle cx="3" cy="8" r="1.25" />
+                  <circle cx="8" cy="8" r="1.25" />
+                  <circle cx="13" cy="8" r="1.25" />
+                </svg>
+              </button>
+            </div>
+            <div class="row row-actionless">
+              <span class="favicon chrome">＋</span
+              ><span class="row-copy"
+                ><span class="row-name">Open new tab</span
+                ><span class="row-detail">Create a tab in this window</span></span
+              ><span class="badge">Browser</span>
+            </div>
+          </div>
+          <div class="demo-actions" role="dialog" aria-label="Tab actions for Figma">
+            <div class="dock-head">
+              <span class="favicon figma">◈</span
+              ><span class="dock-context"><strong>Figma · Command Menu actions</strong><span>Selected tab</span></span
+              ><button class="dock-close" aria-label="Close actions">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+                  <path d="m4 4 8 8M12 4l-8 8" />
+                </svg>
+              </button>
+            </div>
+            <div class="action-list">
+              <div class="action">
+                <span class="action-icon">↗</span><span class="action-label">Move to window</span><kbd>W</kbd>
+              </div>
+              <div class="action">
+                <span class="action-icon">⌖</span><span class="action-label">Unpin tab</span><kbd>P</kbd>
+              </div>
+              <div class="action">
+                <span class="action-icon">◖</span><span class="action-label">Mute tab</span><kbd>M</kbd>
+              </div>
+              <div class="action">
+                <span class="action-icon">▦</span><span class="action-label">Move to tab group</span><kbd>G</kbd>
+              </div>
+              <div class="action">
+                <span class="action-icon">⧉</span><span class="action-label">Copy URL</span><kbd>U</kbd>
+              </div>
+              <div class="action">
+                <span class="action-icon">▤</span><span class="action-label">Copy title</span><kbd>T</kbd>
+              </div>
+              <div class="action danger">
+                <span class="action-icon">×</span><span class="action-label">Close tab</span>
+              </div>
+            </div>
+            <div class="dock-foot">
+              <span class="hint"><kbd>esc</kbd><span>close</span></span
+              ><span>7 actions</span>
+            </div>
+          </div>
+        </div>
+        <div class="stage-foot">
+          <span class="tag">236px shelf</span><span class="tag">two-column actions</span
+          ><span class="tag">no dimming</span><span class="tag">120ms enter</span>
+        </div>
+        <p class="tip">
+          The panel uses a slim header and four rows of paired actions. It overlaps only the lower-right part of the
+          list.
+        </p>
+      </section>
+
+      <section class="variant concentric" aria-labelledby="concentric-title">
+        <div class="variant-head">
+          <div class="variant-title">
+            <span class="variant-number">02</span>
+            <h2 id="concentric-title">Concentric Dock</h2>
+          </div>
+          <span class="credit">Claude Opus 5.5</span>
+        </div>
+        <p class="variant-note">
+          Raycast-like vertical actions with a filter footer; the selected row remains held in view.
+        </p>
+        <div class="demo" data-variant="concentric">
+          <div class="search">
+            <span class="search-icon"
+              ><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7">
+                <circle cx="8.5" cy="8.5" r="5.8" />
+                <path d="m13 13 4 4" /></svg
+            ></span>
+            <span class="placeholder">Search commands or a website</span>
+            <span class="sliders"
+              ><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                <path d="M3 5h14M3 10h14M3 15h14" />
+                <circle cx="7" cy="5" r="1.6" fill="#111213" />
+                <circle cx="12" cy="10" r="1.6" fill="#111213" />
+                <circle cx="8" cy="15" r="1.6" fill="#111213" /></svg
+            ></span>
+          </div>
+          <div class="rows">
+            <div class="row">
+              <span class="favicon github">●</span
+              ><span class="row-copy"
+                ><span class="row-name">pedrotmr (Pedro Ramos)</span
+                ><span class="row-detail">github.com/pedrotmr</span></span
+              ><span class="badge">Pinned</span
+              ><button class="more" aria-label="More options for pedrotmr" aria-expanded="false">
+                <svg viewBox="0 0 16 16" fill="currentColor">
+                  <circle cx="3" cy="8" r="1.25" />
+                  <circle cx="8" cy="8" r="1.25" />
+                  <circle cx="13" cy="8" r="1.25" />
+                </svg>
+              </button>
+            </div>
+            <div class="row">
+              <span class="favicon linear">◒</span
+              ><span class="row-copy"
+                ><span class="row-name">Linear · LOG-2478</span
+                ><span class="row-detail">linear.app/denim/team/LOG</span></span
+              ><span class="badge">Pinned</span
+              ><button class="more" aria-label="More options for Linear" aria-expanded="false">
+                <svg viewBox="0 0 16 16" fill="currentColor">
+                  <circle cx="3" cy="8" r="1.25" />
+                  <circle cx="8" cy="8" r="1.25" />
+                  <circle cx="13" cy="8" r="1.25" />
+                </svg>
+              </button>
+            </div>
+            <div class="row is-selected">
+              <span class="favicon figma">◈</span
+              ><span class="row-copy"
+                ><span class="row-name">Figma · Command Menu actions</span
+                ><span class="row-detail">figma.com/design/command-menu</span></span
+              ><span class="badge">Tab</span
+              ><button class="more" aria-label="More options for Figma · Command Menu actions" aria-expanded="true">
+                <svg viewBox="0 0 16 16" fill="currentColor">
+                  <circle cx="3" cy="8" r="1.25" />
+                  <circle cx="8" cy="8" r="1.25" />
+                  <circle cx="13" cy="8" r="1.25" />
+                </svg>
+              </button>
+            </div>
+            <div class="row">
+              <span class="favicon youtube">▶</span
+              ><span class="row-copy"
+                ><span class="row-name">YouTube · Lo-fi beats</span
+                ><span class="row-detail">youtube.com/watch</span></span
+              ><span class="badge">Tab</span
+              ><button class="more" aria-label="More options for YouTube" aria-expanded="false">
+                <svg viewBox="0 0 16 16" fill="currentColor">
+                  <circle cx="3" cy="8" r="1.25" />
+                  <circle cx="8" cy="8" r="1.25" />
+                  <circle cx="13" cy="8" r="1.25" />
+                </svg>
+              </button>
+            </div>
+            <div class="row row-actionless">
+              <span class="favicon chrome">＋</span
+              ><span class="row-copy"
+                ><span class="row-name">Open new tab</span
+                ><span class="row-detail">Create a tab in this window</span></span
+              ><span class="badge">Browser</span>
+            </div>
+          </div>
+          <div class="demo-actions" role="dialog" aria-label="Tab actions for Figma">
+            <div class="action-list">
+              <div class="action">
+                <span class="action-icon">↗</span><span class="action-label">Move to window</span><kbd>›</kbd>
+              </div>
+              <div class="action">
+                <span class="action-icon">▦</span><span class="action-label">Move to tab group</span><kbd>›</kbd>
+              </div>
+              <div class="action"><span class="action-icon">⌖</span><span class="action-label">Unpin tab</span></div>
+              <div class="action">
+                <span class="action-icon">◖</span><span class="action-label">Mute tab</span><kbd>⌘⇧M</kbd>
+              </div>
+              <div class="action">
+                <span class="action-icon">⧉</span><span class="action-label">Copy URL</span><kbd>⌘C</kbd>
+              </div>
+              <div class="action">
+                <span class="action-icon">▤</span><span class="action-label">Copy title</span><kbd>⌘⇧C</kbd>
+              </div>
+              <div class="action danger">
+                <span class="action-icon">×</span><span class="action-label">Close tab</span><kbd>⌘⌫</kbd>
+              </div>
+            </div>
+            <div class="dock-foot">
+              <span class="foot-search"
+                ><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <circle cx="6.8" cy="6.8" r="4.4" />
+                  <path d="m10 10 3.3 3.3" /></svg
+                ><span>Search actions…</span></span
+              ><span class="hint"><kbd>esc</kbd></span>
+            </div>
+          </div>
+        </div>
+        <div class="stage-foot">
+          <span class="tag">272px dock</span><span class="tag">vertical actions</span
+          ><span class="tag">search footer</span><span class="tag">180ms spring</span>
+        </div>
+        <p class="tip">
+          The divider and nested 10px radius make the dock feel attached to the bar. Closing it would restore the
+          selected row and focus.
+        </p>
+      </section>
+    </main>
+    <script>
+      document.querySelectorAll('.demo').forEach((demo) => {
+        const panel = demo.querySelector('.demo-actions');
+        const rows = demo.querySelectorAll('.row:not(.row-actionless)');
+        const close = demo.querySelector('.dock-close');
+        const contextTitle = panel.querySelector('.dock-context strong');
+        const syncExpanded = () => {
+          rows.forEach((item) => {
+            const isExpanded = item.classList.contains('is-selected') && !panel.hidden;
+            item.querySelector('.more')?.setAttribute('aria-expanded', String(isExpanded));
+          });
+        };
+        const setOpenRow = (row) => {
+          const title = row.querySelector('.row-name')?.textContent?.trim() || 'Selected tab';
+          rows.forEach((item) => {
+            const isSelected = item === row;
+            item.classList.toggle('is-selected', isSelected);
+          });
+          if (contextTitle) contextTitle.textContent = title;
+          const contextIcon = panel.querySelector('.dock-head .favicon');
+          if (contextIcon) {
+            const rowIcon = row.querySelector('.favicon');
+            if (rowIcon) contextIcon.replaceWith(rowIcon.cloneNode(true));
+          }
+          panel.setAttribute('aria-label', `Tab actions for ${title}`);
+          syncExpanded();
+        };
+        rows.forEach((row) => {
+          row.addEventListener('pointerenter', () => setOpenRow(row));
+          const button = row.querySelector('.more');
+          button?.addEventListener('click', (event) => {
+            event.stopPropagation();
+            if (row.classList.contains('is-selected') && !panel.hidden) {
+              panel.hidden = true;
+              syncExpanded();
+            } else {
+              setOpenRow(row);
+              panel.hidden = false;
+              syncExpanded();
+            }
+          });
+          row.addEventListener('focusin', () => setOpenRow(row));
+        });
+        close?.addEventListener('click', () => {
+          panel.hidden = true;
+          syncExpanded();
+        });
+        demo.addEventListener('keydown', (event) => {
+          if (event.key === 'Escape') {
+            panel.hidden = true;
+            syncExpanded();
+          }
+        });
+        syncExpanded();
+      });
+    </script>
+  </body>
+</html>

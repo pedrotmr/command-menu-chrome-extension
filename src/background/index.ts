@@ -1,251 +1,1051 @@
-import { isInjectableUrl } from '@/utils/chromeHelpers';
+import type { RenamedTab, SplitAwareTab } from '@/types';
+import { markTabNameClosed, reconcileTabNames, type TabNameMap } from '@/utils/tabNamePersistence';
+import { asPositiveInteger, normalizeNavigationUrl, normalizeSavedNavigationUrl } from '@/utils/chromeHelpers';
+import { isTabInSplitView } from '@/utils/splitViews';
+import { TAB_GROUP_ID_NONE } from '@/utils/chromeApiConstants';
+import { isOverlayPage } from '@/utils/pageSupport';
+import { OverlayTabRegistry } from '@/utils/overlayTabRegistry';
+import { SerialTaskQueue } from '@/utils/serialTaskQueue';
+import { TabPreviewCache, type TabPreviewRecord } from '@/utils/tabPreviewCache';
 
-console.log('Command Palette: Background service worker loaded');
+const TAB_NAMES_KEY = 'renamedTabs';
+const TAB_NAMES_SESSION_KEY = 'tabNameIdsCurrentSession';
+const TAB_PREVIEW_PREFIX = 'tabPreview:';
+const TAB_PREVIEW_IDS_KEY = 'tabPreviewIds';
+const OVERLAY_TAB_IDS_SESSION_KEY = 'commandMenuOverlayTabIds';
+const MAX_TAB_PREVIEWS = 5;
+const TAB_SWITCHER_OPENING_TIMEOUT_MS = 5000;
+const launchModeKey = 'nextPaletteMode';
+const launchSwitcherReleaseKey = 'nextTabSwitcherAutoSwitchOnRelease';
+const ownExtensionUrlPrefix = chrome.runtime.getURL('');
+const popupPath = 'src/popup/index.html';
 
-// Track the previously active tab
-let previousTabId: number | null = null;
-let currentTabId: number | null = null;
+type Request = { action?: string; [key: string]: unknown };
 
-// Track tab changes to remember the previous tab
-chrome.tabs.onActivated.addListener(async (activeInfo) => {
-  if (currentTabId !== null && currentTabId !== activeInfo.tabId) {
-    previousTabId = currentTabId;
-  }
-  currentTabId = activeInfo.tabId;
+const tabNameOperations = new SerialTaskQueue();
+const tabPreviewCache = new TabPreviewCache(
+  {
+    get: (key) => chrome.storage.session.get(key),
+    set: (values) => chrome.storage.session.set(values),
+    remove: (keys) => chrome.storage.session.remove(keys),
+  },
+  TAB_PREVIEW_IDS_KEY,
+  TAB_PREVIEW_PREFIX,
+  MAX_TAB_PREVIEWS,
+);
+let namedTabIds = new Set<string>();
+let tabNameReattachmentPending = false;
+let tabNameReconcileTimer: ReturnType<typeof setTimeout> | null = null;
+let tabNameSessionSafe = true;
+let tabChangeBroadcastTimer: ReturnType<typeof setTimeout> | null = null;
+const overlayTabRegistry = new OverlayTabRegistry({
+  load: async () => {
+    const stored = await chrome.storage.session.get(OVERLAY_TAB_IDS_SESSION_KEY);
+    return stored[OVERLAY_TAB_IDS_SESSION_KEY];
+  },
+  save: async (tabIds) => {
+    await chrome.storage.session.set({ [OVERLAY_TAB_IDS_SESSION_KEY]: tabIds });
+  },
+  notify: (tabId, message = { action: 'ui:tabs-changed' }) => chrome.tabs.sendMessage(tabId, message),
+});
+const tabSwitcherOpenWindows = new Set<number>();
+const tabSwitcherSurfaceByWindow = new Map<number, 'overlay' | 'popup'>();
+const tabSwitcherOpeningWindows = new Map<number, { tabId: number; pendingCycles: number; startedAt: number }>();
+const tabPreviewCaptureAt = new Map<number, number>();
+
+function respond<T>(data: T): { success: true; data: T } {
+  return { success: true, data };
+}
+
+function normalizeError(error: unknown): string {
+  return error instanceof Error ? error.message : 'The browser action failed.';
+}
+
+function broadcastTabChanges(): void {
+  if (tabChangeBroadcastTimer) clearTimeout(tabChangeBroadcastTimer);
+  tabChangeBroadcastTimer = setTimeout(() => {
+    tabChangeBroadcastTimer = null;
+    void chrome.runtime.sendMessage({ action: 'ui:tabs-changed' }).catch(() => undefined);
+    void overlayTabRegistry.broadcast().catch(() => undefined);
+  }, 24);
+}
+
+function broadcastPermissionChanges(): void {
+  void chrome.runtime.sendMessage({ action: 'ui:permissions-changed' }).catch(() => undefined);
+  void overlayTabRegistry.broadcast({ action: 'ui:permissions-changed' }).catch(() => undefined);
+}
+
+function withTabNamesMutation<T>(mutate: (names: TabNameMap) => Promise<T> | T): Promise<T> {
+  return tabNameOperations.enqueue(async () => {
+    const stored = await chrome.storage.local.get(TAB_NAMES_KEY);
+    const names = (stored[TAB_NAMES_KEY] as TabNameMap | undefined) ?? {};
+    const result = await mutate(names);
+    if (result === false) return result;
+    await chrome.storage.local.set({ [TAB_NAMES_KEY]: names });
+    namedTabIds = getNamedTabIds(names);
+    return result;
+  });
+}
+
+const tabNameSessionInitialization = initializeTabNameSession().catch(() => {
+  tabNameSessionSafe = false;
 });
 
-// Listen for keyboard commands
-chrome.commands.onCommand.addListener(async (command) => {
-  if (command === 'open-command-palette') {
-    await handleOpenCommandPalette();
-  } else if (command === 'copy-url') {
-    await handleCopyUrl();
-  } else if (command === 'toggle-previous-tab') {
-    await handleTogglePreviousTab();
+async function configureActionForTab(tabId: number, url?: string): Promise<void> {
+  const resolvedUrl = url ?? (await chrome.tabs.get(tabId)).url;
+  await chrome.action.setPopup({ tabId, popup: isOverlayPage(resolvedUrl) ? '' : popupPath });
+}
+
+async function configureActionForOpenTabs(): Promise<void> {
+  const tabs = await chrome.tabs.query({});
+  await Promise.all(
+    tabs.flatMap((tab) =>
+      tab.id === undefined ? [] : [configureActionForTab(tab.id, tab.url).catch(() => undefined)],
+    ),
+  );
+}
+
+async function openPopup(
+  tabId: number,
+  mode: 'commands' | 'tabs',
+  autoSwitchOnRelease = false,
+  openedAt = Date.now(),
+): Promise<void> {
+  await chrome.storage.session.set({
+    [launchModeKey]: mode,
+    [launchSwitcherReleaseKey]: autoSwitchOnRelease,
+    paletteRequestedAt: openedAt,
+  });
+  await chrome.action.setPopup({ tabId, popup: popupPath });
+  try {
+    await chrome.action.openPopup();
+  } catch {
+    const url = chrome.runtime.getURL(`${popupPath}?mode=${mode}&openedAt=${openedAt}`);
+    await chrome.windows.create({ url, type: 'popup', width: 600, height: 620, focused: true });
+  }
+}
+
+async function openOverlay(
+  tabId: number,
+  mode: 'commands' | 'tabs',
+  autoSwitchOnRelease = false,
+  openedAt = Date.now(),
+): Promise<void> {
+  if (mode === 'tabs') {
+    const tab = await chrome.tabs.get(tabId);
+    const alreadyOpen = tab.windowId !== undefined && tabSwitcherOpenWindows.has(tab.windowId);
+    if (!alreadyOpen) {
+      await chrome.tabs.sendMessage(tabId, { action: 'overlay:close', switching: true }).catch(() => undefined);
+    }
+  }
+  await chrome.action.setPopup({ tabId, popup: '' });
+  const request = { action: 'overlay:open', mode, autoSwitchOnRelease, openedAt };
+  try {
+    const response = (await chrome.tabs.sendMessage(tabId, request)) as { success?: boolean } | undefined;
+    if (response?.success) {
+      void overlayTabRegistry.register(tabId).catch(() => undefined);
+      return;
+    }
+  } catch {
+    // The page does not have an initialized surface yet.
+  }
+  await chrome.tabs.sendMessage(tabId, { action: 'overlay:close', switching: true }).catch(() => undefined);
+  const script = mode === 'tabs' ? 'content-tabs.js' : 'content-command.js';
+  await chrome.scripting.executeScript({ target: { tabId }, files: [script] });
+  const response = (await chrome.tabs.sendMessage(tabId, request)) as { success?: boolean } | undefined;
+  if (!response?.success) throw new Error('The page overlay could not be opened.');
+  void overlayTabRegistry.register(tabId).catch(() => undefined);
+}
+
+async function getLiveTabSwitcherSurface(tabId: number, windowId: number): Promise<'overlay' | 'popup' | null> {
+  let rememberedSurface = tabSwitcherSurfaceByWindow.get(windowId);
+  if (!rememberedSurface) {
+    const storageKey = `tabSwitcher:${windowId}`;
+    const stored: Record<string, unknown> = await chrome.storage.session.get(storageKey).catch(() => ({}));
+    const persisted = stored[storageKey];
+    if (persisted === 'overlay' || persisted === 'popup') {
+      rememberedSurface = persisted;
+      tabSwitcherSurfaceByWindow.set(windowId, persisted);
+      tabSwitcherOpenWindows.add(windowId);
+    }
+  }
+  if (rememberedSurface === 'popup' || tabSwitcherOpenWindows.has(windowId)) {
+    try {
+      const popupContexts = await chrome.runtime.getContexts({
+        contextTypes: ['POPUP'],
+        documentUrls: [chrome.runtime.getURL(popupPath)],
+        windowIds: [windowId],
+      });
+      if (popupContexts.length) {
+        tabSwitcherOpenWindows.add(windowId);
+        tabSwitcherSurfaceByWindow.set(windowId, 'popup');
+        return 'popup';
+      }
+    } catch {
+      // The active-tab message below remains the authority for an injected overlay.
+    }
+
+    const popupTabs = await chrome.tabs.query({ windowId }).catch(() => []);
+    if (popupTabs.some((candidate) => candidate.url?.startsWith(chrome.runtime.getURL(popupPath)))) {
+      tabSwitcherOpenWindows.add(windowId);
+      tabSwitcherSurfaceByWindow.set(windowId, 'popup');
+      return 'popup';
+    }
+  }
+
+  if (rememberedSurface !== 'overlay') {
+    if (rememberedSurface === 'popup') {
+      tabSwitcherOpenWindows.delete(windowId);
+      tabSwitcherSurfaceByWindow.delete(windowId);
+      await chrome.storage.session.remove(`tabSwitcher:${windowId}`).catch(() => undefined);
+    }
+    return null;
+  }
+
+  const status = (await chrome.tabs.sendMessage(tabId, { action: 'tabs:switcher-status' }).catch(() => undefined)) as
+    { open?: boolean } | undefined;
+  if (status?.open) {
+    tabSwitcherOpenWindows.add(windowId);
+    tabSwitcherSurfaceByWindow.set(windowId, 'overlay');
+    return 'overlay';
+  }
+
+  tabSwitcherOpenWindows.delete(windowId);
+  tabSwitcherSurfaceByWindow.delete(windowId);
+  await chrome.storage.session.remove(`tabSwitcher:${windowId}`).catch(() => undefined);
+  return null;
+}
+
+async function cycleTabSwitcher(
+  tabId: number,
+  windowId: number,
+  surface: 'overlay' | 'popup',
+  cycles = 1,
+): Promise<void> {
+  const message = { action: 'ui:tabs-cycle', windowId, cycles };
+  if (surface === 'overlay') {
+    await chrome.tabs.sendMessage(tabId, message).catch(() => undefined);
+  } else {
+    await chrome.runtime.sendMessage(message).catch(() => undefined);
+  }
+}
+
+async function rememberTabSwitcher(windowId: number, surface: 'overlay' | 'popup'): Promise<number> {
+  tabSwitcherOpenWindows.add(windowId);
+  tabSwitcherSurfaceByWindow.set(windowId, surface);
+  const opening = tabSwitcherOpeningWindows.get(windowId);
+  tabSwitcherOpeningWindows.delete(windowId);
+  await chrome.storage.session.set({ [`tabSwitcher:${windowId}`]: surface });
+  return opening?.pendingCycles ?? 0;
+}
+
+async function clearTabSwitcher(windowId: number): Promise<void> {
+  tabSwitcherOpenWindows.delete(windowId);
+  tabSwitcherSurfaceByWindow.delete(windowId);
+  tabSwitcherOpeningWindows.delete(windowId);
+  await chrome.storage.session.remove(`tabSwitcher:${windowId}`);
+}
+
+function installTabSwitcherReleaseMonitor(tabId: number): Promise<void> {
+  return chrome.scripting
+    .executeScript({
+      target: { tabId },
+      world: 'ISOLATED',
+      func: () => {
+        const isolatedWindow = window as Window & {
+          __commandMenuKeyReleaseState?: { lastModifierReleaseAt: number };
+        };
+        if (isolatedWindow.__commandMenuKeyReleaseState) return;
+
+        const state = { lastModifierReleaseAt: 0 };
+        isolatedWindow.__commandMenuKeyReleaseState = state;
+        window.addEventListener(
+          'keyup',
+          (event: KeyboardEvent) => {
+            if (event.key === 'Meta' || event.key === 'Control' || event.key === 'Alt')
+              state.lastModifierReleaseAt = Date.now();
+          },
+          true,
+        );
+      },
+    })
+    .then(() => undefined)
+    .catch(() => undefined);
+}
+
+async function openCommandCenter(
+  mode: 'commands' | 'tabs',
+  requestedTabId?: number,
+  fromShortcut = false,
+  shortcutTab?: chrome.tabs.Tab,
+): Promise<void> {
+  const openedAt = Date.now();
+  let openingWindowId: number | undefined;
+  let openingLaunch: { tabId: number; pendingCycles: number; startedAt: number } | undefined;
+  try {
+    const tab =
+      shortcutTab ?? (requestedTabId === undefined ? await getActiveTab() : await chrome.tabs.get(requestedTabId));
+    if (tab?.id === undefined) return;
+    // The Tab Switcher only runs on pages where the isolated overlay can be injected.
+    // Native Chrome pages continue to use the extension action popup for Command Mode.
+    if (mode === 'tabs' && !isOverlayPage(tab.url)) return;
+    // Install the tiny release listener before the heavier Tab Switcher bundle.
+    // This closes the cold-start gap when a user taps the shortcut quickly.
+    if (mode === 'tabs' && fromShortcut) await installTabSwitcherReleaseMonitor(tab.id);
+    const windowId = tab.windowId;
+    const switcherTracked =
+      windowId !== undefined &&
+      (tabSwitcherOpenWindows.has(windowId) ||
+        tabSwitcherSurfaceByWindow.has(windowId) ||
+        tabSwitcherOpeningWindows.has(windowId));
+    if (mode === 'commands' && windowId !== undefined && switcherTracked) {
+      await clearTabSwitcher(windowId);
+      await chrome.tabs.sendMessage(tab.id, { action: 'overlay:close', switching: true }).catch(() => undefined);
+    }
+    if (mode === 'tabs' && windowId !== undefined) {
+      openingWindowId = windowId;
+      const opening = tabSwitcherOpeningWindows.get(windowId);
+      if (opening && Date.now() - opening.startedAt < TAB_SWITCHER_OPENING_TIMEOUT_MS) {
+        opening.pendingCycles++;
+        return;
+      }
+      const launch = { tabId: tab.id, pendingCycles: 0, startedAt: Date.now() };
+      openingLaunch = launch;
+      tabSwitcherOpeningWindows.set(windowId, launch);
+
+      const liveSurface = await getLiveTabSwitcherSurface(tab.id, windowId);
+      if (tabSwitcherOpeningWindows.get(windowId) !== launch) return;
+      if (liveSurface) {
+        const pendingCycles = launch.pendingCycles;
+        tabSwitcherOpeningWindows.delete(windowId);
+        await cycleTabSwitcher(tab.id, windowId, liveSurface, pendingCycles + 1);
+        return;
+      }
+      if (fromShortcut) {
+        const closeResponse = (await chrome.tabs
+          .sendMessage(tab.id, { action: 'overlay:close', switching: true })
+          .catch(() => undefined)) as { wasOpen?: boolean } | undefined;
+        if (tabSwitcherOpeningWindows.get(windowId) !== launch) return;
+        // Command Mode already captured a clean frame before it became visible.
+        // Avoid replacing it with a frame captured during the overlay's compositor close.
+        if (!closeResponse?.wasOpen) {
+          void captureTabPreview(tab.id, windowId, tab.url).catch(() => undefined);
+        }
+      }
+    }
+    if (mode === 'commands' && windowId !== undefined && isCapturablePage(tab.url)) {
+      const overlayState = (await chrome.tabs
+        .sendMessage(tab.id, { action: 'overlay:surface-status' })
+        .catch(() => undefined)) as { open?: boolean } | undefined;
+      if (!overlayState?.open) {
+        // Cache only after an explicit launch; the capture stays off the UI startup path.
+        void captureTabPreview(tab.id, windowId, tab.url).catch(() => undefined);
+      }
+    }
+    if (isOverlayPage(tab.url)) {
+      try {
+        await openOverlay(tab.id, mode, fromShortcut && mode === 'tabs', openedAt);
+        return;
+      } catch {
+        // Restricted or browser-managed pages use the extension popup.
+      }
+    }
+    await openPopup(tab.id, mode, fromShortcut && mode === 'tabs', openedAt);
+  } catch (error) {
+    if (
+      mode === 'tabs' &&
+      openingWindowId !== undefined &&
+      tabSwitcherOpeningWindows.get(openingWindowId) === openingLaunch
+    ) {
+      tabSwitcherOpeningWindows.delete(openingWindowId);
+    }
+    console.error('Could not open the command surface.', error);
+  }
+}
+
+function isCapturablePage(url?: string): boolean {
+  return Boolean(url && /^https?:\/\//i.test(url));
+}
+
+async function removeTabPreview(tabId: number): Promise<void> {
+  await tabPreviewCache.remove(tabId);
+}
+
+async function clearTabPreviews(): Promise<void> {
+  await tabPreviewCache.clear();
+}
+
+async function captureTabPreview(tabId: number, windowId: number, expectedUrl?: string): Promise<void> {
+  if (tabSwitcherOpenWindows.has(windowId)) return;
+  const previewGeneration = tabPreviewCache.captureGeneration();
+  const now = Date.now();
+  if (now - (tabPreviewCaptureAt.get(windowId) ?? 0) < 650) return;
+  tabPreviewCaptureAt.set(windowId, now);
+
+  // Begin the capture while the user-invoked tab still has its activeTab grant.
+  const capturePromise = chrome.tabs.captureVisibleTab(windowId, { format: 'jpeg', quality: 40 }).catch(() => null);
+
+  const [activeTab] = await chrome.tabs.query({ active: true, windowId });
+  const url = activeTab?.url;
+  if (activeTab?.id !== tabId || !url || !isCapturablePage(url) || (expectedUrl && url !== expectedUrl)) return;
+
+  const dataUrl = await capturePromise;
+  if (!dataUrl) return;
+  const [stillActive] = await chrome.tabs.query({ active: true, windowId });
+  if (stillActive?.id !== tabId || stillActive.url !== url) return;
+
+  await tabPreviewCache.save(
+    tabId,
+    { url, dataUrl, capturedAt: Date.now() } satisfies TabPreviewRecord,
+    previewGeneration,
+  );
+}
+
+async function listRecentTabs(): Promise<Array<SplitAwareTab & { customName?: string; windowTitle?: string }>> {
+  const current = await getActiveTab();
+  if (current?.windowId === undefined) return [];
+  const tabs = await listTabs();
+  return tabs
+    .filter((tab) => tab.windowId === current.windowId)
+    .sort((a, b) => Number(b.active) - Number(a.active) || (b.lastAccessed ?? 0) - (a.lastAccessed ?? 0))
+    .slice(0, 5);
+}
+
+async function getTabPreviews(tabIds: number[]): Promise<Record<number, string>> {
+  const ids = [...new Set(tabIds)].filter(Number.isFinite).slice(0, 5);
+  if (!ids.length) return {};
+  const keys = ids.map((id) => `${TAB_PREVIEW_PREFIX}${id}`);
+  const records = await chrome.storage.session.get(keys);
+  const previews: Record<number, string> = {};
+  ids.forEach((id) => {
+    const record = records[`${TAB_PREVIEW_PREFIX}${id}`] as TabPreviewRecord | undefined;
+    if (record?.dataUrl && record.url) previews[id] = record.dataUrl;
+  });
+  return previews;
+}
+
+chrome.action.onClicked.addListener((tab) => {
+  if (tab.id !== undefined) void openCommandCenter('commands', tab.id);
+});
+
+chrome.tabs.onActivated.addListener(({ tabId }) => {
+  void configureActionForTab(tabId).catch(() => undefined);
+  broadcastTabChanges();
+});
+
+chrome.tabs.onCreated.addListener(broadcastTabChanges);
+chrome.tabs.onMoved.addListener(broadcastTabChanges);
+chrome.tabs.onAttached.addListener(broadcastTabChanges);
+chrome.tabs.onDetached.addListener(broadcastTabChanges);
+chrome.tabs.onRemoved.addListener((tabId) => {
+  broadcastTabChanges();
+  void overlayTabRegistry.unregister(tabId).catch(() => undefined);
+  void removeTabPreview(tabId).catch(() => undefined);
+  for (const [windowId, opening] of tabSwitcherOpeningWindows) {
+    if (opening.tabId === tabId) tabSwitcherOpeningWindows.delete(windowId);
   }
 });
 
-async function handleOpenCommandPalette() {
-  try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+chrome.windows.onRemoved?.addListener((windowId) => {
+  void clearTabSwitcher(windowId).catch(() => undefined);
+  tabPreviewCaptureAt.delete(windowId);
+});
+chrome.tabs.onUpdated.addListener((_tabId, changes) => {
+  if (
+    changes.url !== undefined ||
+    changes.title !== undefined ||
+    changes.favIconUrl !== undefined ||
+    changes.pinned !== undefined ||
+    changes.groupId !== undefined ||
+    changes.mutedInfo !== undefined ||
+    changes.audible !== undefined
+  ) {
+    broadcastTabChanges();
+  }
+});
 
-    if (!tab || !tab.id) return;
+chrome.tabs.onUpdated.addListener((tabId, changes) => {
+  if (changes.url) void removeTabPreview(tabId).catch(() => undefined);
+});
 
-    // Check if we can inject into this URL
-    if (!isInjectableUrl(tab.url || '')) {
-      console.log('Cannot inject into this page, opening popup fallback:', tab.url);
-      try {
-        await chrome.action.openPopup();
-      } catch (popupError) {
-        console.log('Popup failed, trying window approach:', popupError);
-        await chrome.windows.create({
-          url: chrome.runtime.getURL('src/popup/index.html'),
-          type: 'popup',
-          width: 680,
-          height: 520,
-          focused: true,
-        });
+chrome.tabGroups?.onCreated?.addListener(broadcastTabChanges);
+chrome.tabGroups?.onUpdated?.addListener(broadcastTabChanges);
+chrome.tabGroups?.onRemoved?.addListener(broadcastTabChanges);
+chrome.permissions.onAdded.addListener(broadcastPermissionChanges);
+chrome.permissions.onRemoved.addListener(broadcastPermissionChanges);
+
+chrome.runtime.onInstalled.addListener(() => {
+  void configureActionForOpenTabs().catch(() => undefined);
+});
+chrome.runtime.onStartup.addListener(() => {
+  void configureActionForOpenTabs().catch(() => undefined);
+});
+void configureActionForOpenTabs().catch(() => undefined);
+
+chrome.commands.onCommand.addListener((command, tab) => {
+  if (command === 'open-command-palette') void openCommandCenter('commands', undefined, true, tab);
+  if (command === 'open-tab-switcher') void openCommandCenter('tabs', undefined, true, tab);
+});
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  void removeTabPreview(tabId).catch(() => undefined);
+  void tabNameSessionInitialization
+    .then(() =>
+      withTabNamesMutation(async (names) => {
+        if (!names[String(tabId)]) return false;
+        const currentTabs = await chrome.tabs.query({});
+        return markTabNameClosed(names, tabId, Date.now(), currentTabs);
+      }),
+    )
+    .then((updated) => {
+      if (!updated) return;
+      tabNameReattachmentPending = true;
+      scheduleTabNameReconciliation();
+    })
+    .catch(() => undefined);
+});
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.url) void configureActionForTab(tabId, tab.url).catch(() => undefined);
+  if (tabNameReattachmentPending && (changeInfo.status === 'complete' || changeInfo.url || changeInfo.title)) {
+    scheduleTabNameReconciliation();
+  }
+  if (!changeInfo.url && !changeInfo.title) return;
+  void tabNameSessionInitialization
+    .then(() => {
+      if (!namedTabIds.has(String(tabId))) return false;
+      return withTabNamesMutation((names) => {
+        const saved = names[String(tabId)];
+        if (!saved) return false;
+        if (typeof tab.url === 'string') saved.url = tab.url;
+        if (typeof tab.title === 'string') saved.originalTitle = tab.title;
+        saved.closedAt = undefined;
+        saved.updatedAt = Date.now();
+        return true;
+      });
+    })
+    .then((updated) => {
+      if (updated) scheduleTabNameReconciliation();
+    })
+    .catch(() => undefined);
+});
+
+chrome.tabs.onCreated.addListener((tab) => {
+  if (tab.id !== undefined) void configureActionForTab(tab.id, tab.url).catch(() => undefined);
+  void tabNameSessionInitialization.then(scheduleTabNameReconciliation).catch(() => undefined);
+});
+
+chrome.runtime.onMessage.addListener((rawMessage: Request, sender, sendResponse) => {
+  void handleRequest(rawMessage, sender)
+    .then((data) => sendResponse(respond(data)))
+    .catch((error: unknown) => sendResponse({ success: false, error: normalizeError(error) }));
+  return true;
+});
+
+async function handleRequest(message: Request, sender: chrome.runtime.MessageSender): Promise<unknown> {
+  const action = message.action;
+  if (
+    action === 'tabs:list' ||
+    action === 'tabs:recent' ||
+    action === 'tabs:rename' ||
+    action === 'tabs:duplicate-active'
+  ) {
+    await tabNameSessionInitialization;
+  }
+  switch (action) {
+    case 'ui:tabs-changed':
+    case 'ui:tabs-cycle':
+      return true;
+    case 'permissions:get-all':
+      return chrome.permissions.getAll();
+    case 'permissions:contains': {
+      const permissions = (
+        Array.isArray(message.permissions) ? message.permissions : []
+      ) as chrome.permissions.Permissions['permissions'];
+      const origins = Array.isArray(message.origins) ? (message.origins as string[]) : [];
+      return chrome.permissions.contains({
+        permissions,
+        origins,
+      });
+    }
+    case 'permissions:open-request': {
+      const permissions = (
+        Array.isArray(message.permissions) ? message.permissions : []
+      ) as chrome.permissions.Permissions['permissions'];
+      const allowed = new Set(['bookmarks', 'history', 'tabGroups', 'sessions', 'clipboardWrite']);
+      const requested = [...new Set((permissions ?? []).filter((permission) => allowed.has(permission)))];
+      if (!requested.length) return false;
+      const url = chrome.runtime.getURL(
+        `${popupPath}?mode=permission-request&permissions=${encodeURIComponent(requested.join(','))}`,
+      );
+      await chrome.windows.create({ url, type: 'popup', width: 420, height: 300, focused: true });
+      return true;
+    }
+    case 'permissions:remove': {
+      const permissions = (
+        Array.isArray(message.permissions) ? message.permissions : []
+      ) as chrome.permissions.Permissions['permissions'];
+      const origins = Array.isArray(message.origins) ? (message.origins as string[]) : [];
+      return chrome.permissions.remove({ permissions, origins });
+    }
+    case 'browser:split-capabilities': {
+      const tabsApi = chrome.tabs as typeof chrome.tabs & { createSplit?: unknown; unsplit?: unknown };
+      return { create: typeof tabsApi.createSplit === 'function', unsplit: typeof tabsApi.unsplit === 'function' };
+    }
+    case 'tabs:current':
+      return getActiveTab();
+    case 'tabs:list':
+      return listTabs();
+    case 'tabs:recent':
+      return listRecentTabs();
+    case 'tabs:recent-previews':
+      return getTabPreviews(Array.isArray(message.tabIds) ? message.tabIds.map(Number) : []);
+    case 'tabs:switcher-shown': {
+      const windowId = asPositiveInteger(message.windowId) ?? asPositiveInteger(sender.tab?.windowId);
+      if (windowId === undefined) return { pendingCycles: 0 };
+      const surface = message.surface === 'popup' ? 'popup' : 'overlay';
+      const pendingCycles = await rememberTabSwitcher(windowId, surface);
+      return { pendingCycles };
+    }
+    case 'tabs:switcher-hidden': {
+      const windowId = asPositiveInteger(message.windowId) ?? asPositiveInteger(sender.tab?.windowId);
+      if (windowId !== undefined) await clearTabSwitcher(windowId);
+      return true;
+    }
+    case 'popup:ready': {
+      const windowId = asPositiveInteger(message.windowId) ?? asPositiveInteger(sender.tab?.windowId);
+      if (windowId !== undefined && message.surface !== 'tabs') await clearTabSwitcher(windowId);
+      return true;
+    }
+    case 'tabs:previews-clear':
+      await clearTabPreviews();
+      return true;
+    case 'tabs:activate': {
+      const sourceTabId = asPositiveInteger(message.sourceTabId) ?? asPositiveInteger(sender.tab?.id);
+      return activateTab(Number(message.tabId), sourceTabId);
+    }
+    case 'tabs:rename':
+      return renameTab(Number(message.tabId), String(message.name ?? ''));
+    case 'tabs:close':
+      await chrome.tabs.remove(Number(message.tabId));
+      return true;
+    case 'tabs:close-active': {
+      const tab = await getActiveTab();
+      if (tab?.id) await chrome.tabs.remove(tab.id);
+      return true;
+    }
+    case 'tabs:close-others': {
+      const tab = await getActiveTab();
+      if (tab?.id) {
+        const others = await chrome.tabs.query({ windowId: tab.windowId });
+        const ids = others.filter((other) => other.id !== tab.id).flatMap((other) => (other.id ? [other.id] : []));
+        if (ids.length) await chrome.tabs.remove(ids);
       }
-      return;
+      return true;
     }
-
-    console.log('Attempting to inject into:', tab.url);
-
-    try {
-      // Try to send message to content script
-      await chrome.tabs.sendMessage(tab.id, { action: 'toggle-modal' });
-    } catch (messageError) {
-      console.log('Content script not ready, injecting...', messageError);
-
-      // If content script is not ready, inject it manually
-      try {
-        if (!isInjectableUrl(tab.url || '')) {
-          console.log('URL became restricted, cannot inject:', tab.url);
-          return;
-        }
-
-        await chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          files: ['src/content/index.tsx'],
-        });
-
-        // Wait for script to initialize
-        setTimeout(async () => {
-          try {
-            await chrome.tabs.sendMessage(tab.id!, { action: 'toggle-modal' });
-          } catch (retryError) {
-            console.error('Failed to send message after injection:', retryError);
-          }
-        }, 100);
-      } catch (injectionError: any) {
-        if (injectionError.message?.includes('chrome://')) {
-          console.log('Cannot inject into chrome:// URL:', tab.url);
-          try {
-            await chrome.notifications?.create({
-              type: 'basic',
-              iconUrl: chrome.runtime.getURL('icon-48.png'),
-              title: 'Command Palette',
-              message: 'Cannot open on this page. Try on a regular webpage.',
-            });
-          } catch (notificationError) {
-            console.log('Notification failed:', notificationError);
-          }
-        } else {
-          console.error('Failed to inject content script:', injectionError);
-        }
+    case 'tabs:close-right': {
+      const tab = await getActiveTab();
+      if (tab?.id) {
+        const tabs = await chrome.tabs.query({ windowId: tab.windowId });
+        const ids = tabs.filter((other) => other.index > tab.index).flatMap((other) => (other.id ? [other.id] : []));
+        if (ids.length) await chrome.tabs.remove(ids);
       }
+      return true;
     }
-  } catch (error) {
-    console.error('Error handling command:', error);
+    case 'tabs:duplicate-active': {
+      const tab = await getActiveTab();
+      if (tab?.id) {
+        const duplicate = await chrome.tabs.duplicate(tab.id);
+        const stored = await chrome.storage.local.get(TAB_NAMES_KEY);
+        const names = (stored[TAB_NAMES_KEY] as TabNameMap | undefined) ?? {};
+        const originalName = names[String(tab.id)]?.customName;
+        if (duplicate?.id !== undefined && originalName) await renameTab(duplicate.id, originalName);
+      }
+      return true;
+    }
+    case 'tabs:pin-active': {
+      const tab = await getActiveTab();
+      if (tab?.id) await chrome.tabs.update(tab.id, { pinned: !tab.pinned });
+      return true;
+    }
+    case 'tabs:pin':
+      await chrome.tabs.update(Number(message.tabId), { pinned: Boolean(message.pinned) });
+      return true;
+    case 'tabs:mute-active': {
+      const tab = await getActiveTab();
+      if (tab?.id) await chrome.tabs.update(tab.id, { muted: !tab.mutedInfo?.muted });
+      return true;
+    }
+    case 'tabs:mute':
+      await chrome.tabs.update(Number(message.tabId), { muted: Boolean(message.muted) });
+      return true;
+    case 'tabs:reload-active': {
+      const tab = await getActiveTab();
+      if (tab?.id) await chrome.tabs.reload(tab.id);
+      return true;
+    }
+    case 'tabs:hard-reload-active': {
+      const tab = await getActiveTab();
+      if (tab?.id) await chrome.tabs.reload(tab.id, { bypassCache: true });
+      return true;
+    }
+    case 'tabs:back': {
+      const tab = await getActiveTab();
+      if (tab?.id) await chrome.tabs.goBack(tab.id);
+      return true;
+    }
+    case 'tabs:forward': {
+      const tab = await getActiveTab();
+      if (tab?.id) await chrome.tabs.goForward(tab.id);
+      return true;
+    }
+    case 'tabs:copy-url': {
+      const tab = message.tabId === undefined ? await getActiveTab() : await chrome.tabs.get(Number(message.tabId));
+      return tab?.url ?? '';
+    }
+    case 'tabs:copy-title': {
+      const tab = message.tabId === undefined ? await getActiveTab() : await chrome.tabs.get(Number(message.tabId));
+      return tab?.title ?? '';
+    }
+    case 'tabs:zoom-in':
+    case 'tabs:zoom-out':
+    case 'tabs:zoom-reset': {
+      const tab = await getActiveTab();
+      if (!tab?.id) return true;
+      if (action === 'tabs:zoom-reset') {
+        await chrome.tabs.setZoom(tab.id, 0);
+      } else {
+        const current = await chrome.tabs.getZoom(tab.id);
+        const delta = action === 'tabs:zoom-in' ? 0.1 : -0.1;
+        const next = Math.min(5, Math.max(0.25, Math.round((current + delta) * 100) / 100));
+        await chrome.tabs.setZoom(tab.id, next);
+      }
+      return true;
+    }
+    case 'tabs:move-active-new-window': {
+      const tab = await getActiveTab();
+      if (tab?.id) await chrome.windows.create({ tabId: tab.id, focused: true });
+      return true;
+    }
+    case 'tabs:move-new-window':
+      await chrome.windows.create({ tabId: Number(message.tabId), focused: true });
+      return true;
+    case 'tabs:move': {
+      const tabId = Number(message.tabId);
+      const windowId = Number(message.windowId);
+      await chrome.tabs.move(tabId, { windowId, index: -1 });
+      await chrome.windows.update(windowId, { focused: true });
+      await chrome.tabs.update(tabId, { active: true });
+      return true;
+    }
+    case 'tabs:group': {
+      const tabId = Number(message.tabId);
+      const groupId = Number(message.groupId);
+      await chrome.tabs.group({ tabIds: [tabId], groupId });
+      return true;
+    }
+    case 'tabs:split-active':
+      return createSplitWithActive(Number(message.tabId));
+    case 'tabs:unsplit-active': {
+      const tabsApi = chrome.tabs as typeof chrome.tabs & { unsplit?: (splitViewId: number) => Promise<void> };
+      if (!tabsApi.unsplit) throw new Error('Native split view requires a newer version of Chrome.');
+      const tab = await getActiveTab();
+      if (isTabInSplitView(tab)) await tabsApi.unsplit(tab.splitViewId);
+      return true;
+    }
+    case 'tabs:new':
+      await chrome.tabs.create({ url: 'chrome://newtab/' });
+      return true;
+    case 'windows:list':
+      return chrome.windows.getAll({ windowTypes: ['normal'], populate: true });
+    case 'windows:new':
+      await chrome.windows.create({ focused: true });
+      return true;
+    case 'windows:new-incognito':
+      await chrome.windows.create({ incognito: true, focused: true });
+      return true;
+    case 'windows:minimize-active': {
+      const tab = await getActiveTab();
+      if (tab) await chrome.windows.update(tab.windowId, { state: 'minimized' });
+      return true;
+    }
+    case 'windows:maximize-active': {
+      const tab = await getActiveTab();
+      if (tab) await chrome.windows.update(tab.windowId, { state: 'maximized' });
+      return true;
+    }
+    case 'browser:open-url':
+      await openUrl(String(message.url ?? ''), sender.tab?.id);
+      return true;
+    case 'browser:open-saved-url': {
+      const safeUrl = normalizeSavedNavigationUrl(String(message.url ?? ''));
+      if (!safeUrl) throw new Error('This saved page uses an unsupported address.');
+      await closeOverlayBeforeNavigation(sender.tab?.id);
+      await chrome.tabs.create({ url: safeUrl });
+      return true;
+    }
+    case 'browser:open-history':
+      await openUrl('chrome://history/');
+      return true;
+    case 'browser:open-bookmarks':
+      await openUrl('chrome://bookmarks/');
+      return true;
+    case 'browser:open-downloads':
+      await openUrl('chrome://downloads/');
+      return true;
+    case 'browser:open-extensions':
+      await openUrl('chrome://extensions/');
+      return true;
+    case 'browser:open-shortcuts':
+      await openUrl('chrome://extensions/shortcuts');
+      return true;
+    case 'browser:open-chrome-settings':
+      await openUrl('chrome://settings/');
+      return true;
+    case 'browser:open-web-store':
+      await openUrl('https://chromewebstore.google.com/');
+      return true;
+    case 'bookmarks:list':
+      return chrome.bookmarks.getTree();
+    case 'history:list':
+      return chrome.history.search({
+        text: '',
+        startTime: Date.now() - 30 * 24 * 60 * 60 * 1000,
+        maxResults: 500,
+      });
+    case 'sessions:restore':
+      return chrome.sessions.restore();
+    case 'groups:list':
+      return chrome.tabGroups.query({});
+    case 'groups:create-current': {
+      const tab = await getActiveTab();
+      if (!tab?.id) return false;
+      const groupId = await chrome.tabs.group({ tabIds: [tab.id] });
+      await chrome.tabGroups.update(groupId, {
+        title: String(message.title ?? '').slice(0, 80),
+        color: normalizeGroupColor(message.color),
+      });
+      return groupId;
+    }
+    case 'groups:create': {
+      const tabId = Number(message.tabId);
+      const groupId = await chrome.tabs.group({ tabIds: [tabId] });
+      await chrome.tabGroups.update(groupId, {
+        title: String(message.title ?? '').slice(0, 80),
+        color: normalizeGroupColor(message.color),
+      });
+      return groupId;
+    }
+    case 'groups:update': {
+      const updates: chrome.tabGroups.UpdateProperties = {};
+      if (typeof message.title === 'string') updates.title = message.title.slice(0, 80);
+      if (message.color) updates.color = normalizeGroupColor(message.color);
+      if (typeof message.collapsed === 'boolean') updates.collapsed = message.collapsed;
+      return chrome.tabGroups.update(Number(message.groupId), updates);
+    }
+    case 'groups:ungroup-current': {
+      const tab = await getActiveTab();
+      if (tab?.id) await chrome.tabs.ungroup(tab.id);
+      return true;
+    }
+    case 'groups:close-current': {
+      const tab = await getActiveTab();
+      if (tab && tab.groupId !== TAB_GROUP_ID_NONE) {
+        const tabs = await chrome.tabs.query({ groupId: tab.groupId });
+        const ids = tabs.flatMap((item) => (item.id ? [item.id] : []));
+        if (ids.length) await chrome.tabs.remove(ids);
+      }
+      return true;
+    }
+    default:
+      throw new Error('Unknown command.');
   }
 }
 
-async function handleCopyUrl() {
-  try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-
-    if (!tab || !tab.id) return;
-
-    if (!isInjectableUrl(tab.url || '')) {
-      console.log('Cannot inject into this page:', tab.url);
-      return;
-    }
-
-    try {
-      await chrome.tabs.sendMessage(tab.id, { action: 'copy-url' });
-    } catch (messageError) {
-      console.log('Content script not ready for copy-url');
-    }
-  } catch (error) {
-    console.error('Error handling copy-url command:', error);
-  }
+async function getActiveTab(): Promise<SplitAwareTab | null> {
+  const focused = await chrome.windows.getLastFocused({ windowTypes: ['normal'] }).catch(() => undefined);
+  if (focused?.id === undefined) return null;
+  const [tab] = await chrome.tabs.query({ active: true, windowId: focused.id });
+  return (tab as SplitAwareTab | undefined) ?? null;
 }
 
-async function handleTogglePreviousTab() {
-  try {
-    if (previousTabId !== null) {
-      await chrome.tabs.update(previousTabId, { active: true });
-    }
-  } catch (error) {
-    console.error('Error toggling to previous tab:', error);
-    previousTabId = null;
+async function listTabs(): Promise<Array<SplitAwareTab & { customName?: string; windowTitle?: string }>> {
+  const [tabs, windows, stored, focusedWindow] = await Promise.all([
+    chrome.tabs.query({}),
+    chrome.windows.getAll({ windowTypes: ['normal'] }),
+    chrome.storage.local.get(TAB_NAMES_KEY),
+    chrome.windows.getLastFocused(),
+  ]);
+  let names = tabNameSessionSafe ? ((stored[TAB_NAMES_KEY] as TabNameMap | undefined) ?? {}) : {};
+  if (Object.keys(names).some(isStaleTabNameKey)) {
+    names = await reconcileRenamedTabs();
   }
+  const windowTitles = new Map(
+    windows.flatMap((window, index) => {
+      if (window.id === undefined) return [];
+      const activeTitle = tabs.find((tab) => tab.windowId === window.id && tab.active)?.title;
+      return [[window.id, activeTitle ? `Window · ${activeTitle}` : `Window ${index + 1}`] as const];
+    }),
+  );
+
+  return tabs
+    .filter(
+      (tab) =>
+        tab.id !== undefined &&
+        tab.windowId !== chrome.windows.WINDOW_ID_NONE &&
+        !tab.url?.startsWith(ownExtensionUrlPrefix),
+    )
+    .map((tab) => ({
+      ...(tab as SplitAwareTab),
+      customName: names[String(tab.id)]?.customName,
+      windowTitle: windowTitles.get(tab.windowId) ?? 'Window',
+    }))
+    .sort(
+      (a, b) =>
+        Number(b.active && b.windowId === focusedWindow.id) - Number(a.active && a.windowId === focusedWindow.id) ||
+        (b.lastAccessed ?? 0) - (a.lastAccessed ?? 0),
+    );
 }
 
-// Listen for browser action click (fallback method)
-chrome.action.onClicked.addListener(async (tab) => {
-  console.log('Browser action clicked');
+async function activateTab(tabId: number, sourceTabId?: number): Promise<boolean> {
+  const tab = await chrome.tabs.get(tabId);
+  if (sourceTabId !== undefined) {
+    const source = await chrome.tabs.get(sourceTabId).catch(() => undefined);
+    await chrome.tabs.sendMessage(sourceTabId, { action: 'overlay:close', switching: true }).catch(() => undefined);
+    if (source?.windowId !== undefined) void clearTabSwitcher(source.windowId).catch(() => undefined);
+  }
+  await chrome.windows.update(tab.windowId, { focused: true });
+  await chrome.tabs.update(tabId, { active: true });
+  return true;
+}
 
-  if (!tab || !tab.id) return;
+async function renameTab(tabId: number, name: string): Promise<RenamedTab | null> {
+  const tab = await chrome.tabs.get(tabId);
+  const customName = name.trim().slice(0, 120);
 
-  if (!isInjectableUrl(tab.url || '')) {
-    console.log('Cannot inject into this page, opening window fallback:', tab.url);
-    await chrome.windows.create({
-      url: chrome.runtime.getURL('src/popup/index.html'),
-      type: 'popup',
-      width: 680,
-      height: 520,
-      focused: true,
-    });
+  return withTabNamesMutation((names) => {
+    if (!customName) {
+      delete names[String(tabId)];
+      return null;
+    }
+
+    const saved: RenamedTab = {
+      tabId,
+      customName,
+      originalTitle: tab.title ?? tab.url ?? 'Untitled tab',
+      url: tab.url ?? '',
+      updatedAt: Date.now(),
+    };
+    names[String(tabId)] = saved;
+    return saved;
+  });
+}
+
+async function initializeTabNameSession(): Promise<void> {
+  const [session, stored] = await Promise.all([
+    chrome.storage.session.get(TAB_NAMES_SESSION_KEY),
+    chrome.storage.local.get(TAB_NAMES_KEY),
+  ]);
+  const savedNames = (stored[TAB_NAMES_KEY] as TabNameMap | undefined) ?? {};
+  namedTabIds = getNamedTabIds(savedNames);
+  tabNameReattachmentPending = Object.keys(savedNames).some(isStaleTabNameKey);
+  if (session[TAB_NAMES_SESSION_KEY]) {
+    if (tabNameReattachmentPending) scheduleTabNameReconciliation();
     return;
   }
 
-  try {
-    await chrome.tabs.sendMessage(tab.id, { action: 'toggle-modal' });
-  } catch (error) {
-    console.log('Content script not ready, injecting...', error);
-
-    try {
-      if (!isInjectableUrl(tab.url || '')) {
-        console.log('URL became restricted, cannot inject:', tab.url);
-        return;
-      }
-
-      await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        files: ['src/content/index.tsx'],
-      });
-
-      setTimeout(async () => {
-        try {
-          await chrome.tabs.sendMessage(tab.id!, { action: 'toggle-modal' });
-        } catch (retryError) {
-          console.error('Failed to send message after injection:', retryError);
-        }
-      }, 100);
-    } catch (injectionError) {
-      console.error('Failed to inject content script:', injectionError);
-    }
+  await tabNameOperations.drain();
+  if (Object.keys(savedNames).length) {
+    const tabs = await chrome.tabs.query({});
+    await persistReconciledTabNames(tabs, savedNames, true);
   }
-});
+  await chrome.storage.session.set({ [TAB_NAMES_SESSION_KEY]: true });
+  if (tabNameReattachmentPending) scheduleTabNameReconciliation();
+}
 
-// Handle messages from content script
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log('Background: Received message:', message.action);
+async function persistReconciledTabNames(
+  tabs: chrome.tabs.Tab[],
+  savedNames: TabNameMap,
+  forceIdentityMatching = false,
+): Promise<TabNameMap> {
+  const names = reconcileTabNames(savedNames, tabs, Date.now(), undefined, forceIdentityMatching);
+  await chrome.storage.local.set({ [TAB_NAMES_KEY]: names });
+  namedTabIds = getNamedTabIds(names);
+  tabNameReattachmentPending = Object.keys(names).some(isStaleTabNameKey);
+  return names;
+}
 
-  (async () => {
-    try {
-      switch (message.action) {
-        case 'get-bookmarks':
-          console.log('Background: Received get-bookmarks request');
-          const bookmarks = await chrome.bookmarks.getTree();
-          console.log('Background: Retrieved bookmarks:', bookmarks.length, 'root nodes');
-          sendResponse({ bookmarks });
-          break;
+async function reconcileRenamedTabs(): Promise<TabNameMap> {
+  return tabNameOperations.enqueue(async () => {
+    const [tabs, stored] = await Promise.all([chrome.tabs.query({}), chrome.storage.local.get(TAB_NAMES_KEY)]);
+    const savedNames = (stored[TAB_NAMES_KEY] as TabNameMap | undefined) ?? {};
+    return persistReconciledTabNames(tabs, savedNames);
+  });
+}
 
-        case 'get-history':
-          console.log('Background: Received get-history request');
-          // Search history from the last 30 days, max 500 results
-          const oneMonthAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-          const historyItems = await chrome.history.search({
-            text: '',
-            startTime: oneMonthAgo,
-            maxResults: 500,
-          });
-          console.log('Background: Retrieved history:', historyItems.length, 'items');
-          sendResponse({ history: historyItems });
-          break;
+function isStaleTabNameKey(key: string): boolean {
+  return key.startsWith('stale:');
+}
 
-        case 'create-tab':
-          await chrome.tabs.create({ url: message.url });
-          sendResponse({ success: true });
-          break;
+function getNamedTabIds(names: TabNameMap): Set<string> {
+  return new Set(Object.keys(names).filter((key) => !isStaleTabNameKey(key)));
+}
 
-        case 'reload-tab':
-          if (sender.tab?.id) {
-            await chrome.tabs.reload(sender.tab.id);
-          }
-          sendResponse({ success: true });
-          break;
+function scheduleTabNameReconciliation(): void {
+  if (!tabNameReattachmentPending || tabNameReconcileTimer) return;
+  tabNameReconcileTimer = setTimeout(() => {
+    tabNameReconcileTimer = null;
+    void reconcileRenamedTabs().catch(() => undefined);
+  }, 250);
+}
 
-        case 'go-back':
-          if (sender.tab?.id) {
-            await chrome.tabs.goBack(sender.tab.id);
-          }
-          sendResponse({ success: true });
-          break;
+async function closeOverlayBeforeNavigation(sourceTabId?: number): Promise<void> {
+  if (sourceTabId === undefined) return;
+  await chrome.tabs.sendMessage(sourceTabId, { action: 'overlay:close', switching: true }).catch(() => undefined);
+}
 
-        case 'go-forward':
-          if (sender.tab?.id) {
-            await chrome.tabs.goForward(sender.tab.id);
-          }
-          sendResponse({ success: true });
-          break;
+async function openUrl(url: string, sourceTabId?: number): Promise<void> {
+  const safeUrl = normalizeNavigationUrl(url);
+  if (!safeUrl) throw new Error('Only web addresses and supported Chrome pages can be opened.');
+  await closeOverlayBeforeNavigation(sourceTabId);
+  await chrome.tabs.create({ url: safeUrl });
+}
 
-        case 'new-incognito-window':
-          await chrome.windows.create({ incognito: true });
-          sendResponse({ success: true });
-          break;
+async function createSplitWithActive(otherTabId: number): Promise<boolean> {
+  const tabsApi = chrome.tabs as typeof chrome.tabs & {
+    createSplit?: (tabIds: [number, number]) => Promise<number>;
+  };
+  if (!tabsApi.createSplit) throw new Error('Native split view requires a newer version of Chrome.');
 
-        default:
-          sendResponse({ error: 'Unknown action' });
-      }
-    } catch (error: any) {
-      console.error('Error in background script:', error);
-      sendResponse({ error: error.message });
-    }
-  })();
+  const active = await getActiveTab();
+  const other = (await chrome.tabs.get(otherTabId)) as SplitAwareTab;
+  const activeId = active?.id;
+  const otherId = other.id;
+  if (
+    !active ||
+    activeId === undefined ||
+    otherId === undefined ||
+    activeId === otherId ||
+    active.windowId !== other.windowId
+  ) {
+    throw new Error('Choose a different tab in the same window to create split view.');
+  }
+  if (isTabInSplitView(active) || isTabInSplitView(other)) {
+    throw new Error('A tab in another Split View cannot be paired again.');
+  }
+  if (
+    active.pinned !== other.pinned ||
+    active.groupId !== other.groupId ||
+    Math.abs(active.index - other.index) !== 1
+  ) {
+    throw new Error('Split view needs adjacent tabs with the same pin and group state.');
+  }
 
-  // Return true to indicate we'll send a response asynchronously
+  await tabsApi.createSplit([activeId, otherId]);
   return true;
-});
+}
+
+function normalizeGroupColor(value: unknown): chrome.tabGroups.Color {
+  const colors = ['grey', 'blue', 'red', 'yellow', 'green', 'pink', 'purple', 'cyan', 'orange'];
+  return colors.includes(String(value)) ? (String(value) as chrome.tabGroups.Color) : chrome.tabGroups.Color.BLUE;
+}

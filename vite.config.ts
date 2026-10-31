@@ -1,19 +1,9 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import webExtension from 'vite-plugin-web-extension';
 import path from 'path';
 
 export default defineConfig({
-  plugins: [
-    react(),
-    webExtension({
-      manifest: './src/manifest.json',
-      additionalInputs: ['src/content/index.html'],
-      disableAutoLaunch: true,
-      webExtConfig: './web-ext.config.js',
-      browser: 'chrome',
-    }),
-  ],
+  plugins: [react()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -22,5 +12,16 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        popup: path.resolve(__dirname, 'src/popup/index.html'),
+        background: path.resolve(__dirname, 'src/background/index.ts'),
+      },
+      output: {
+        entryFileNames: (chunk) => (chunk.name === 'background' ? 'background.js' : 'assets/[name]-[hash].js'),
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash][extname]',
+      },
+    },
   },
 });
