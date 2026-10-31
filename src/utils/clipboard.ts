@@ -1,8 +1,8 @@
-export async function writeClipboardText(
+export const writeClipboardText = async (
   value: string,
   clipboard: Pick<Clipboard, 'writeText'> | undefined = navigator.clipboard,
   ownerDocument: Document = document,
-): Promise<void> {
+): Promise<void> => {
   if (clipboard?.writeText) {
     try {
       await clipboard.writeText(value);
@@ -14,6 +14,7 @@ export async function writeClipboardText(
 
   const previousFocus = ownerDocument.activeElement as HTMLElement | null;
   const textarea = ownerDocument.createElement('textarea');
+
   textarea.value = value;
   textarea.setAttribute('aria-hidden', 'true');
   textarea.setAttribute('readonly', '');
@@ -27,16 +28,21 @@ export async function writeClipboardText(
     opacity: '0',
     pointerEvents: 'none',
   });
+
   ownerDocument.body.appendChild(textarea);
 
   try {
     textarea.focus({ preventScroll: true });
     textarea.select();
+
     if (!ownerDocument.execCommand('copy')) {
       throw new Error('Clipboard access is unavailable on this page.');
     }
   } finally {
     textarea.remove();
-    if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
+
+    if (previousFocus?.isConnected) {
+      previousFocus.focus({ preventScroll: true });
+    }
   }
-}
+};

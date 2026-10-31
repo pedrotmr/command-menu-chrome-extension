@@ -1,18 +1,21 @@
-import { CommandItem, PaletteItem, SplitAwareTab, TabItem } from '@/types';
+import type { CommandItem, PaletteItem, SplitAwareTab, TabItem } from '@/types';
 import { TAB_GROUP_ID_NONE } from '@/utils/chromeApiConstants';
 
-export type ManagedTab = SplitAwareTab & {
+export interface ManagedTab extends SplitAwareTab {
   customName?: string;
   previewDataUrl?: string;
   windowTitle?: string;
   groupTitle?: string;
   groupColor?: string;
-};
+}
 
-function orderPinnedTabs(tabs: TabItem[], currentWindowId?: number): TabItem[] {
+const orderPinnedTabs = (tabs: TabItem[], currentWindowId?: number): TabItem[] => {
   const windowOrder = new Map<number, number>();
+
   for (const tab of tabs) {
-    if (!windowOrder.has(tab.windowId)) windowOrder.set(tab.windowId, windowOrder.size);
+    if (!windowOrder.has(tab.windowId)) {
+      windowOrder.set(tab.windowId, windowOrder.size);
+    }
   }
 
   return tabs
@@ -20,34 +23,44 @@ function orderPinnedTabs(tabs: TabItem[], currentWindowId?: number): TabItem[] {
     .sort((left, right) => {
       const leftWindowOrder =
         left.windowId === currentWindowId ? -1 : (windowOrder.get(left.windowId) ?? Number.MAX_SAFE_INTEGER);
+
       const rightWindowOrder =
         right.windowId === currentWindowId ? -1 : (windowOrder.get(right.windowId) ?? Number.MAX_SAFE_INTEGER);
-      if (leftWindowOrder !== rightWindowOrder) return leftWindowOrder - rightWindowOrder;
+
+      if (leftWindowOrder !== rightWindowOrder) {
+        return leftWindowOrder - rightWindowOrder;
+      }
+
       return left.index - right.index;
     });
-}
+};
 
-function preservePinnedTabOrder(tabs: TabItem[], currentWindowId?: number): TabItem[] {
+const preservePinnedTabOrder = (tabs: TabItem[], currentWindowId?: number): TabItem[] => {
   const orderedPinned = orderPinnedTabs(tabs, currentWindowId);
   let pinnedIndex = 0;
-  return tabs.map((tab) => (tab.pinned ? orderedPinned[pinnedIndex++] : tab));
-}
 
-export function toTabItems(
+  return tabs.map((tab) => (tab.pinned ? orderedPinned[pinnedIndex++] : tab));
+};
+
+export const toTabItems = (
   tabs: ManagedTab[],
   currentTabId: number | null,
   currentWindowIdOverride?: number | null,
-): TabItem[] {
+): TabItem[] => {
   const currentWindowId = currentWindowIdOverride ?? tabs.find((tab) => tab.id === currentTabId)?.windowId;
 
   const items = tabs.flatMap((tab) => {
-    if (tab.id === undefined) return [];
+    if (tab.id === undefined) {
+      return [];
+    }
+
     const originalTitle = tab.title || tab.url || 'Untitled tab';
     const title = tab.customName || originalTitle;
     const details = [tab.customName ? originalTitle : '', tab.url || ''].filter(Boolean).join(' · ');
     const groupTitle =
       tab.groupTitle?.trim() ||
       (tab.groupId !== undefined && tab.groupId !== TAB_GROUP_ID_NONE ? 'Tab group' : undefined);
+
     const windowTitle = currentWindowId !== undefined && tab.windowId !== currentWindowId ? tab.windowTitle : undefined;
     return [
       {
@@ -79,11 +92,11 @@ export function toTabItems(
   });
 
   return preservePinnedTabOrder(items, currentWindowId);
-}
+};
 
-export function initialCommandItems(commands: CommandItem[], tabs: TabItem[]): PaletteItem[] {
+export const initialCommandItems = (commands: CommandItem[], tabs: TabItem[]): PaletteItem[] => {
   const currentWindowId = tabs.find((tab) => tab.current)?.windowId;
   const pinnedTabs = orderPinnedTabs(tabs, currentWindowId);
   const openTabs = tabs.filter((tab) => !tab.pinned);
   return [...pinnedTabs, ...openTabs, ...commands];
-}
+};

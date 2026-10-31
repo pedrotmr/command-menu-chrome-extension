@@ -1,4 +1,10 @@
-import { AppearanceMode, CommandBarFontFamily, CommandBarSize, CommandBarWindowMode, ThemePreferences } from '@/types';
+import type {
+  AppearanceMode,
+  CommandBarFontFamily,
+  CommandBarSize,
+  CommandBarWindowMode,
+  ThemePreferences,
+} from '@/types';
 
 export const themeTokenNames = [
   '--cc-bg',
@@ -26,30 +32,45 @@ export const themeTokenNames = [
 export type ThemeTokenName = (typeof themeTokenNames)[number];
 export type ThemeTokens = Record<ThemeTokenName, string>;
 
+export interface ThemePalettePreviewColors {
+  background: string;
+  accent: string;
+}
+
+export interface ThemePalettePreview {
+  light: ThemePalettePreviewColors;
+  dark: ThemePalettePreviewColors;
+}
+
 export interface ThemePalette {
   id: string;
   name: string;
   description: string;
-  preview: {
-    light: { background: string; accent: string };
-    dark: { background: string; accent: string };
-  };
+  preview: ThemePalettePreview;
   readonly light: ThemeTokens;
   readonly dark: ThemeTokens;
 }
 
-interface ThemeSourceColors {
+interface ThemeSurfaceColors {
   background: string;
   panel: string;
   raised: string;
-  accent: string;
   border: string;
+}
+
+interface ThemeTextColors {
   text: string;
   muted: string;
   subtle: string;
+}
+
+interface ThemeAccentColors {
+  accent: string;
   hover: string;
   selection: string;
 }
+
+interface ThemeSourceColors extends ThemeSurfaceColors, ThemeTextColors, ThemeAccentColors {}
 
 interface ThemeSource {
   id: string;
@@ -67,88 +88,110 @@ interface PairedThemeSource {
   dark: ThemeSourceColors;
 }
 
-function hexChannels(color: string): [number, number, number] {
+interface ContrastCandidate {
+  color: string;
+  distance: number;
+}
+
+const hexChannels = (color: string): [number, number, number] => {
   const value = color.replace('#', '');
+
   return [0, 2, 4].map((index) => Number.parseInt(value.slice(index, index + 2), 16)) as [number, number, number];
-}
+};
 
-function hexColor(channels: number[]): string {
+const hexColor = (channels: number[]): string => {
   return `#${channels.map((channel) => Math.round(channel).toString(16).padStart(2, '0')).join('')}`;
-}
+};
 
-function mixColors(first: string, second: string, amount: number): string {
+const mixColors = (first: string, second: string, amount: number): string => {
   const a = hexChannels(first);
   const b = hexChannels(second);
-  return hexColor(a.map((channel, index) => channel + (b[index] - channel) * amount));
-}
 
-function luminance(color: string): number {
+  return hexColor(a.map((channel, index) => channel + (b[index] - channel) * amount));
+};
+
+const luminance = (color: string): number => {
   const [red, green, blue] = hexChannels(color)
     .map((channel) => channel / 255)
     .map((channel) => (channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4));
+
   return red * 0.2126 + green * 0.7152 + blue * 0.0722;
-}
+};
 
-function contrast(first: string, second: string): number {
+const contrast = (first: string, second: string): number => {
   const values = [luminance(first), luminance(second)].sort((a, b) => b - a);
+
   return (values[0] + 0.05) / (values[1] + 0.05);
-}
+};
 
-function hasContrast(foreground: string, surfaces: string[], minimum: number): boolean {
+const hasContrast = (foreground: string, surfaces: string[], minimum: number): boolean => {
   return surfaces.every((surface) => contrast(foreground, surface) >= minimum);
-}
+};
 
-function ensureContrast(foreground: string, surfaces: string[], minimum: number): string {
-  if (hasContrast(foreground, surfaces, minimum)) return foreground;
+const ensureContrast = (foreground: string, surfaces: string[], minimum: number): string => {
+  if (hasContrast(foreground, surfaces, minimum)) {
+    return foreground;
+  }
 
-  const candidates: Array<{ color: string; distance: number }> = [];
+  const candidates: ContrastCandidate[] = [];
+
   for (const target of ['#000000', '#ffffff']) {
     for (let step = 1; step <= 100; step++) {
       const distance = step / 100;
       const color = mixColors(foreground, target, distance);
+
       if (hasContrast(color, surfaces, minimum)) {
         candidates.push({ color, distance });
         break;
       }
     }
   }
+
   return candidates.sort((a, b) => a.distance - b.distance)[0]?.color ?? '#000000';
-}
+};
 
 interface ResolvedAccent {
   accent: string;
   accentSoft: string;
 }
 
-function resolveAccent(source: ThemeSourceColors, isDark: boolean): ResolvedAccent {
+const resolveAccent = (source: ThemeSourceColors, isDark: boolean): ResolvedAccent => {
   const input = source.panel;
   const accentBlend = isDark ? 0.15 : 0.09;
   let accent = source.accent;
   let accentSoft = mixColors(input, accent, accentBlend);
+
   for (let attempt = 0; attempt < 4; attempt++) {
     const nextAccent = ensureContrast(
       source.accent,
       [source.panel, source.raised, input, source.selection, accentSoft],
       4.5,
     );
-    if (nextAccent === accent) break;
+
+    if (nextAccent === accent) {
+      break;
+    }
+
     accent = nextAccent;
     accentSoft = mixColors(input, accent, accentBlend);
   }
+
   // Recompute the final surface after the loop and verify the displayed pair.
   accentSoft = mixColors(input, accent, accentBlend);
+
   if (contrast(accent, accentSoft) < 4.5) {
     accent = ensureContrast(accent, [accentSoft], 4.5);
     accentSoft = mixColors(input, accent, accentBlend);
   }
-  return { accent, accentSoft };
-}
 
-function sourceTokens(
+  return { accent, accentSoft };
+};
+
+const sourceTokens = (
   source: ThemeSourceColors,
   isDark: boolean,
   resolvedAccent = resolveAccent(source, isDark),
-): ThemeTokens {
+): ThemeTokens => {
   const { accent, accentSoft } = resolvedAccent;
   const input = source.panel;
   const textSurfaces = [source.background, source.panel, source.raised, input, source.selection, accentSoft];
@@ -177,9 +220,9 @@ function sourceTokens(
     '--cc-overlay-scrim': isDark ? 'rgba(0, 0, 0, 0.48)' : 'rgba(18, 20, 22, 0.22)',
     '--cc-shadow': isDark ? '0 10px 28px rgba(0, 0, 0, 0.38)' : '0 10px 28px rgba(20, 24, 28, 0.15)',
   };
-}
+};
 
-function alternateAppearance(source: ThemeSourceColors, isDark: boolean): ThemeSourceColors {
+const alternateAppearance = (source: ThemeSourceColors, isDark: boolean): ThemeSourceColors => {
   if (isDark) {
     const background = mixColors('#15171a', source.accent, 0.035);
     const panel = mixColors('#1d2024', source.accent, 0.045);
@@ -211,19 +254,20 @@ function alternateAppearance(source: ThemeSourceColors, isDark: boolean): ThemeS
     hover: mixColors(panel, source.accent, 0.055),
     selection: mixColors(panel, source.accent, 0.105),
   };
-}
+};
 
-function lazyPalette(
+const lazyPalette = (
   source: Pick<PairedThemeSource, 'id' | 'name' | 'description'>,
   lightSource: ThemeSourceColors,
   darkSource: ThemeSourceColors,
-): ThemePalette {
+): ThemePalette => {
   let lightTokens: ThemeTokens | undefined;
   let darkTokens: ThemeTokens | undefined;
   let lightAccent: ResolvedAccent | undefined;
   let darkAccent: ResolvedAccent | undefined;
   const getLightAccent = () => (lightAccent ??= resolveAccent(lightSource, false));
   const getDarkAccent = () => (darkAccent ??= resolveAccent(darkSource, true));
+
   return {
     id: source.id,
     name: source.name,
@@ -239,18 +283,19 @@ function lazyPalette(
       return (darkTokens ??= sourceTokens(darkSource, true, getDarkAccent()));
     },
   };
-}
+};
 
-function singleAppearancePalette(source: ThemeSource): ThemePalette {
+const singleAppearancePalette = (source: ThemeSource): ThemePalette => {
   const alternate = alternateAppearance(source.colors, source.appearance === 'light');
   const lightSource = source.appearance === 'light' ? source.colors : alternate;
   const darkSource = source.appearance === 'dark' ? source.colors : alternate;
-  return lazyPalette(source, lightSource, darkSource);
-}
 
-function pairedPalette(source: PairedThemeSource): ThemePalette {
+  return lazyPalette(source, lightSource, darkSource);
+};
+
+const pairedPalette = (source: PairedThemeSource): ThemePalette => {
   return lazyPalette(source, source.light, source.dark);
-}
+};
 
 const plain = pairedPalette({
   id: 'plain',
@@ -587,11 +632,15 @@ export const themePreferencesStorageKey = 'themePreferences';
 
 const THEME_CACHE_KEY = 'command-center-theme-cache';
 
-export function normalizeThemePreferences(value: unknown): ThemePreferences {
-  if (!value || typeof value !== 'object') return defaultThemePreferences;
+export const normalizeThemePreferences = (value: unknown): ThemePreferences => {
+  if (!value || typeof value !== 'object') {
+    return defaultThemePreferences;
+  }
+
   const candidate = value as Partial<ThemePreferences>;
   const appearance: AppearanceMode =
     candidate.appearance === 'light' || candidate.appearance === 'dark' ? candidate.appearance : 'system';
+
   const legacyPaletteIds: Record<string, string> = {
     raycast: 'plain',
     slate: 'plain',
@@ -610,45 +659,50 @@ export function normalizeThemePreferences(value: unknown): ThemePreferences {
     chalk: 't3-code',
     parchment: 'tobacco',
   };
+
   const requestedPalette =
     typeof candidate.palette === 'string'
       ? (legacyPaletteIds[candidate.palette] ?? candidate.palette)
       : defaultThemePreferences.palette;
+
   const palette = themeRegistry.some((theme) => theme.id === requestedPalette)
     ? requestedPalette
     : defaultThemePreferences.palette;
+
   const size = commandBarSizes.some((option) => option.id === candidate.size)
     ? candidate.size!
     : defaultThemePreferences.size;
+
   const windowMode: CommandBarWindowMode = candidate.windowMode === 'compact' ? 'compact' : 'expanded';
   const fontFamily = commandBarFonts.some((option) => option.id === candidate.fontFamily)
     ? candidate.fontFamily!
     : defaultThemePreferences.fontFamily;
-  return { appearance, palette, size, windowMode, fontFamily };
-}
 
-export function readThemeCache(): ThemePreferences {
+  return { appearance, palette, size, windowMode, fontFamily };
+};
+
+export const readThemeCache = (): ThemePreferences => {
   try {
     const stored = localStorage.getItem(THEME_CACHE_KEY);
     return normalizeThemePreferences(stored ? JSON.parse(stored) : null);
   } catch {
     return defaultThemePreferences;
   }
-}
+};
 
-export function cacheThemePreferences(preferences: ThemePreferences): void {
+export const cacheThemePreferences = (preferences: ThemePreferences): void => {
   try {
     localStorage.setItem(THEME_CACHE_KEY, JSON.stringify(preferences));
   } catch {
     // The persistent Chrome storage value remains the source of truth.
   }
-}
+};
 
-export function applyTheme(
+export const applyTheme = (
   preferences: ThemePreferences,
   systemDark: boolean,
   root: HTMLElement = document.documentElement,
-): void {
+): void => {
   const theme = themeRegistry.find((candidate) => candidate.id === preferences.palette) ?? plain;
   const isDark = preferences.appearance === 'dark' || (preferences.appearance === 'system' && systemDark);
   const tokens = isDark ? theme.dark : theme.light;
@@ -658,7 +712,8 @@ export function applyTheme(
   root.dataset.size = preferences.size;
   root.dataset.windowMode = preferences.windowMode;
   root.dataset.fontFamily = preferences.fontFamily;
+
   for (const [name, value] of Object.entries(tokens)) {
     root.style.setProperty(name, value);
   }
-}
+};

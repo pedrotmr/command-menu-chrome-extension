@@ -38,14 +38,21 @@ export class OverlayTabRegistry {
       .catch(() => undefined)
       .then(async () => {
         await this.restore();
-        if (shouldRegister) this.tabIds.add(tabId);
-        else this.tabIds.delete(tabId);
+
+        if (shouldRegister) {
+          this.tabIds.add(tabId);
+        } else {
+          this.tabIds.delete(tabId);
+        }
+
         await this.port.save([...this.tabIds]);
       });
+
     this.writes = write.then(
       () => undefined,
       () => undefined,
     );
+
     return write;
   }
 
@@ -54,11 +61,15 @@ export class OverlayTabRegistry {
       this.restored = this.port
         .load()
         .then((savedTabIds) => {
-          if (!Array.isArray(savedTabIds)) return;
+          if (!Array.isArray(savedTabIds)) {
+            return;
+          }
+
           this.tabIds = new Set(savedTabIds.filter((tabId): tabId is number => Number.isInteger(tabId) && tabId >= 0));
         })
         .catch(() => undefined);
     }
+
     return this.restored;
   }
 }
