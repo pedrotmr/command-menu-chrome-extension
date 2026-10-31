@@ -855,7 +855,9 @@ const handleRequest = async (rawMessage: unknown, sender: chrome.runtime.Message
       const anchor = await chrome.tabs.get(anchorTabId).catch(() => null);
       if (!anchor || anchor.windowId !== message.windowId)
         throw new Error('Tabs changed. Cancel and review the tabs before closing.');
-      const tabs = await chrome.tabs.query({ windowId: anchor.windowId });
+      const tabs = (await chrome.tabs.query({ windowId: anchor.windowId })).filter(
+        (tab) => !tab.url?.startsWith(ownExtensionUrlPrefix),
+      );
       const currentIds = bulkCloseTabIds(tabs, anchor, message.closeAction);
       if (currentIds.length !== ids.length || currentIds.some((id) => !ids.includes(id))) {
         throw new Error('Tabs changed. Cancel and review the tabs before closing.');

@@ -92,6 +92,19 @@ test('reliability contracts', { timeout: 15000 }, async (t) => {
       [1, 2],
     );
   });
+  await t.test('bulk close matches the palette target set when an own-extension page is open', async () => {
+    tabs.push({ id: 4, windowId: 10, index: 2, url: chrome.runtime.getURL('src/popup/index.html') });
+    await sendBackground('tabs:close-confirmed', {
+      closeAction: 'tabs:close-right',
+      anchorTabId: 1,
+      windowId: 10,
+      tabIds: [3],
+    });
+    assert.deepEqual(
+      tabs.map((tab) => tab.id),
+      [1, 2, 4],
+    );
+  });
   for (const change of ['added', 'reordered', 'moved', 'closed', 'anchor-closed']) {
     await t.test(`bulk close refuses a stale confirmation after tabs are ${change}`, async () => {
       if (change === 'added') tabs.push({ id: 4, windowId: 10, index: 2 });
