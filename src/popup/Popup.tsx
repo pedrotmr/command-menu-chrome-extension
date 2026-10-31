@@ -12,7 +12,13 @@ interface PopupProps {
   initialSwitcherModifierReleased: boolean;
 }
 
-export function Popup({ initialMode, initialTheme, initialSwitcherAutoSwitchOnRelease, initialSwitcherOpenedAt, initialSwitcherModifierReleased }: PopupProps) {
+export function Popup({
+  initialMode,
+  initialTheme,
+  initialSwitcherAutoSwitchOnRelease,
+  initialSwitcherOpenedAt,
+  initialSwitcherModifierReleased,
+}: PopupProps) {
   const surface = initialMode === 'tabs' ? 'tabs' : 'commands';
   const [cycleVersion, setCycleVersion] = useState(0);
 

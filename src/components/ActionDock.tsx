@@ -22,7 +22,19 @@ interface ActionDockProps {
 }
 
 function ChevronGlyph() {
-  return <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m6 3.5 4.5 4.5L6 12.5" /></svg>;
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="m6 3.5 4.5 4.5L6 12.5" />
+    </svg>
+  );
 }
 
 function menuItems(menu: HTMLElement | null): HTMLElement[] {
@@ -50,9 +62,7 @@ export function ActionDock({ id, label, items, focusFirstItem, onDismiss }: Acti
   const [query, setQuery] = useState('');
   const filteredItems = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase();
-    return normalizedQuery
-      ? items.filter((item) => item.label.toLocaleLowerCase().includes(normalizedQuery))
-      : items;
+    return normalizedQuery ? items.filter((item) => item.label.toLocaleLowerCase().includes(normalizedQuery)) : items;
   }, [items, query]);
 
   useLayoutEffect(() => {
@@ -82,9 +92,8 @@ export function ActionDock({ id, label, items, focusFirstItem, onDismiss }: Acti
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault();
       const step = event.key === 'ArrowDown' ? 1 : -1;
-      const next = current < 0
-        ? (step > 0 ? 0 : elements.length - 1)
-        : (current + step + elements.length) % elements.length;
+      const next =
+        current < 0 ? (step > 0 ? 0 : elements.length - 1) : (current + step + elements.length) % elements.length;
       focusItem(elements[next]);
       return;
     }
@@ -150,9 +159,15 @@ export function ActionDock({ id, label, items, focusFirstItem, onDismiss }: Acti
             aria-haspopup={item.opensDialog ? 'dialog' : undefined}
             onClick={item.onSelect}
           >
-            <span className="action-dock-icon" aria-hidden="true"><ResultGlyph kind={item.icon} /></span>
+            <span className="action-dock-icon" aria-hidden="true">
+              <ResultGlyph kind={item.icon} />
+            </span>
             <span className="action-dock-label">{item.label}</span>
-            {item.opensDialog && <span className="action-dock-chevron" aria-hidden="true"><ChevronGlyph /></span>}
+            {item.opensDialog && (
+              <span className="action-dock-chevron" aria-hidden="true">
+                <ChevronGlyph />
+              </span>
+            )}
           </button>
         ))}
         {!filteredItems.length && (
@@ -162,7 +177,18 @@ export function ActionDock({ id, label, items, focusFirstItem, onDismiss }: Acti
         )}
       </div>
       <div className="action-dock-footer">
-        <svg className="action-dock-search-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3 3"/></svg>
+        <svg
+          className="action-dock-search-icon"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          aria-hidden="true"
+        >
+          <circle cx="7" cy="7" r="4.5" />
+          <path d="m10.5 10.5 3 3" />
+        </svg>
         <input
           ref={searchRef}
           id={`${id}-search`}

@@ -24,7 +24,20 @@ const windowModes = [
 const sizePreviewWidth: Record<CommandBarSize, string> = { compact: '52%', standard: '70%', wide: '90%' };
 
 function CheckGlyph() {
-  return <svg className="option-check" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m3.5 8.4 2.9 2.9 6.1-6.6" /></svg>;
+  return (
+    <svg
+      className="option-check"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="m3.5 8.4 2.9 2.9 6.1-6.6" />
+    </svg>
+  );
 }
 
 export function SettingsView({ preferences, onChange, onManageShortcuts, onBack, viewRef }: SettingsViewProps) {
@@ -41,7 +54,17 @@ export function SettingsView({ preferences, onChange, onManageShortcuts, onBack,
         title="Back to command search"
         onClick={onBack}
       >
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M10 3.5 5.5 8l4.5 4.5" /></svg>
+        <svg
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M10 3.5 5.5 8l4.5 4.5" />
+        </svg>
       </button>
       <div className="settings-heading">
         <h2 id="settings-title">Appearance</h2>
@@ -91,7 +114,7 @@ export function SettingsView({ preferences, onChange, onManageShortcuts, onBack,
                   const columns = grid
                     ? Math.max(1, getComputedStyle(grid).gridTemplateColumns.trim().split(/\s+/).length)
                     : 1;
-                  let nextIndex = index;
+                  let nextIndex: number;
                   if (columns === 1 && ['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp'].includes(event.key)) {
                     const step = ['ArrowRight', 'ArrowDown'].includes(event.key) ? 1 : -1;
                     nextIndex = (index + step + themeRegistry.length) % themeRegistry.length;
@@ -99,7 +122,7 @@ export function SettingsView({ preferences, onChange, onManageShortcuts, onBack,
                     const rowStart = Math.floor(index / columns) * columns;
                     const rowLength = Math.min(columns, themeRegistry.length - rowStart);
                     const column = index - rowStart;
-                    nextIndex = rowStart + (column + (event.key === 'ArrowRight' ? 1 : rowLength - 1)) % rowLength;
+                    nextIndex = rowStart + ((column + (event.key === 'ArrowRight' ? 1 : rowLength - 1)) % rowLength);
                   } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
                     const row = Math.floor(index / columns);
                     const rowCount = Math.ceil(themeRegistry.length / columns);
@@ -119,8 +142,12 @@ export function SettingsView({ preferences, onChange, onManageShortcuts, onBack,
                 }}
               >
                 <span className="palette-swatch" aria-hidden="true">
-                  <span style={{ background: palette.preview.light.background }}><i style={{ background: palette.preview.light.accent }} /></span>
-                  <span style={{ background: palette.preview.dark.background }}><i style={{ background: palette.preview.dark.accent }} /></span>
+                  <span style={{ background: palette.preview.light.background }}>
+                    <i style={{ background: palette.preview.light.accent }} />
+                  </span>
+                  <span style={{ background: palette.preview.dark.background }}>
+                    <i style={{ background: palette.preview.dark.accent }} />
+                  </span>
                 </span>
                 <span className="option-card-text">
                   <span className="option-card-title">{palette.name}</span>
@@ -149,9 +176,11 @@ export function SettingsView({ preferences, onChange, onManageShortcuts, onBack,
                 onClick={() => onChange({ ...preferences, fontFamily: font.id })}
                 onKeyDown={(event) => {
                   const grid = event.currentTarget.closest('.font-family-grid');
-                  let nextIndex = index;
-                  if (event.key === 'ArrowRight' || event.key === 'ArrowDown') nextIndex = (index + 1) % commandBarFonts.length;
-                  else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') nextIndex = (index + commandBarFonts.length - 1) % commandBarFonts.length;
+                  let nextIndex: number;
+                  if (event.key === 'ArrowRight' || event.key === 'ArrowDown')
+                    nextIndex = (index + 1) % commandBarFonts.length;
+                  else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp')
+                    nextIndex = (index + commandBarFonts.length - 1) % commandBarFonts.length;
                   else if (event.key === 'Home') nextIndex = 0;
                   else if (event.key === 'End') nextIndex = commandBarFonts.length - 1;
                   else return;
@@ -162,7 +191,9 @@ export function SettingsView({ preferences, onChange, onManageShortcuts, onBack,
                   grid?.querySelectorAll<HTMLButtonElement>('[role="radio"]')[nextIndex]?.focus();
                 }}
               >
-                <span className="font-family-sample" style={{ fontFamily: font.stack }} aria-hidden="true">{font.sample}</span>
+                <span className="font-family-sample" style={{ fontFamily: font.stack }} aria-hidden="true">
+                  {font.sample}
+                </span>
                 <span className="option-card-text">
                   <span className="option-card-title">{font.label}</span>
                   <span className="option-card-description">{font.description}</span>
@@ -187,7 +218,9 @@ export function SettingsView({ preferences, onChange, onManageShortcuts, onBack,
                 aria-pressed={active}
                 onClick={() => onChange({ ...preferences, size: size.id })}
               >
-                <span className="size-preview" aria-hidden="true"><span style={{ width: sizePreviewWidth[size.id] }} /></span>
+                <span className="size-preview" aria-hidden="true">
+                  <span style={{ width: sizePreviewWidth[size.id] }} />
+                </span>
                 <span className="option-card-text">
                   <span className="option-card-title">{size.label}</span>
                   <span className="option-card-description">{size.description}</span>
@@ -241,7 +274,17 @@ export function SettingsView({ preferences, onChange, onManageShortcuts, onBack,
         </div>
         <button type="button" className="button-secondary" onClick={onManageShortcuts}>
           Manage shortcuts
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5.5 10.5 10.5 5.5M6.5 5.5h4v4" /></svg>
+          <svg
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M5.5 10.5 10.5 5.5M6.5 5.5h4v4" />
+          </svg>
         </button>
       </div>
     </section>

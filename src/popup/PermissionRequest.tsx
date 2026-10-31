@@ -46,12 +46,22 @@ export function PermissionRequest({ permissions }: PermissionRequestProps) {
       <p className="cc-permission-eyebrow">Command Menu access</p>
       <h1>Allow {requestedLabels.join(' and ')}?</h1>
       <p className="cc-permission-copy">
-        Chrome will ask for this access so the selected command can use it. You can change extension permissions in Chrome at any time.
+        Chrome will ask for this access so the selected command can use it. You can change extension permissions in
+        Chrome at any time.
       </p>
-      <p className="cc-permission-status" role="status" aria-live="polite">{status}</p>
+      <p className="cc-permission-status" role="status" aria-live="polite">
+        {status}
+      </p>
       <div className="cc-permission-actions">
-        <button className="cc-permission-cancel" type="button" onClick={() => window.close()}>Cancel</button>
-        <button className="cc-permission-grant" type="button" onClick={() => void requestAccess()} disabled={!permissions.length || requesting}>
+        <button className="cc-permission-cancel" type="button" onClick={() => window.close()}>
+          Cancel
+        </button>
+        <button
+          className="cc-permission-grant"
+          type="button"
+          onClick={() => void requestAccess()}
+          disabled={!permissions.length || requesting}
+        >
           {requesting ? 'Waiting…' : 'Grant access'}
         </button>
       </div>

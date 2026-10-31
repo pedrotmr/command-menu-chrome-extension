@@ -3,7 +3,10 @@ import { createRoot, type Root } from 'react-dom/client';
 import { applyTheme, defaultThemePreferences, normalizeThemePreferences, themePreferencesStorageKey } from '@/themes';
 import { PaletteMode, ThemePreferences } from '@/types';
 import { loadProductFontForPage } from '@/utils/installProductFont';
-import { installTabSwitcherKeyReleaseMonitor, wasTabSwitcherModifierReleasedAfter } from '@/utils/tabSwitcherKeyRelease';
+import {
+  installTabSwitcherKeyReleaseMonitor,
+  wasTabSwitcherModifierReleasedAfter,
+} from '@/utils/tabSwitcherKeyRelease';
 import { wasCommandPaletteEscapeHandled } from '@/utils/escapeEvents';
 
 export type OverlaySurface = 'commands' | 'tabs';
@@ -131,31 +134,41 @@ function createHost(): { host: HTMLElement; mountPoint: HTMLElement } {
   style.textContent = sharedWindow.__commandCenterOverlayStyles as string;
   const mountPoint = document.createElement('div');
   mountPoint.className = 'cc-extension-root';
-  shadowRoot.addEventListener('wheel', (event) => {
-    const wheelEvent = event as WheelEvent;
-    if (wheelEvent.ctrlKey) return;
-    const target = wheelEvent.target instanceof Element ? wheelEvent.target : null;
-    const horizontal = Math.abs(wheelEvent.deltaX) > Math.abs(wheelEvent.deltaY);
-    const delta = horizontal ? wheelEvent.deltaX : wheelEvent.deltaY;
-    let current: Element | null = target;
-    while (current) {
-      if (current instanceof HTMLElement && current.matches('.results-list, .settings-view, .flow-dialog, .action-dock-menu')) {
-        const position = horizontal ? current.scrollLeft : current.scrollTop;
-        const extent = horizontal
-          ? current.scrollWidth - current.clientWidth
-          : current.scrollHeight - current.clientHeight;
-        const canScroll = delta < 0 ? position > 0 : position < extent - 1;
-        if (canScroll) return;
+  shadowRoot.addEventListener(
+    'wheel',
+    (event) => {
+      const wheelEvent = event as WheelEvent;
+      if (wheelEvent.ctrlKey) return;
+      const target = wheelEvent.target instanceof Element ? wheelEvent.target : null;
+      const horizontal = Math.abs(wheelEvent.deltaX) > Math.abs(wheelEvent.deltaY);
+      const delta = horizontal ? wheelEvent.deltaX : wheelEvent.deltaY;
+      let current: Element | null = target;
+      while (current) {
+        if (
+          current instanceof HTMLElement &&
+          current.matches('.results-list, .settings-view, .flow-dialog, .action-dock-menu')
+        ) {
+          const position = horizontal ? current.scrollLeft : current.scrollTop;
+          const extent = horizontal
+            ? current.scrollWidth - current.clientWidth
+            : current.scrollHeight - current.clientHeight;
+          const canScroll = delta < 0 ? position > 0 : position < extent - 1;
+          if (canScroll) return;
+        }
+        current = current.parentElement;
       }
-      current = current.parentElement;
-    }
-    wheelEvent.preventDefault();
-  }, { capture: true, passive: false });
+      wheelEvent.preventDefault();
+    },
+    { capture: true, passive: false },
+  );
   shadowRoot.append(style, mountPoint);
   return { host, mountPoint };
 }
 
-function OverlayFrame({ controller, renderSurface }: {
+function OverlayFrame({
+  controller,
+  renderSurface,
+}: {
   controller: SurfaceController;
   renderSurface: SurfaceRenderer;
 }) {
@@ -206,19 +219,26 @@ function OverlayFrame({ controller, renderSurface }: {
       setAutoSwitchOnRelease(shouldAutoSwitchOnRelease);
       setOpenedAt(launchTime);
       setModifierReleasedAtOpen(shouldAutoSwitchOnRelease && wasTabSwitcherModifierReleasedAfter(launchTime));
-      if (!controller.focusTarget || Date.now() > controller.focusTargetPreservedUntil || !controller.focusTarget.isConnected) {
+      if (
+        !controller.focusTarget ||
+        Date.now() > controller.focusTargetPreservedUntil ||
+        !controller.focusTarget.isConnected
+      ) {
         controller.focusTarget = document.activeElement;
       }
       controller.focusTargetPreservedUntil = 0;
       showHost(controller.host);
       setPageInert(controller, true);
-      void chrome.storage.local.get(themePreferencesStorageKey).then((values) => {
-        if (!isOpenRef.current || requestVersion !== openRequestVersion.current) return;
-        setTheme(normalizeThemePreferences(values[themePreferencesStorageKey] ?? defaultThemePreferences));
-        setIsOpen(true);
-      }).catch(() => {
-        if (isOpenRef.current && requestVersion === openRequestVersion.current) setIsOpen(true);
-      });
+      void chrome.storage.local
+        .get(themePreferencesStorageKey)
+        .then((values) => {
+          if (!isOpenRef.current || requestVersion !== openRequestVersion.current) return;
+          setTheme(normalizeThemePreferences(values[themePreferencesStorageKey] ?? defaultThemePreferences));
+          setIsOpen(true);
+        })
+        .catch(() => {
+          if (isOpenRef.current && requestVersion === openRequestVersion.current) setIsOpen(true);
+        });
     };
     const closeSurface = (switching: boolean) => {
       openRequestVersion.current++;
@@ -278,7 +298,15 @@ function OverlayFrame({ controller, renderSurface }: {
   return (
     <div className="cc-overlay-stage">
       <div className="cc-overlay-backdrop" aria-hidden="true" onClick={closeSurface} />
-      {renderSurface({ theme, themeRoot: controller.host, onClose: closeSurface, autoSwitchOnRelease, openedAt, modifierReleasedAtOpen, cycleVersion })}
+      {renderSurface({
+        theme,
+        themeRoot: controller.host,
+        onClose: closeSurface,
+        autoSwitchOnRelease,
+        openedAt,
+        modifierReleasedAtOpen,
+        cycleVersion,
+      })}
     </div>
   );
 }
@@ -291,8 +319,19 @@ export function mountOverlaySurface(surface: OverlaySurface, styles: string, ren
 
   const { host, mountPoint } = createHost();
   const root = createRoot(mountPoint);
-  const bridge: SurfaceBridge = { pendingOpen: false, pendingAutoSwitchOnRelease: false, pendingOpenedAt: 0, pendingClose: false, pendingSwitching: false, pendingCycles: 0 };
-  const onMessage = (message: OpenRequest, sender: chrome.runtime.MessageSender, sendResponse: (response?: unknown) => void) => {
+  const bridge: SurfaceBridge = {
+    pendingOpen: false,
+    pendingAutoSwitchOnRelease: false,
+    pendingOpenedAt: 0,
+    pendingClose: false,
+    pendingSwitching: false,
+    pendingCycles: 0,
+  };
+  const onMessage = (
+    message: OpenRequest,
+    sender: chrome.runtime.MessageSender,
+    sendResponse: (response?: unknown) => void,
+  ) => {
     if (sender.id !== chrome.runtime.id) return false;
     if (message.action === 'ui:tabs-cycle') {
       const cycles = Math.max(1, Math.min(64, Math.floor(Number(message.cycles) || 1)));

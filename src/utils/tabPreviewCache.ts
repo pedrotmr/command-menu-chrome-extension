@@ -64,10 +64,7 @@ export class TabPreviewCache {
     return this.operations.enqueue(async () => {
       const stored = await this.port.get(this.idsKey);
       const ids = this.readIds(stored[this.idsKey]);
-      await this.port.remove([
-        this.idsKey,
-        ...ids.map((id) => `${this.recordPrefix}${id}`),
-      ]);
+      await this.port.remove([this.idsKey, ...ids.map((id) => `${this.recordPrefix}${id}`)]);
     });
   }
 

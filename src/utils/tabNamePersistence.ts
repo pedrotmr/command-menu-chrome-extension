@@ -9,7 +9,7 @@ export function markTabNameClosed(
   savedNames: TabNameMap,
   tabId: number,
   closedAt = Date.now(),
-  currentTabs: TabIdentitySnapshot[] = []
+  currentTabs: TabIdentitySnapshot[] = [],
 ): boolean {
   const id = String(tabId);
   const savedName = savedNames[id];
@@ -21,7 +21,7 @@ export function markTabNameClosed(
   let suffix = 1;
   while (savedNames[staleKey]) staleKey = `${keyBase}:${suffix++}`;
   const excludedTabIdsAtClose = currentTabs.flatMap((tab) =>
-    tab.id !== undefined && tab.url === savedName.url ? [tab.id] : []
+    tab.id !== undefined && tab.url === savedName.url ? [tab.id] : [],
   );
   savedNames[staleKey] = { ...savedName, closedAt, excludedTabIdsAtClose };
   return true;
@@ -48,21 +48,21 @@ export function reconcileTabNames(
   currentTabs: TabIdentitySnapshot[],
   now = Date.now(),
   maxAge = DEFAULT_MAX_AGE,
-  forceIdentityMatching = false
+  forceIdentityMatching = false,
 ): TabNameMap {
-  const copiedNames: TabNameMap = Object.fromEntries(
-    Object.entries(savedNames).map(([id, name]) => [id, { ...name }])
-  );
+  const copiedNames: TabNameMap = Object.fromEntries(Object.entries(savedNames).map(([id, name]) => [id, { ...name }]));
   for (const [id, name] of Object.entries(copiedNames)) {
     if (name.closedAt !== undefined && now - name.closedAt > maxAge) delete copiedNames[id];
   }
   const names = forceIdentityMatching
-    ? Object.fromEntries(Object.values(copiedNames).map((name, index) => [
-      `stale:${name.tabId}:${name.updatedAt}:${index}`,
-      { ...withoutCloseExclusions(name), closedAt: name.closedAt ?? now },
-    ]))
+    ? Object.fromEntries(
+        Object.values(copiedNames).map((name, index) => [
+          `stale:${name.tabId}:${name.updatedAt}:${index}`,
+          { ...withoutCloseExclusions(name), closedAt: name.closedAt ?? now },
+        ]),
+      )
     : copiedNames;
-  const activeIds = new Set(currentTabs.flatMap((tab) => tab.id === undefined ? [] : [String(tab.id)]));
+  const activeIds = new Set(currentTabs.flatMap((tab) => (tab.id === undefined ? [] : [String(tab.id)])));
 
   if (!forceIdentityMatching) {
     for (const [id, name] of Object.entries(names)) {
@@ -102,8 +102,8 @@ export function reconcileTabNames(
     if (oldIds.length !== 1) continue;
     const oldId = oldIds[0];
     const excludedIds = new Set(names[oldId].excludedTabIdsAtClose ?? []);
-    const matchingTabs = (currentByIdentity.get(key) ?? []).filter((tab) =>
-      tab.id !== undefined && !excludedIds.has(tab.id)
+    const matchingTabs = (currentByIdentity.get(key) ?? []).filter(
+      (tab) => tab.id !== undefined && !excludedIds.has(tab.id),
     );
     if (matchingTabs.length !== 1 || matchingTabs[0].id === undefined) continue;
     const newId = String(matchingTabs[0].id);
@@ -134,8 +134,8 @@ export function reconcileTabNames(
     if (oldIds.length !== 1) continue;
     const oldId = oldIds[0];
     const excludedIds = new Set(names[oldId].excludedTabIdsAtClose ?? []);
-    const matchingTabs = (currentByUrl.get(url) ?? []).filter((tab) =>
-      tab.id !== undefined && !excludedIds.has(tab.id)
+    const matchingTabs = (currentByUrl.get(url) ?? []).filter(
+      (tab) => tab.id !== undefined && !excludedIds.has(tab.id),
     );
     if (matchingTabs.length !== 1 || matchingTabs[0].id === undefined) continue;
     const newId = String(matchingTabs[0].id);
@@ -148,10 +148,12 @@ export function reconcileTabNames(
     delete names[oldId];
   }
 
-  const currentIdentities = new Set(currentTabs.flatMap((tab) => {
-    const key = identity(tab.url, tab.title);
-    return key ? [key] : [];
-  }));
+  const currentIdentities = new Set(
+    currentTabs.flatMap((tab) => {
+      const key = identity(tab.url, tab.title);
+      return key ? [key] : [];
+    }),
+  );
   for (const [id, name] of Object.entries(names)) {
     if (activeIds.has(id) || currentIdentities.has(identity(name.url, name.originalTitle) ?? '')) continue;
     const retentionAnchor = name.closedAt ?? name.updatedAt;

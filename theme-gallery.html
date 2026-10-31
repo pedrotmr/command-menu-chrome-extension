@@ -1,185 +1,748 @@
 <!doctype html>
 <html lang="en" data-appearance="dark">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Command Bar Theme Gallery</title>
-  <style>
-    @font-face {
-      font-family: "Open Sans";
-      src: url("./public/assets/fonts/open-sans/OpenSans-Latin.woff2") format("woff2");
-      font-style: normal;
-      font-weight: 300 700;
-      font-display: swap;
-      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-    }
-    @font-face {
-      font-family: "Open Sans";
-      src: url("./public/assets/fonts/open-sans/OpenSans-LatinExt.woff2") format("woff2");
-      font-style: normal;
-      font-weight: 300 700;
-      font-display: swap;
-      unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
-    }
-    :root {
-      color-scheme: light dark;
-      --page-bg: #141619;
-      --foreground: #e8e9ea;
-      --card: #202326;
-      --border: #3a3e43;
-      --secondary: #292d31;
-      --muted: #a4a8ad;
-    }
-    html[data-appearance="light"] {
-      color-scheme: light;
-      --page-bg: #f4f5f6;
-      --foreground: #24272b;
-      --card: #ffffff;
-      --border: #d9dde2;
-      --secondary: #eef1f4;
-      --muted: #646b73;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      background: var(--page-bg);
-      color: var(--foreground);
-      font: 400 13px/1.45 "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      -webkit-font-smoothing: antialiased;
-    }
-    #gallery { width: min(100%, 1180px); margin-inline: auto; }
-    .masthead { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
-    .eyebrow { display: flex; align-items: center; gap: 7px; margin: 0 0 6px; color: color-mix(in srgb, var(--foreground) 62%, transparent); font-size: 10px; font-weight: 650; letter-spacing: .12em; text-transform: uppercase; }
-    .eyebrow-mark { width: 7px; height: 7px; border-radius: 2px; background: #82c7e8; transform: rotate(45deg); }
-    h1 { margin: 0; color: var(--foreground); font-size: 21px; font-weight: 550; letter-spacing: -.035em; line-height: 1.15; }
-    .summary { margin: 5px 0 0; color: color-mix(in srgb, var(--foreground) 62%, transparent); font-size: 11px; }
-    .mode-toggle { display: flex; flex: 0 0 auto; gap: 3px; padding: 3px; border: 1px solid var(--border); border-radius: 10px; background: var(--secondary); }
-    .mode-toggle button { min-height: 29px; padding: 0 10px; border-radius: 7px; background: transparent; color: var(--foreground); cursor: pointer; font: inherit; font-size: 11px; opacity: .68; }
-    .mode-toggle button[aria-pressed="true"] { background: var(--card); color: var(--foreground); opacity: 1; box-shadow: 0 1px 3px rgba(0,0,0,.14); }
-    .theme-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
-    .theme-card { min-width: 0; padding: 11px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); }
-    .theme-card-heading { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
-    .theme-copy { min-width: 0; }
-    .theme-copy h2 { overflow: hidden; margin: 0; color: var(--foreground); font-size: 13px; font-weight: 600; letter-spacing: -.01em; text-overflow: ellipsis; white-space: nowrap; }
-    .theme-copy p { overflow: hidden; margin: 1px 0 0; color: var(--muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
-    .swatches { display: flex; flex: 0 0 auto; gap: 4px; }
-    .swatches span { width: 13px; height: 13px; border: 1px solid color-mix(in srgb, var(--foreground) 16%, transparent); border-radius: 50%; }
-    .theme-preview {
-      --surface: var(--light-bg); --panel: var(--light-panel); --raised: var(--light-raised);
-      --ink: var(--light-ink); --muted-ink: var(--light-muted); --subtle-ink: var(--light-subtle);
-      --line: var(--light-border); --accent: var(--light-accent); --selection: var(--light-selection);
-      overflow: hidden; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink);
-      box-shadow: 0 5px 14px color-mix(in srgb, var(--ink) 7%, transparent);
-    }
-    html[data-appearance="dark"] .theme-preview {
-      --surface: var(--dark-bg); --panel: var(--dark-panel); --raised: var(--dark-raised);
-      --ink: var(--dark-ink); --muted-ink: var(--dark-muted); --subtle-ink: var(--dark-subtle);
-      --line: var(--dark-border); --accent: var(--dark-accent); --selection: var(--dark-selection);
-    }
-    .search-row { display: flex; height: 34px; align-items: center; gap: 8px; padding: 0 11px; border-bottom: 1px solid var(--line); background: var(--surface); }
-    .search-row svg { display: block; width: 14px; height: 14px; flex: 0 0 auto; color: var(--muted-ink); }
-    .placeholder { overflow: hidden; flex: 1; color: var(--subtle-ink); font-size: 11px; letter-spacing: -.01em; text-overflow: ellipsis; white-space: nowrap; }
-    .result-list { display: grid; gap: 2px; padding: 5px; }
-    .result { display: grid; min-width: 0; height: 30px; grid-template-columns: 18px minmax(0,1fr) auto auto; align-items: center; gap: 7px; padding: 0 7px; border: 1px solid transparent; border-radius: 7px; }
-    .result.selected { border-color: color-mix(in srgb, var(--accent) 27%, transparent); background: var(--selection); }
-    .item-icon { display: grid; width: 17px; height: 17px; place-items: center; border-radius: 4px; background: var(--raised); color: var(--accent); font-size: 9px; font-weight: 700; line-height: 1; }
-    .title-line { display: flex; min-width: 0; align-items: baseline; gap: 6px; }
-    .title { overflow: hidden; min-width: 0; color: var(--ink); font-size: 10.5px; font-weight: 550; text-overflow: ellipsis; white-space: nowrap; }
-    .subtitle { overflow: hidden; min-width: 0; color: var(--muted-ink); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
-    .pinned { padding: 2px 5px; border-radius: 5px; background: var(--raised); color: var(--muted-ink); font-size: 8px; line-height: 1.2; white-space: nowrap; }
-    .kind { color: var(--muted-ink); font-size: 9px; white-space: nowrap; }
-    .selected .kind { color: var(--accent); }
-    .palette-id { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 7px; color: var(--subtle-ink); font-size: 9px; }
-    .palette-id code { color: inherit; font: inherit; }
-    .palette-id { --accent: var(--light-accent); }
-    html[data-appearance="dark"] .palette-id { --accent: var(--dark-accent); }
-    .palette-id .accent-chip { display: inline-block; width: 7px; height: 7px; margin-right: 4px; border-radius: 50%; background: var(--accent); vertical-align: 0; }
-    @media (min-width: 1000px) { .theme-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-    @media (max-width: 520px) {
-      .masthead { align-items: start; flex-direction: column; }
-      .theme-grid { grid-template-columns: minmax(0,1fr); }
-      .mode-toggle { align-self: stretch; }
-      .mode-toggle button { flex: 1; }
-    }
-  </style>
-</head>
-<body>
-  <main id="gallery">
-    <header class="masthead">
-      <div>
-        <p class="eyebrow"><span class="eyebrow-mark"></span>Command Bar · Theme study</p>
-        <h1>Every palette, in context</h1>
-    <p class="summary" id="summary">12 palettes · 24 light and dark previews</p>
-      </div>
-      <div class="mode-toggle" role="group" aria-label="Preview appearance">
-        <button type="button" data-mode="light" aria-pressed="false">Light</button>
-        <button type="button" data-mode="dark" aria-pressed="true">Dark</button>
-      </div>
-    </header>
-    <section class="theme-grid" id="theme-grid" aria-label="Theme previews"></section>
-  </main>
-  <script>
-    const themes = [
-      { id:'plain', name:'Plain', description:'Black and white', light:{background:'#ffffff',panel:'#ffffff',raised:'#f4f4f4',accent:'#111111',border:'#e4e4e4',text:'#111111',muted:'#555555',subtle:'#5c5c5c',hover:'#f2f2f2',selection:'#e9e9e9'}, dark:{background:'#050505',panel:'#111111',raised:'#1d1d1d',accent:'#ffffff',border:'#353535',text:'#fafafa',muted:'#c2c2c2',subtle:'#b4b4b4',hover:'#1d1d1d',selection:'#292929'} },
-      { id:'cursor-dark', name:'Cursor Dark', description:'Graphite and pale cyan', appearance:'dark', colors:{background:'#141414',panel:'#181818',raised:'#262626',accent:'#88c0d0',border:'#292929',text:'#e4e4e4',muted:'#888888',subtle:'#636363',hover:'#272727',selection:'#343434'} },
-      { id:'cursor-midnight', name:'Cursor Midnight', description:'Midnight slate and sea glass', appearance:'dark', colors:{background:'#191c22',panel:'#1e2127',raised:'#434c5e',accent:'#8fbcbb',border:'#292c32',text:'#d8dee9',muted:'#7b88a1',subtle:'#4b5163',hover:'#2a2d33',selection:'#35373d'} },
-      { id:'vscode-dark-vs', name:'VS Code Dark', description:'Classic editor charcoal', appearance:'dark', colors:{background:'#252526',panel:'#1e1e1e',raised:'#2d2d2e',accent:'#007acc',border:'#303030',text:'#d4d4d4',muted:'#8c8c8c',subtle:'#616161',hover:'#2a2a2a',selection:'#353535'} },
-      { id:'tobacco', name:'Tobacco', description:'Warm charcoal and amber', appearance:'dark', colors:{background:'#242222',panel:'#201e1c',raised:'#2d2a2a',accent:'#eb9c3d',border:'#343230',text:'#ededed',muted:'#a1a0a0',subtle:'#706f6e',hover:'#302e2c',selection:'#3d3b3a'} },
-      { id:'dracula', name:'Dracula', description:'Charcoal with violet', appearance:'dark', colors:{background:'#21222c',panel:'#282a36',raised:'#44475a',accent:'#bd93f9',border:'#394057',text:'#e7e8e3',muted:'#9a9b9d',subtle:'#6b6c72',hover:'#343246',selection:'#403b55'} },
-      { id:'catppuccin', name:'Catppuccin', description:'Mocha and lavender', appearance:'dark', colors:{background:'#1e1e2e',panel:'#181825',raised:'#313244',accent:'#cba6f7',border:'#313242',text:'#bfc7e3',muted:'#767b91',subtle:'#4b4d5f',hover:'#252234',selection:'#332d45'} },
-      { id:'aurora', name:'Aurora', description:'Deep space and cyan', appearance:'dark', colors:{background:'#10151e',panel:'#0a0e16',raised:'#181f2d',accent:'#00d8ff',border:'#082e3b',text:'#b0d1ec',muted:'#6d8396',subtle:'#404e5c',hover:'#091c26',selection:'#092a37'} },
-      { id:'gruvbox', name:'Gruvbox', description:'Earthy retro warmth', appearance:'dark', colors:{background:'#282828',panel:'#1d2021',raised:'#3c3836',accent:'#fe8019',border:'#35312d',text:'#dbcca6',muted:'#9a8d7a',subtle:'#5b584c',hover:'#2f2820',selection:'#3f2e20'} },
-      { id:'nordic', name:'Nordic', description:'Polar slate and frost', appearance:'dark', colors:{background:'#2e3440',panel:'#242933',raised:'#3b4252',accent:'#88c0d0',border:'#3a3e47',text:'#d9dbe1',muted:'#92969d',subtle:'#646871',hover:'#333841',selection:'#3e434b'} },
-      { id:'t3-code', name:'T3 Code', description:'Clean neutrals and blue', light:{background:'#fcfcfc',panel:'#ffffff',raised:'#f4f4f5',accent:'#1b4ed8',border:'#e4e4e7',text:'#27272a',muted:'#71717b',subtle:'#71717b',hover:'#f4f4f5',selection:'#e0e6f7'}, dark:{background:'#0a0a0a',panel:'#111111',raised:'#141414',accent:'#346bf1',border:'#292929',text:'#f5f5f5',muted:'#a3a3a3',subtle:'#a3a3a3',hover:'#141414',selection:'#1a1b1b'} },
-      { id:'t3-ocean', name:'Ocean', description:'Blue-gray with sea glass', light:{background:'#f5f7f8',panel:'#f5f7f8',raised:'#edeff1',accent:'#2672af',border:'#cdd4dc',text:'#241523',muted:'#746c75',subtle:'#746c75',hover:'#cdddea',selection:'#b7cfe2'}, dark:{background:'#17212b',panel:'#17212b',raised:'#333b45',accent:'#70b9ee',border:'#405567',text:'#fffaff',muted:'#8d8f97',subtle:'#8d8f97',hover:'#283e50',selection:'#324f66'} },
-    ];
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Command Bar Theme Gallery</title>
+    <style>
+      @font-face {
+        font-family: 'Open Sans';
+        src: url('./public/assets/fonts/open-sans/OpenSans-Latin.woff2') format('woff2');
+        font-style: normal;
+        font-weight: 300 700;
+        font-display: swap;
+        unicode-range:
+          U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F,
+          U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+      }
+      @font-face {
+        font-family: 'Open Sans';
+        src: url('./public/assets/fonts/open-sans/OpenSans-LatinExt.woff2') format('woff2');
+        font-style: normal;
+        font-weight: 300 700;
+        font-display: swap;
+        unicode-range:
+          U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF,
+          U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+      }
+      :root {
+        color-scheme: light dark;
+        --page-bg: #141619;
+        --foreground: #e8e9ea;
+        --card: #202326;
+        --border: #3a3e43;
+        --secondary: #292d31;
+        --muted: #a4a8ad;
+      }
+      html[data-appearance='light'] {
+        color-scheme: light;
+        --page-bg: #f4f5f6;
+        --foreground: #24272b;
+        --card: #ffffff;
+        --border: #d9dde2;
+        --secondary: #eef1f4;
+        --muted: #646b73;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--page-bg);
+        color: var(--foreground);
+        font:
+          400 13px/1.45 'Open Sans',
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      #gallery {
+        width: min(100%, 1180px);
+        margin-inline: auto;
+      }
+      .masthead {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 14px;
+      }
+      .eyebrow {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin: 0 0 6px;
+        color: color-mix(in srgb, var(--foreground) 62%, transparent);
+        font-size: 10px;
+        font-weight: 650;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      .eyebrow-mark {
+        width: 7px;
+        height: 7px;
+        border-radius: 2px;
+        background: #82c7e8;
+        transform: rotate(45deg);
+      }
+      h1 {
+        margin: 0;
+        color: var(--foreground);
+        font-size: 21px;
+        font-weight: 550;
+        letter-spacing: -0.035em;
+        line-height: 1.15;
+      }
+      .summary {
+        margin: 5px 0 0;
+        color: color-mix(in srgb, var(--foreground) 62%, transparent);
+        font-size: 11px;
+      }
+      .mode-toggle {
+        display: flex;
+        flex: 0 0 auto;
+        gap: 3px;
+        padding: 3px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--secondary);
+      }
+      .mode-toggle button {
+        min-height: 29px;
+        padding: 0 10px;
+        border-radius: 7px;
+        background: transparent;
+        color: var(--foreground);
+        cursor: pointer;
+        font: inherit;
+        font-size: 11px;
+        opacity: 0.68;
+      }
+      .mode-toggle button[aria-pressed='true'] {
+        background: var(--card);
+        color: var(--foreground);
+        opacity: 1;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
+      }
+      .theme-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 9px;
+      }
+      .theme-card {
+        min-width: 0;
+        padding: 11px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--card);
+      }
+      .theme-card-heading {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+      .theme-copy {
+        min-width: 0;
+      }
+      .theme-copy h2 {
+        overflow: hidden;
+        margin: 0;
+        color: var(--foreground);
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .theme-copy p {
+        overflow: hidden;
+        margin: 1px 0 0;
+        color: var(--muted);
+        font-size: 10px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .swatches {
+        display: flex;
+        flex: 0 0 auto;
+        gap: 4px;
+      }
+      .swatches span {
+        width: 13px;
+        height: 13px;
+        border: 1px solid color-mix(in srgb, var(--foreground) 16%, transparent);
+        border-radius: 50%;
+      }
+      .theme-preview {
+        --surface: var(--light-bg);
+        --panel: var(--light-panel);
+        --raised: var(--light-raised);
+        --ink: var(--light-ink);
+        --muted-ink: var(--light-muted);
+        --subtle-ink: var(--light-subtle);
+        --line: var(--light-border);
+        --accent: var(--light-accent);
+        --selection: var(--light-selection);
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--surface);
+        color: var(--ink);
+        box-shadow: 0 5px 14px color-mix(in srgb, var(--ink) 7%, transparent);
+      }
+      html[data-appearance='dark'] .theme-preview {
+        --surface: var(--dark-bg);
+        --panel: var(--dark-panel);
+        --raised: var(--dark-raised);
+        --ink: var(--dark-ink);
+        --muted-ink: var(--dark-muted);
+        --subtle-ink: var(--dark-subtle);
+        --line: var(--dark-border);
+        --accent: var(--dark-accent);
+        --selection: var(--dark-selection);
+      }
+      .search-row {
+        display: flex;
+        height: 34px;
+        align-items: center;
+        gap: 8px;
+        padding: 0 11px;
+        border-bottom: 1px solid var(--line);
+        background: var(--surface);
+      }
+      .search-row svg {
+        display: block;
+        width: 14px;
+        height: 14px;
+        flex: 0 0 auto;
+        color: var(--muted-ink);
+      }
+      .placeholder {
+        overflow: hidden;
+        flex: 1;
+        color: var(--subtle-ink);
+        font-size: 11px;
+        letter-spacing: -0.01em;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .result-list {
+        display: grid;
+        gap: 2px;
+        padding: 5px;
+      }
+      .result {
+        display: grid;
+        min-width: 0;
+        height: 30px;
+        grid-template-columns: 18px minmax(0, 1fr) auto auto;
+        align-items: center;
+        gap: 7px;
+        padding: 0 7px;
+        border: 1px solid transparent;
+        border-radius: 7px;
+      }
+      .result.selected {
+        border-color: color-mix(in srgb, var(--accent) 27%, transparent);
+        background: var(--selection);
+      }
+      .item-icon {
+        display: grid;
+        width: 17px;
+        height: 17px;
+        place-items: center;
+        border-radius: 4px;
+        background: var(--raised);
+        color: var(--accent);
+        font-size: 9px;
+        font-weight: 700;
+        line-height: 1;
+      }
+      .title-line {
+        display: flex;
+        min-width: 0;
+        align-items: baseline;
+        gap: 6px;
+      }
+      .title {
+        overflow: hidden;
+        min-width: 0;
+        color: var(--ink);
+        font-size: 10.5px;
+        font-weight: 550;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .subtitle {
+        overflow: hidden;
+        min-width: 0;
+        color: var(--muted-ink);
+        font-size: 9px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .pinned {
+        padding: 2px 5px;
+        border-radius: 5px;
+        background: var(--raised);
+        color: var(--muted-ink);
+        font-size: 8px;
+        line-height: 1.2;
+        white-space: nowrap;
+      }
+      .kind {
+        color: var(--muted-ink);
+        font-size: 9px;
+        white-space: nowrap;
+      }
+      .selected .kind {
+        color: var(--accent);
+      }
+      .palette-id {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-top: 7px;
+        color: var(--subtle-ink);
+        font-size: 9px;
+      }
+      .palette-id code {
+        color: inherit;
+        font: inherit;
+      }
+      .palette-id {
+        --accent: var(--light-accent);
+      }
+      html[data-appearance='dark'] .palette-id {
+        --accent: var(--dark-accent);
+      }
+      .palette-id .accent-chip {
+        display: inline-block;
+        width: 7px;
+        height: 7px;
+        margin-right: 4px;
+        border-radius: 50%;
+        background: var(--accent);
+        vertical-align: 0;
+      }
+      @media (min-width: 1000px) {
+        .theme-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+      }
+      @media (max-width: 520px) {
+        .masthead {
+          align-items: start;
+          flex-direction: column;
+        }
+        .theme-grid {
+          grid-template-columns: minmax(0, 1fr);
+        }
+        .mode-toggle {
+          align-self: stretch;
+        }
+        .mode-toggle button {
+          flex: 1;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main id="gallery">
+      <header class="masthead">
+        <div>
+          <p class="eyebrow"><span class="eyebrow-mark"></span>Command Bar · Theme study</p>
+          <h1>Every palette, in context</h1>
+          <p class="summary" id="summary">12 palettes · 24 light and dark previews</p>
+        </div>
+        <div class="mode-toggle" role="group" aria-label="Preview appearance">
+          <button type="button" data-mode="light" aria-pressed="false">Light</button>
+          <button type="button" data-mode="dark" aria-pressed="true">Dark</button>
+        </div>
+      </header>
+      <section class="theme-grid" id="theme-grid" aria-label="Theme previews"></section>
+    </main>
+    <script>
+      const themes = [
+        {
+          id: 'plain',
+          name: 'Plain',
+          description: 'Black and white',
+          light: {
+            background: '#ffffff',
+            panel: '#ffffff',
+            raised: '#f4f4f4',
+            accent: '#111111',
+            border: '#e4e4e4',
+            text: '#111111',
+            muted: '#555555',
+            subtle: '#5c5c5c',
+            hover: '#f2f2f2',
+            selection: '#e9e9e9',
+          },
+          dark: {
+            background: '#050505',
+            panel: '#111111',
+            raised: '#1d1d1d',
+            accent: '#ffffff',
+            border: '#353535',
+            text: '#fafafa',
+            muted: '#c2c2c2',
+            subtle: '#b4b4b4',
+            hover: '#1d1d1d',
+            selection: '#292929',
+          },
+        },
+        {
+          id: 'cursor-dark',
+          name: 'Cursor Dark',
+          description: 'Graphite and pale cyan',
+          appearance: 'dark',
+          colors: {
+            background: '#141414',
+            panel: '#181818',
+            raised: '#262626',
+            accent: '#88c0d0',
+            border: '#292929',
+            text: '#e4e4e4',
+            muted: '#888888',
+            subtle: '#636363',
+            hover: '#272727',
+            selection: '#343434',
+          },
+        },
+        {
+          id: 'cursor-midnight',
+          name: 'Cursor Midnight',
+          description: 'Midnight slate and sea glass',
+          appearance: 'dark',
+          colors: {
+            background: '#191c22',
+            panel: '#1e2127',
+            raised: '#434c5e',
+            accent: '#8fbcbb',
+            border: '#292c32',
+            text: '#d8dee9',
+            muted: '#7b88a1',
+            subtle: '#4b5163',
+            hover: '#2a2d33',
+            selection: '#35373d',
+          },
+        },
+        {
+          id: 'vscode-dark-vs',
+          name: 'VS Code Dark',
+          description: 'Classic editor charcoal',
+          appearance: 'dark',
+          colors: {
+            background: '#252526',
+            panel: '#1e1e1e',
+            raised: '#2d2d2e',
+            accent: '#007acc',
+            border: '#303030',
+            text: '#d4d4d4',
+            muted: '#8c8c8c',
+            subtle: '#616161',
+            hover: '#2a2a2a',
+            selection: '#353535',
+          },
+        },
+        {
+          id: 'tobacco',
+          name: 'Tobacco',
+          description: 'Warm charcoal and amber',
+          appearance: 'dark',
+          colors: {
+            background: '#242222',
+            panel: '#201e1c',
+            raised: '#2d2a2a',
+            accent: '#eb9c3d',
+            border: '#343230',
+            text: '#ededed',
+            muted: '#a1a0a0',
+            subtle: '#706f6e',
+            hover: '#302e2c',
+            selection: '#3d3b3a',
+          },
+        },
+        {
+          id: 'dracula',
+          name: 'Dracula',
+          description: 'Charcoal with violet',
+          appearance: 'dark',
+          colors: {
+            background: '#21222c',
+            panel: '#282a36',
+            raised: '#44475a',
+            accent: '#bd93f9',
+            border: '#394057',
+            text: '#e7e8e3',
+            muted: '#9a9b9d',
+            subtle: '#6b6c72',
+            hover: '#343246',
+            selection: '#403b55',
+          },
+        },
+        {
+          id: 'catppuccin',
+          name: 'Catppuccin',
+          description: 'Mocha and lavender',
+          appearance: 'dark',
+          colors: {
+            background: '#1e1e2e',
+            panel: '#181825',
+            raised: '#313244',
+            accent: '#cba6f7',
+            border: '#313242',
+            text: '#bfc7e3',
+            muted: '#767b91',
+            subtle: '#4b4d5f',
+            hover: '#252234',
+            selection: '#332d45',
+          },
+        },
+        {
+          id: 'aurora',
+          name: 'Aurora',
+          description: 'Deep space and cyan',
+          appearance: 'dark',
+          colors: {
+            background: '#10151e',
+            panel: '#0a0e16',
+            raised: '#181f2d',
+            accent: '#00d8ff',
+            border: '#082e3b',
+            text: '#b0d1ec',
+            muted: '#6d8396',
+            subtle: '#404e5c',
+            hover: '#091c26',
+            selection: '#092a37',
+          },
+        },
+        {
+          id: 'gruvbox',
+          name: 'Gruvbox',
+          description: 'Earthy retro warmth',
+          appearance: 'dark',
+          colors: {
+            background: '#282828',
+            panel: '#1d2021',
+            raised: '#3c3836',
+            accent: '#fe8019',
+            border: '#35312d',
+            text: '#dbcca6',
+            muted: '#9a8d7a',
+            subtle: '#5b584c',
+            hover: '#2f2820',
+            selection: '#3f2e20',
+          },
+        },
+        {
+          id: 'nordic',
+          name: 'Nordic',
+          description: 'Polar slate and frost',
+          appearance: 'dark',
+          colors: {
+            background: '#2e3440',
+            panel: '#242933',
+            raised: '#3b4252',
+            accent: '#88c0d0',
+            border: '#3a3e47',
+            text: '#d9dbe1',
+            muted: '#92969d',
+            subtle: '#646871',
+            hover: '#333841',
+            selection: '#3e434b',
+          },
+        },
+        {
+          id: 't3-code',
+          name: 'T3 Code',
+          description: 'Clean neutrals and blue',
+          light: {
+            background: '#fcfcfc',
+            panel: '#ffffff',
+            raised: '#f4f4f5',
+            accent: '#1b4ed8',
+            border: '#e4e4e7',
+            text: '#27272a',
+            muted: '#71717b',
+            subtle: '#71717b',
+            hover: '#f4f4f5',
+            selection: '#e0e6f7',
+          },
+          dark: {
+            background: '#0a0a0a',
+            panel: '#111111',
+            raised: '#141414',
+            accent: '#346bf1',
+            border: '#292929',
+            text: '#f5f5f5',
+            muted: '#a3a3a3',
+            subtle: '#a3a3a3',
+            hover: '#141414',
+            selection: '#1a1b1b',
+          },
+        },
+        {
+          id: 't3-ocean',
+          name: 'Ocean',
+          description: 'Blue-gray with sea glass',
+          light: {
+            background: '#f5f7f8',
+            panel: '#f5f7f8',
+            raised: '#edeff1',
+            accent: '#2672af',
+            border: '#cdd4dc',
+            text: '#241523',
+            muted: '#746c75',
+            subtle: '#746c75',
+            hover: '#cdddea',
+            selection: '#b7cfe2',
+          },
+          dark: {
+            background: '#17212b',
+            panel: '#17212b',
+            raised: '#333b45',
+            accent: '#70b9ee',
+            border: '#405567',
+            text: '#fffaff',
+            muted: '#8d8f97',
+            subtle: '#8d8f97',
+            hover: '#283e50',
+            selection: '#324f66',
+          },
+        },
+      ];
 
-    function channels(hex) { const v=hex.slice(1); return [0,2,4].map(i=>parseInt(v.slice(i,i+2),16)); }
-    function hex(rgb) { return '#'+rgb.map(v=>Math.round(v).toString(16).padStart(2,'0')).join(''); }
-    function mix(a,b,t) { const x=channels(a),y=channels(b); return hex(x.map((v,i)=>v+(y[i]-v)*t)); }
-    function luminance(color) { return channels(color).map(v=>v/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4).reduce((sum,v,i)=>sum+v*[.2126,.7152,.0722][i],0); }
-    function contrast(a,b) { const values=[luminance(a),luminance(b)].sort((x,y)=>y-x); return (values[0]+.05)/(values[1]+.05); }
-    function ensureContrast(fg,surfaces,min) {
-      if(surfaces.every(bg=>contrast(fg,bg)>=min)) return fg;
-      const found=[];
-      for(const target of ['#000000','#ffffff']) for(let step=1;step<=100;step++) {
-        const distance=step/100, color=mix(fg,target,distance);
-        if(surfaces.every(bg=>contrast(color,bg)>=min)){found.push({color,distance});break;}
+      function channels(hex) {
+        const v = hex.slice(1);
+        return [0, 2, 4].map((i) => parseInt(v.slice(i, i + 2), 16));
       }
-      return found.sort((a,b)=>a.distance-b.distance)[0]?.color ?? '#000000';
-    }
-    function alternateAppearance(source,isDark) {
-      if(isDark) {
-        const background=mix('#15171a',source.accent,.035), panel=mix('#1d2024',source.accent,.045);
-        return {background,panel,raised:mix(panel,'#ffffff',.075),accent:source.accent,border:mix(panel,'#ffffff',.15),text:'#f3f4f2',muted:'#c1c4c9',subtle:'#b7bbc1',hover:mix(panel,source.accent,.095),selection:mix(panel,source.accent,.17)};
+      function hex(rgb) {
+        return '#' + rgb.map((v) => Math.round(v).toString(16).padStart(2, '0')).join('');
       }
-      const background=mix('#f5f5f3',source.accent,.025), panel=mix('#ffffff',source.accent,.015);
-      return {background,panel,raised:mix('#f1f1ef',source.accent,.035),accent:source.accent,border:'#dededa',text:'#191a1c',muted:'#55585d',subtle:'#5c6066',hover:mix(panel,source.accent,.055),selection:mix(panel,source.accent,.105)};
-    }
-    function tokens(source,isDark) {
-      const input=source.panel, blend=isDark ? 0.15 : 0.09; let accent=source.accent, soft=mix(input,accent,blend);
-      for(let i=0;i<4;i++) { const next=ensureContrast(source.accent,[source.panel,source.raised,input,source.selection,soft],4.5); if(next===accent) break; accent=next; soft=mix(input,accent,blend); }
-      soft=mix(input,accent,blend);
-      if(contrast(accent,soft)<4.5){accent=ensureContrast(accent,[soft],4.5);soft=mix(input,accent,blend);}
-      const surfaces=[source.background,source.panel,source.raised,input,source.selection,soft];
-      return {bg:source.background,panel:source.panel,raised:source.raised,ink:ensureContrast(source.text,surfaces,4.5),muted:ensureContrast(source.muted,surfaces,4.5),subtle:ensureContrast(source.subtle,surfaces,4.5),border:source.border,accent,selection:source.selection};
-    }
-    function resolveTheme(theme) {
-      if(theme.light && theme.dark) return {...theme, light:tokens(theme.light,false), dark:tokens(theme.dark,true)};
-      const alternate=alternateAppearance(theme.colors,theme.appearance==='light');
-      const light=theme.appearance==='light'?theme.colors:alternate, dark=theme.appearance==='dark'?theme.colors:alternate;
-      return {...theme,light:tokens(light,false),dark:tokens(dark,true)};
-    }
-    function previewStyle(theme) {
-      const vars=[];
-      for(const mode of ['light','dark']) for(const [key,value] of Object.entries(theme[mode])) vars.push(`--${mode}-${key}:${value}`);
-      return vars.join(';');
-    }
-    function searchIcon() { return '<svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.8" stroke="currentColor" stroke-width="1.7"/><path d="m13 13 4.2 4.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>'; }
-    function slidersIcon() { return '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M3 5h5m4 0h5M3 10h2m4 0h8M3 15h8m4 0h2"/><circle cx="10" cy="5" r="1.5"/><circle cx="7" cy="10" r="1.5"/><circle cx="13" cy="15" r="1.5"/></svg>'; }
-    function card(theme) {
-      const style=previewStyle(theme), light=theme.light, dark=theme.dark;
-      return `<article class="theme-card" style="${style}" aria-label="${theme.name} theme">
+      function mix(a, b, t) {
+        const x = channels(a),
+          y = channels(b);
+        return hex(x.map((v, i) => v + (y[i] - v) * t));
+      }
+      function luminance(color) {
+        return channels(color)
+          .map((v) => v / 255)
+          .map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4))
+          .reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0);
+      }
+      function contrast(a, b) {
+        const values = [luminance(a), luminance(b)].sort((x, y) => y - x);
+        return (values[0] + 0.05) / (values[1] + 0.05);
+      }
+      function ensureContrast(fg, surfaces, min) {
+        if (surfaces.every((bg) => contrast(fg, bg) >= min)) return fg;
+        const found = [];
+        for (const target of ['#000000', '#ffffff'])
+          for (let step = 1; step <= 100; step++) {
+            const distance = step / 100,
+              color = mix(fg, target, distance);
+            if (surfaces.every((bg) => contrast(color, bg) >= min)) {
+              found.push({ color, distance });
+              break;
+            }
+          }
+        return found.sort((a, b) => a.distance - b.distance)[0]?.color ?? '#000000';
+      }
+      function alternateAppearance(source, isDark) {
+        if (isDark) {
+          const background = mix('#15171a', source.accent, 0.035),
+            panel = mix('#1d2024', source.accent, 0.045);
+          return {
+            background,
+            panel,
+            raised: mix(panel, '#ffffff', 0.075),
+            accent: source.accent,
+            border: mix(panel, '#ffffff', 0.15),
+            text: '#f3f4f2',
+            muted: '#c1c4c9',
+            subtle: '#b7bbc1',
+            hover: mix(panel, source.accent, 0.095),
+            selection: mix(panel, source.accent, 0.17),
+          };
+        }
+        const background = mix('#f5f5f3', source.accent, 0.025),
+          panel = mix('#ffffff', source.accent, 0.015);
+        return {
+          background,
+          panel,
+          raised: mix('#f1f1ef', source.accent, 0.035),
+          accent: source.accent,
+          border: '#dededa',
+          text: '#191a1c',
+          muted: '#55585d',
+          subtle: '#5c6066',
+          hover: mix(panel, source.accent, 0.055),
+          selection: mix(panel, source.accent, 0.105),
+        };
+      }
+      function tokens(source, isDark) {
+        const input = source.panel,
+          blend = isDark ? 0.15 : 0.09;
+        let accent = source.accent,
+          soft = mix(input, accent, blend);
+        for (let i = 0; i < 4; i++) {
+          const next = ensureContrast(source.accent, [source.panel, source.raised, input, source.selection, soft], 4.5);
+          if (next === accent) break;
+          accent = next;
+          soft = mix(input, accent, blend);
+        }
+        soft = mix(input, accent, blend);
+        if (contrast(accent, soft) < 4.5) {
+          accent = ensureContrast(accent, [soft], 4.5);
+          soft = mix(input, accent, blend);
+        }
+        const surfaces = [source.background, source.panel, source.raised, input, source.selection, soft];
+        return {
+          bg: source.background,
+          panel: source.panel,
+          raised: source.raised,
+          ink: ensureContrast(source.text, surfaces, 4.5),
+          muted: ensureContrast(source.muted, surfaces, 4.5),
+          subtle: ensureContrast(source.subtle, surfaces, 4.5),
+          border: source.border,
+          accent,
+          selection: source.selection,
+        };
+      }
+      function resolveTheme(theme) {
+        if (theme.light && theme.dark)
+          return { ...theme, light: tokens(theme.light, false), dark: tokens(theme.dark, true) };
+        const alternate = alternateAppearance(theme.colors, theme.appearance === 'light');
+        const light = theme.appearance === 'light' ? theme.colors : alternate,
+          dark = theme.appearance === 'dark' ? theme.colors : alternate;
+        return { ...theme, light: tokens(light, false), dark: tokens(dark, true) };
+      }
+      function previewStyle(theme) {
+        const vars = [];
+        for (const mode of ['light', 'dark'])
+          for (const [key, value] of Object.entries(theme[mode])) vars.push(`--${mode}-${key}:${value}`);
+        return vars.join(';');
+      }
+      function searchIcon() {
+        return '<svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.8" stroke="currentColor" stroke-width="1.7"/><path d="m13 13 4.2 4.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
+      }
+      function slidersIcon() {
+        return '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M3 5h5m4 0h5M3 10h2m4 0h8M3 15h8m4 0h2"/><circle cx="10" cy="5" r="1.5"/><circle cx="7" cy="10" r="1.5"/><circle cx="13" cy="15" r="1.5"/></svg>';
+      }
+      function card(theme) {
+        const style = previewStyle(theme),
+          light = theme.light,
+          dark = theme.dark;
+        return `<article class="theme-card" style="${style}" aria-label="${theme.name} theme">
         <div class="theme-card-heading"><div class="theme-copy"><h2>${theme.name}</h2><p>${theme.description}</p></div><div class="swatches" aria-hidden="true"><span style="background:${light.bg}"></span><span style="background:${dark.bg}"></span><span style="background:${dark.accent}"></span></div></div>
         <div class="theme-preview"><div class="search-row">${searchIcon()}<span class="placeholder">Search commands or a website</span>${slidersIcon()}</div>
           <div class="result-list">
@@ -190,14 +753,18 @@
         </div>
         <div class="palette-id"><code>${theme.id}</code><span><i class="accent-chip"></i>Accent</span></div>
       </article>`;
-    }
-    const grid=document.getElementById('theme-grid');
-    const resolved=themes.map(resolveTheme);
-    grid.innerHTML=resolved.map(card).join('');
-    document.querySelectorAll('[data-mode]').forEach(button=>button.addEventListener('click',()=>{
-      document.documentElement.dataset.appearance=button.dataset.mode;
-      document.querySelectorAll('[data-mode]').forEach(item=>item.setAttribute('aria-pressed',String(item===button)));
-    }));
-  </script>
-</body>
+      }
+      const grid = document.getElementById('theme-grid');
+      const resolved = themes.map(resolveTheme);
+      grid.innerHTML = resolved.map(card).join('');
+      document.querySelectorAll('[data-mode]').forEach((button) =>
+        button.addEventListener('click', () => {
+          document.documentElement.dataset.appearance = button.dataset.mode;
+          document
+            .querySelectorAll('[data-mode]')
+            .forEach((item) => item.setAttribute('aria-pressed', String(item === button)));
+        }),
+      );
+    </script>
+  </body>
 </html>
