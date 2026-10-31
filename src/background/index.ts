@@ -4,6 +4,7 @@ import { markTabNameClosed, normalizeTabNames, reconcileTabNames, type TabNameMa
 import { asPositiveInteger, normalizeNavigationUrl, normalizeSavedNavigationUrl } from '@/utils/chromeHelpers';
 import { isTabInSplitView } from '@/utils/splitViews';
 import { TAB_GROUP_ID_NONE } from '@/utils/chromeApiConstants';
+import { bulkCloseTabIds, isBulkCloseAction } from '@/utils/bulkClose';
 import { isOverlayPage } from '@/utils/pageSupport';
 import { OverlayTabRegistry } from '@/utils/overlayTabRegistry';
 import { SerialTaskQueue } from '@/utils/serialTaskQueue';
@@ -837,6 +838,31 @@ const handleRequest = async (rawMessage: unknown, sender: chrome.runtime.Message
     case 'tabs:close':
       await chrome.tabs.remove(Number(message.tabId));
       return true;
+
+    case 'tabs:close-confirmed': {
+      const anchorTabId = asPositiveInteger(message.anchorTabId);
+      const ids = message.tabIds;
+      if (
+        !anchorTabId ||
+        !isBulkCloseAction(message.closeAction) ||
+        !Array.isArray(ids) ||
+        !ids.length ||
+        ids.some((id) => asPositiveInteger(id) === undefined) ||
+        new Set(ids).size !== ids.length
+      ) {
+        throw new Error('Invalid tab close confirmation.');
+      }
+      const anchor = await chrome.tabs.get(anchorTabId);
+      if (anchor.windowId !== message.windowId)
+        throw new Error('Tabs changed. Cancel and review the tabs before closing.');
+      const tabs = await chrome.tabs.query({ windowId: anchor.windowId });
+      const currentIds = bulkCloseTabIds(tabs, anchor, message.closeAction);
+      if (currentIds.length !== ids.length || currentIds.some((id) => !ids.includes(id))) {
+        throw new Error('Tabs changed. Cancel and review the tabs before closing.');
+      }
+      await chrome.tabs.remove(currentIds);
+      return true;
+    }
 
     case 'tabs:close-active': {
       const tab = await getActiveTab();

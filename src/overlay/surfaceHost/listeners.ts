@@ -46,6 +46,7 @@ export const attachOverlayListeners = (controller: SurfaceController, mountPoint
       if (bridge.closeHandler) {
         bridge.closeHandler(Boolean(message.switching));
       } else {
+        bridge.pendingOpen = false;
         bridge.pendingClose = true;
         bridge.pendingSwitching = Boolean(message.switching);
         hideHost(host);
@@ -67,6 +68,7 @@ export const attachOverlayListeners = (controller: SurfaceController, mountPoint
     if (bridge.openHandler) {
       bridge.openHandler(Boolean(message.autoSwitchOnRelease), openedAt);
     } else {
+      bridge.pendingClose = false;
       bridge.pendingOpen = true;
       bridge.pendingAutoSwitchOnRelease = Boolean(message.autoSwitchOnRelease);
       bridge.pendingOpenedAt = openedAt;

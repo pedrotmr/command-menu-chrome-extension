@@ -2,13 +2,22 @@ import type { BookmarkItem, CommandItem, HistoryItem, PaletteItem, ThemePreferen
 import type { SearchProviderDefinition } from '@/utils/searchProviders';
 import type { ManagedTab } from '@/utils/tabItems';
 import type { ResultsEmptyState } from '../ResultsList/types';
+import type { BulkCloseAction } from '@/utils/bulkClose';
 
 export type FlowDialog =
   | { kind: 'rename'; tabId: number; initialName: string }
   | { kind: 'move'; tabId: number }
   | { kind: 'assign-group'; tabId: number }
   | { kind: 'group'; groupId: number | null; initialName: string; initialColor: string }
-  | { kind: 'confirm-close'; action: string; count: number; title: string };
+  | {
+      kind: 'confirm-close';
+      action: BulkCloseAction;
+      count: number;
+      title: string;
+      anchorTabId: number;
+      windowId: number;
+      tabIds: number[];
+    };
 
 export interface ToastMessage {
   message: string;
