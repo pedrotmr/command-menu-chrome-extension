@@ -224,6 +224,11 @@ try {
     'all command-menu copy actions use the shared clipboard helper',
   );
   assert.match(
+    commandPaletteSource,
+    /if \(command\.flow === 'assign-group' && activeTab\?\.id !== undefined\) \{\s*dismissToast\(\);\s*setDialogError\(''\);\s*const currentGroups = await sendBackground<chrome\.tabGroups\.TabGroup\[]>\('groups:list'\)/,
+    'the assign-group command clears stale notices and dialog errors before opening its dialog',
+  );
+  assert.match(
     previewCacheSource,
     /private readonly operations = new SerialTaskQueue\(\)/,
     'preview cache mutations are serialized',

@@ -688,6 +688,9 @@ export const useCommandPaletteModel = ({
     }
 
     if (command.flow === 'assign-group' && activeTab?.id !== undefined) {
+      dismissToast();
+      setDialogError('');
+
       const currentGroups = await sendBackground<chrome.tabGroups.TabGroup[]>('groups:list').catch(() => []);
       setGroups(currentGroups);
       setGroupTargetId('new');
