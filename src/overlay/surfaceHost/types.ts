@@ -1,0 +1,82 @@
+import type { ReactNode } from 'react';
+import type { Root } from 'react-dom/client';
+import type { ThemePreferences } from '@/types';
+
+export type OverlaySurface = 'commands' | 'tabs';
+
+interface SurfaceThemeActions {
+  theme: ThemePreferences;
+  themeRoot: HTMLElement;
+  onClose: () => void;
+}
+
+interface SurfaceActivationState {
+  autoSwitchOnRelease: boolean;
+  openedAt: number;
+  modifierReleasedAtOpen: boolean;
+  cycleVersion: number;
+}
+
+export interface SurfaceActions extends SurfaceThemeActions, SurfaceActivationState {}
+
+export type SurfaceRenderer = (actions: SurfaceActions) => ReactNode;
+
+export interface PageInertState {
+  body: HTMLElement;
+  wasInert: boolean;
+}
+
+interface SurfaceControllerMount {
+  surface: OverlaySurface;
+  host: HTMLElement;
+  root: Root;
+}
+
+interface SurfaceControllerFocus {
+  focusTarget: Element | null;
+  focusTargetPreservedUntil: number;
+  pageInertState: PageInertState | null;
+}
+
+interface SurfaceControllerLifecycle {
+  bridge: SurfaceBridge;
+  dispose: () => void;
+}
+
+export interface SurfaceController extends SurfaceControllerMount, SurfaceControllerFocus, SurfaceControllerLifecycle {}
+
+interface SurfaceOpenHandlers {
+  openHandler?: (autoSwitchOnRelease: boolean, openedAt: number) => void;
+  closeHandler?: (switching: boolean) => void;
+  cycleHandler?: (cycles: number) => void;
+}
+
+interface SurfaceStateHandlers {
+  switcherOpenHandler?: () => boolean;
+  surfaceOpenHandler?: () => boolean;
+}
+
+interface SurfacePendingState {
+  pendingOpen: boolean;
+  pendingAutoSwitchOnRelease: boolean;
+  pendingOpenedAt: number;
+  pendingClose: boolean;
+  pendingSwitching: boolean;
+  pendingCycles: number;
+}
+
+export interface SurfaceBridge extends SurfaceOpenHandlers, SurfaceStateHandlers, SurfacePendingState {}
+
+export interface OpenRequest {
+  action?: string;
+  mode?: string;
+  switching?: boolean;
+  autoSwitchOnRelease?: boolean;
+  openedAt?: number;
+  cycles?: number;
+}
+
+export interface CreatedOverlayHost {
+  host: HTMLElement;
+  mountPoint: HTMLElement;
+}

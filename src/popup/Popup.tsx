@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { PaletteMode, ThemePreferences } from '@/types';
+import type { PaletteMode, ThemePreferences } from '@/types';
 import { CommandPalette } from '@/components/CommandPalette';
 import { TabSwitcher } from '@/components/TabSwitcher';
 import { sendBackground } from '@/utils/chromeHelpers';
@@ -35,6 +35,7 @@ export function Popup({
         setCycleVersion((version) => version + cycles);
       }
     };
+
     chrome.runtime.onMessage.addListener(onRuntimeMessage);
     return () => chrome.runtime.onMessage.removeListener(onRuntimeMessage);
   }, []);

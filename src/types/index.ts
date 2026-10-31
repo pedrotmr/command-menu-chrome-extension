@@ -21,25 +21,37 @@ export interface CommandItem extends BaseItem {
     'rename-active' | 'move-active' | 'group-active' | 'assign-group' | 'confirm-close' | 'settings' | 'saved-search';
 }
 
-export interface TabItem extends BaseItem {
-  type: 'tab';
+interface TabIdentity {
   tabId: number;
   windowId: number;
   index: number;
+}
+
+interface TabPageDetails {
   url: string;
   originalTitle: string;
   favIconUrl?: string;
+}
+
+interface TabActivityState {
   active: boolean;
   current: boolean;
   pinned: boolean;
   muted: boolean;
   audible: boolean;
   lastAccessed?: number;
+}
+
+interface TabGroupDetails {
   groupId?: number;
   groupTitle?: string;
   groupColor?: string;
   splitViewId?: number;
   windowTitle?: string;
+}
+
+export interface TabItem extends BaseItem, TabIdentity, TabPageDetails, TabActivityState, TabGroupDetails {
+  type: 'tab';
 }
 
 export interface BookmarkItem extends BaseItem {

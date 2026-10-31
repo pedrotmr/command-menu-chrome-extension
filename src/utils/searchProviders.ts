@@ -1,15 +1,34 @@
-import { SearchItem } from '@/types';
+import type { SearchItem } from '@/types';
 
-export interface SearchProviderDefinition {
+export interface SearchProviderAccent {
+  light: string;
+  dark: string;
+}
+
+interface SearchProviderIdentity {
   id: string;
   name: string;
   prefix: string;
   aliases: string[];
+}
+
+interface SearchProviderDestination {
   urlTemplate: string;
+}
+
+interface SearchProviderPresentation {
   hint: string;
   verb: 'Search' | 'Ask';
   // Brand tints for the provider chip, mark tile and empty state; each pair is used only behind or around the mark.
-  accent: { light: string; dark: string };
+  accent: SearchProviderAccent;
+}
+
+export interface SearchProviderDefinition
+  extends SearchProviderIdentity, SearchProviderDestination, SearchProviderPresentation {}
+
+export interface ParsedProviderQuery {
+  provider: SearchProviderDefinition;
+  query: string;
 }
 
 // Providers open their public search/composer pages; this registry does not call private APIs or scrape results.
@@ -86,31 +105,43 @@ export const searchProviders: SearchProviderDefinition[] = [
   },
 ];
 
-export function getSearchProvider(id: string): SearchProviderDefinition | null {
+export const getSearchProvider = (id: string): SearchProviderDefinition | null => {
   return searchProviders.find((provider) => provider.id === id) ?? null;
-}
+};
 
-export function parseProviderQuery(input: string): { provider: SearchProviderDefinition; query: string } | null {
+export const parseProviderQuery = (input: string): ParsedProviderQuery | null => {
   const trimmed = input.trim();
   const separator = trimmed.search(/\s/);
-  if (separator < 0) return null;
+
+  if (separator < 0) {
+    return null;
+  }
 
   const prefix = trimmed.slice(0, separator).toLowerCase();
   const query = trimmed.slice(separator).trim();
-  if (!query) return null;
+
+  if (!query) {
+    return null;
+  }
 
   const provider = searchProviders.find((candidate) => candidate.prefix === prefix);
+
   return provider ? { provider, query } : null;
-}
+};
 
-export function findSearchProvider(alias: string): SearchProviderDefinition | null {
+export const findSearchProvider = (alias: string): SearchProviderDefinition | null => {
   const normalized = alias.trim().toLowerCase();
-  if (!normalized) return null;
-  return searchProviders.find((provider) => provider.aliases.includes(normalized)) ?? null;
-}
 
-export function createProviderSearchItem(provider: SearchProviderDefinition, query: string): SearchItem {
+  if (!normalized) {
+    return null;
+  }
+
+  return searchProviders.find((provider) => provider.aliases.includes(normalized)) ?? null;
+};
+
+export const createProviderSearchItem = (provider: SearchProviderDefinition, query: string): SearchItem => {
   const normalizedQuery = query.trim();
+
   return {
     id: `search-${provider.id}`,
     title:
@@ -123,4 +154,4 @@ export function createProviderSearchItem(provider: SearchProviderDefinition, que
     keywords: [provider.name, normalizedQuery],
     url: provider.urlTemplate.replace('%s', encodeURIComponent(normalizedQuery)),
   };
-}
+};

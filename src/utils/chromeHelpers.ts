@@ -1,10 +1,14 @@
 import { ChromeResponse } from '@/types';
 
-export function asPositiveInteger(value: unknown): number | undefined {
-  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0 ? value : undefined;
-}
+export const asPositiveInteger = (value: unknown): number | undefined => {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value <= 0) {
+    return undefined;
+  }
 
-export async function sendBackground<T>(action: string, payload: Record<string, unknown> = {}): Promise<T> {
+  return value;
+};
+
+export const sendBackground = async <T>(action: string, payload: Record<string, unknown> = {}): Promise<T> => {
   const response = (await chrome.runtime.sendMessage({ action, ...payload })) as ChromeResponse<T> | undefined;
 
   if (!response?.success) {
@@ -12,9 +16,9 @@ export async function sendBackground<T>(action: string, payload: Record<string, 
   }
 
   return response.data as T;
-}
+};
 
-export function formatShortcutLabel(shortcut: string): string {
+export const formatShortcutLabel = (shortcut: string): string => {
   const labels: Record<string, string> = {
     Command: '⌘',
     Cmd: '⌘',
@@ -24,15 +28,19 @@ export function formatShortcutLabel(shortcut: string): string {
     Option: '⌥',
     Alt: 'Alt',
   };
+
   return shortcut
     .split('+')
     .map((part) => labels[part] ?? part.toUpperCase())
     .join('');
-}
+};
 
-export function normalizeNavigationUrl(input: string): string | null {
+export const normalizeNavigationUrl = (input: string): string | null => {
   const value = input.trim();
-  if (!value) return null;
+
+  if (!value) {
+    return null;
+  }
 
   const chromePages: Record<string, string> = {
     'chrome://newtab': 'chrome://newtab/',
@@ -53,15 +61,33 @@ export function normalizeNavigationUrl(input: string): string | null {
   };
 
   const normalized = value.toLowerCase();
-  if (chromePages[normalized]) return chromePages[normalized];
 
-  if (normalized === 'chrome://' || normalized === 'chrome:///') return 'chrome://settings/';
+  if (chromePages[normalized]) {
+    return chromePages[normalized];
+  }
+
+  if (normalized === 'chrome://' || normalized === 'chrome:///') {
+    return 'chrome://settings/';
+  }
+
   if (normalized.startsWith('chrome://')) {
     try {
       const url = new URL(value);
-      if (url.protocol !== 'chrome:' || !/^[a-z0-9-]+$/i.test(url.hostname) || url.port || url.username || url.password)
+
+      if (
+        url.protocol !== 'chrome:' ||
+        !/^[a-z0-9-]+$/i.test(url.hostname) ||
+        url.port ||
+        url.username ||
+        url.password
+      ) {
         return null;
-      if (!url.pathname || url.pathname === '') url.pathname = '/';
+      }
+
+      if (!url.pathname || url.pathname === '') {
+        url.pathname = '/';
+      }
+
       return url.href;
     } catch {
       return null;
@@ -70,7 +96,10 @@ export function normalizeNavigationUrl(input: string): string | null {
 
   try {
     const url = new URL(value);
-    if (url.protocol === 'http:' || url.protocol === 'https:') return url.href;
+
+    if (url.protocol === 'http:' || url.protocol === 'https:') {
+      return url.href;
+    }
   } catch {
     // Continue to host parsing for addresses entered without a scheme.
   }
@@ -78,29 +107,48 @@ export function normalizeNavigationUrl(input: string): string | null {
   const isBareAddress = /^(?:([\w-]+\.)+[a-z]{2,}|localhost|(?:\d{1,3}\.){3}\d{1,3})(?::\d+)?(?:[/?#].*)?$/i.test(
     value,
   );
+
   if (isBareAddress) {
     try {
       const url = new URL(`https://${value}`);
-      if (!url.hostname || url.username || url.password) return null;
+
+      if (!url.hostname || url.username || url.password) {
+        return null;
+      }
+
       return url.href;
     } catch {
       return null;
     }
   }
-  return null;
-}
 
-export function normalizeSavedNavigationUrl(input: string): string | null {
+  return null;
+};
+
+export const normalizeSavedNavigationUrl = (input: string): string | null => {
   const webOrChromeUrl = normalizeNavigationUrl(input);
-  if (webOrChromeUrl) return webOrChromeUrl;
+
+  if (webOrChromeUrl) {
+    return webOrChromeUrl;
+  }
 
   try {
     const url = new URL(input.trim());
-    if (url.protocol === 'file:') return url.href;
-    if (url.protocol === 'chrome-extension:' && /^[a-p]{32}$/i.test(url.hostname)) return url.href;
-    if (url.href === 'about:blank') return url.href;
+
+    if (url.protocol === 'file:') {
+      return url.href;
+    }
+
+    if (url.protocol === 'chrome-extension:' && /^[a-p]{32}$/i.test(url.hostname)) {
+      return url.href;
+    }
+
+    if (url.href === 'about:blank') {
+      return url.href;
+    }
   } catch {
     return null;
   }
+
   return null;
-}
+};

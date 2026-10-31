@@ -206,6 +206,7 @@ export function getCommands(context: CommandContext): CommandItem[] {
         { flow: 'assign-group', permission: { permissions: ['tabGroups'] }, category: 'Groups' },
       ),
     );
+
     if (context.tabCountInWindow > 1) {
       items.push(
         command(
@@ -219,6 +220,7 @@ export function getCommands(context: CommandContext): CommandItem[] {
         ),
       );
     }
+
     if (context.tabsToRightCount > 0) {
       items.push(
         command(

@@ -1,4 +1,4 @@
-import { CommandBarFontFamily } from '@/types';
+import type { CommandBarFontFamily } from '@/types';
 
 const productFontFamilies: Record<CommandBarFontFamily, string> = {
   'open-sans': 'Command Menu Open Sans',
@@ -81,23 +81,31 @@ const preloadPaths: Record<CommandBarFontFamily, string> = {
   sora: 'assets/fonts/sora/Sora-Latin.woff2',
   'ibm-plex-mono': 'assets/fonts/ibm-plex-mono/IBMPlexMono-400-Latin.woff2',
 };
+
 const fontFaceStyle = 'data-command-menu-font-face';
 const fontPreload = 'data-command-menu-font-preload';
 const pendingPageFontLoads = new WeakMap<Document, Map<CommandBarFontFamily, Promise<void>>>();
 
-export function installProductFont(target: Document, preferredFont: CommandBarFontFamily = 'open-sans'): void {
-  if (target.querySelector(`style[${fontFaceStyle}]`)) return;
+export const installProductFont = (target: Document, preferredFont: CommandBarFontFamily = 'open-sans'): void => {
+  if (target.querySelector(`style[${fontFaceStyle}]`)) {
+    return;
+  }
 
   const ownerDocument = target;
   const styleParent = target.head ?? target.documentElement;
-  if (!styleParent) return;
+
+  if (!styleParent) {
+    return;
+  }
 
   const style = ownerDocument.createElement('style');
+
   style.setAttribute(fontFaceStyle, '');
   style.textContent = fontFaces
     .map(
       ({ family, path, weight, unicodeRange }) => `@font-face {
     font-family: "${family}";
+
     src: url("${chrome.runtime.getURL(path)}") format("woff2");
     font-style: normal;
     font-weight: ${weight};
@@ -106,21 +114,24 @@ export function installProductFont(target: Document, preferredFont: CommandBarFo
   }`,
     )
     .join('\n');
+
   styleParent.append(style);
 
   // Popup pages can preload the selected face because their document is extension-owned.
   const head = target.head;
+
   if (head && !head.querySelector(`link[${fontPreload}]`)) {
     const preload = ownerDocument.createElement('link');
     preload.rel = 'preload';
     preload.as = 'font';
+
     preload.type = 'font/woff2';
     preload.crossOrigin = 'anonymous';
     preload.href = chrome.runtime.getURL(preloadPaths[preferredFont]);
     preload.setAttribute(fontPreload, '');
     head.append(preload);
   }
-}
+};
 
 /**
  * Page content policies can block a font URL referenced by CSS injected into a
@@ -128,31 +139,44 @@ export function installProductFont(target: Document, preferredFont: CommandBarFo
  * world, then register its bytes with the document's font set. The private
  * family names keep these faces separate from similarly named site fonts.
  */
-export function loadProductFontForPage(target: Document, preferredFont: CommandBarFontFamily): Promise<void> {
+export const loadProductFontForPage = (target: Document, preferredFont: CommandBarFontFamily): Promise<void> => {
   const familyName = productFontFamilies[preferredFont];
   const faces = fontFaces.filter((face) => face.family === familyName);
   const alreadyLoaded = Array.from(target.fonts).filter(
     (face) => face.family === familyName && face.status === 'loaded',
   );
-  if (alreadyLoaded.length >= faces.length) return Promise.resolve();
+
+  if (alreadyLoaded.length >= faces.length) {
+    return Promise.resolve();
+  }
 
   let documentLoads = pendingPageFontLoads.get(target);
+
   if (!documentLoads) {
     documentLoads = new Map();
     pendingPageFontLoads.set(target, documentLoads);
   }
+
   const pending = documentLoads.get(preferredFont);
-  if (pending) return pending;
+
+  if (pending) {
+    return pending;
+  }
 
   const load = Promise.all(
     faces.map(async ({ family, path, weight, unicodeRange }) => {
       const response = await fetch(chrome.runtime.getURL(path));
-      if (!response.ok) throw new Error(`Could not fetch font asset: ${path}`);
+
+      if (!response.ok) {
+        throw new Error(`Could not fetch font asset: ${path}`);
+      }
+
       const face = new FontFace(family, await response.arrayBuffer(), {
         style: 'normal',
         weight,
         unicodeRange,
       });
+
       await face.load();
       target.fonts.add(face);
     }),
@@ -161,4 +185,4 @@ export function loadProductFontForPage(target: Document, preferredFont: CommandB
   documentLoads.set(preferredFont, load);
   void load.catch(() => documentLoads?.delete(preferredFont));
   return load;
-}
+};

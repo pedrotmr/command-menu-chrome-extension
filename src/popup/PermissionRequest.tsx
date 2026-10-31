@@ -19,15 +19,19 @@ export function PermissionRequest({ permissions }: PermissionRequestProps) {
   const [requesting, setRequesting] = useState(false);
   const requestedLabels = permissions.map((permission) => permissionLabels[permission] ?? permission);
 
-  async function requestAccess(): Promise<void> {
-    if (!permissions.length || requesting) return;
+  const requestAccess = async (): Promise<void> => {
+    if (!permissions.length || requesting) {
+      return;
+    }
 
     // Call from this button handler so Chrome sees the user gesture.
     const request = chrome.permissions.request({ permissions });
     setRequesting(true);
     setStatus('Waiting for Chrome…');
+
     try {
       const granted = await request;
+
       if (granted) {
         setStatus('Access granted. Return to the Command Menu to continue.');
         window.setTimeout(() => window.close(), 700);
@@ -39,7 +43,7 @@ export function PermissionRequest({ permissions }: PermissionRequestProps) {
     } finally {
       setRequesting(false);
     }
-  }
+  };
 
   return (
     <main className="cc-permission-request">

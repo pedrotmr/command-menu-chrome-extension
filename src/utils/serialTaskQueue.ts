@@ -7,6 +7,7 @@ export class SerialTaskQueue {
       () => undefined,
       () => undefined,
     );
+
     return result;
   }
 

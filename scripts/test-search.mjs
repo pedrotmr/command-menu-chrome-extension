@@ -5,6 +5,14 @@ import { fileURLToPath } from 'node:url';
 import { createServer } from 'vite';
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const readSources = async (...relativePaths) => {
+  const sources = await Promise.all(
+    relativePaths.map((relativePath) => readFile(path.join(projectRoot, relativePath), 'utf8')),
+  );
+
+  return sources.join('\n');
+};
+
 const server = await createServer({
   configFile: path.join(projectRoot, 'vite.config.ts'),
   root: projectRoot,
@@ -16,23 +24,57 @@ const server = await createServer({
 try {
   const manifest = JSON.parse(await readFile(path.join(projectRoot, 'src/manifest.json'), 'utf8'));
   const globalStyles = await readFile(path.join(projectRoot, 'src/styles/global.css'), 'utf8');
-  const popupSource = await readFile(path.join(projectRoot, 'src/popup/index.tsx'), 'utf8');
+  const popupEntrySource = await readFile(path.join(projectRoot, 'src/popup/index.tsx'), 'utf8');
+  const popupStartupSource = await readFile(path.join(projectRoot, 'src/popup/startPopup.ts'), 'utf8');
   const permissionRequestSource = await readFile(path.join(projectRoot, 'src/popup/PermissionRequest.tsx'), 'utf8');
   const popupHtml = await readFile(path.join(projectRoot, 'src/popup/index.html'), 'utf8');
   const popupEscapeGuard = await readFile(path.join(projectRoot, 'public/escape-guard.js'), 'utf8');
   const previewHtml = await readFile(path.join(projectRoot, 'design-preview.html'), 'utf8');
   const actionPrototypeHtml = await readFile(path.join(projectRoot, 'actions-popover-prototype.html'), 'utf8');
   const themeGalleryHtml = await readFile(path.join(projectRoot, 'theme-gallery.html'), 'utf8');
-  const settingsSource = await readFile(path.join(projectRoot, 'src/components/SettingsView.tsx'), 'utf8');
-  const commandPaletteSource = await readFile(path.join(projectRoot, 'src/components/CommandPalette.tsx'), 'utf8');
-  const actionDockSource = await readFile(path.join(projectRoot, 'src/components/ActionDock.tsx'), 'utf8');
-  const tabSwitcherSource = await readFile(path.join(projectRoot, 'src/components/TabSwitcher.tsx'), 'utf8');
+  const settingsSource = await readSources(
+    'src/components/SettingsView.tsx',
+    'src/components/SettingsView/AppearanceSection/AppearanceSection.tsx',
+    'src/components/SettingsView/PaletteSection/PaletteSection.tsx',
+    'src/components/SettingsView/FontFamilySection/FontFamilySection.tsx',
+    'src/components/SettingsView/CommandBarSizeSection/CommandBarSizeSection.tsx',
+    'src/components/SettingsView/WindowModeSection/WindowModeSection.tsx',
+    'src/components/SettingsView/ShortcutSettingsRow/ShortcutSettingsRow.tsx',
+  );
+  const commandPaletteSource = await readSources(
+    'src/components/CommandPalette.tsx',
+    'src/components/CommandPalette/useCommandPaletteModel.ts',
+    'src/components/CommandPalette/helpers.ts',
+    'src/components/CommandPalette/SearchArea/SearchArea.tsx',
+    'src/components/CommandPalette/ResultsRegion/ResultsRegion.tsx',
+    'src/components/CommandPalette/FlowDialog/FlowDialog.tsx',
+    'src/components/CommandPalette/FlowDialog/DialogFields.tsx',
+    'src/components/CommandPalette/NoticeContainer/NoticeContainer.tsx',
+  );
+  const actionDockSource = await readSources(
+    'src/components/ActionDock.tsx',
+    'src/components/ActionDock/useActionDockKeyboard.ts',
+  );
+  const tabSwitcherSource = await readSources(
+    'src/components/TabSwitcher.tsx',
+    'src/components/TabSwitcher/useTabSwitcherModel.ts',
+    'src/components/TabSwitcher/TabCard/TabCard.tsx',
+    'src/components/TabSwitcher/EmptyPanel.tsx',
+  );
   const backgroundSource = await readFile(path.join(projectRoot, 'src/background/index.ts'), 'utf8');
   const keyReleaseSource = await readFile(path.join(projectRoot, 'src/utils/tabSwitcherKeyRelease.ts'), 'utf8');
-  const overlayHostSource = await readFile(path.join(projectRoot, 'src/overlay/surfaceHost.tsx'), 'utf8');
+  const overlayHostSource = await readFile(path.join(projectRoot, 'src/overlay/surfaceHost/host.ts'), 'utf8');
+  const overlayListenersSource = await readFile(path.join(projectRoot, 'src/overlay/surfaceHost/listeners.ts'), 'utf8');
   const clipboardSource = await readFile(path.join(projectRoot, 'src/utils/clipboard.ts'), 'utf8');
   const previewCacheSource = await readFile(path.join(projectRoot, 'src/utils/tabPreviewCache.ts'), 'utf8');
-  const resultsSource = await readFile(path.join(projectRoot, 'src/components/ResultsList.tsx'), 'utf8');
+  const resultsSource = await readSources(
+    'src/components/ResultsList.tsx',
+    'src/components/ResultsList/ResultRow/ResultRow.tsx',
+    'src/components/ResultsList/ResultRow/ItemIcon.tsx',
+    'src/components/ResultsList/ResultRow/HighlightedText.tsx',
+    'src/components/ResultsList/ResultRow/MoreGlyph.tsx',
+    'src/components/ResultsList/EmptyState/EmptyState.tsx',
+  );
   const productDoc = await readFile(path.join(projectRoot, 'PRODUCT.md'), 'utf8');
   assert.ok(!manifest.permissions.includes('bookmarks'), 'bookmark access is optional');
   assert.ok(!manifest.permissions.includes('history'), 'history access is optional');
@@ -124,8 +166,14 @@ try {
     'the extension permission page requests access from its explicit button click',
   );
   assert.ok(
-    popupSource.indexOf("if (fromUrl === 'permission-request')") < popupSource.indexOf('chrome.storage.session.get('),
+    popupStartupSource.indexOf("if (fromUrl === 'permission-request')") <
+      popupStartupSource.indexOf('chrome.storage.session.get('),
     'permission prompts do not consume pending shortcut launch state',
+  );
+  assert.match(
+    popupEntrySource,
+    /import \{ startPopup \} from '\.\/startPopup';\s*void startPopup\(\)/,
+    'the popup entry delegates startup work to its startup module',
   );
   assert.match(
     keyReleaseSource,
@@ -161,7 +209,7 @@ try {
     'preview writes use the shared serialized cache',
   );
   assert.match(
-    popupSource,
+    popupStartupSource,
     /chrome\.storage\.session\.get\(\['nextPaletteMode', 'nextTabSwitcherAutoSwitchOnRelease', 'paletteRequestedAt'\]\)/,
     'the native popup reads the shortcut launch timestamp',
   );
@@ -176,6 +224,11 @@ try {
     'all command-menu copy actions use the shared clipboard helper',
   );
   assert.match(
+    commandPaletteSource,
+    /if \(command\.flow === 'assign-group' && activeTab\?\.id !== undefined\) \{\s*dismissToast\(\);\s*setDialogError\(''\);\s*const currentGroups = await sendBackground<chrome\.tabGroups\.TabGroup\[]>\('groups:list'\)/,
+    'the assign-group command clears stale notices and dialog errors before opening its dialog',
+  );
+  assert.match(
     previewCacheSource,
     /private readonly operations = new SerialTaskQueue\(\)/,
     'preview cache mutations are serialized',
@@ -187,7 +240,7 @@ try {
   );
   assert.match(
     actionDockSource,
-    /if \(event\.shiftKey\) searchRef\.current\?\.focus\([\s\S]*?else onDismiss\(\)/,
+    /if \(event\.shiftKey\) \{\s*searchRef\.current\?\.focus\([\s\S]*?\} else \{\s*onDismiss\(\);/,
     'menu Shift+Tab returns to action search and Tab exits the dock',
   );
   assert.match(
@@ -875,7 +928,11 @@ try {
     /html\[data-popup-window='fallback'\][\s\S]*?width: min\(var\(--cc-popup-width\), 100vw\)/,
     'fallback popup windows clamp their preferred width to the available viewport',
   );
-  assert.match(popupSource, /dataset\.popupWindow = 'fallback'/, 'fallback windows opt into responsive popup sizing');
+  assert.match(
+    popupStartupSource,
+    /dataset\.popupWindow = 'fallback'/,
+    'fallback windows opt into responsive popup sizing',
+  );
   assert.match(globalStyles, /min-width: 0;/, 'popup roots can shrink instead of clipping controls at zoom');
   assert.match(
     commandPaletteSource,
@@ -971,7 +1028,7 @@ try {
   };
   assert.match(
     backgroundSource,
-    /withTabNamesMutation\(async \(names\) => \{\s*if \(!names\[String\(tabId\)\]\) return false;\s*const currentTabs = await chrome\.tabs\.query\(\{\}\);\s*return markTabNameClosed\(names, tabId, Date\.now\(\), currentTabs\);/,
+    /withTabNamesMutation\(async \(names\) => \{\s*if \(!names\[String\(tabId\)\]\) \{\s*return false;\s*\}\s*const currentTabs = await chrome\.tabs\.query\(\{\}\);\s*return markTabNameClosed\(names, tabId, Date\.now\(\), currentTabs\);/,
     'closing a renamed tab snapshots same-URL tabs inside the serialized mutation',
   );
   const openNameBesideDuplicate = { 12: { ...renamed['12'], closedAt: undefined } };
@@ -1570,7 +1627,7 @@ try {
     /preferences\.windowMode === 'compact' && !query\.trim\(\) && !activeProvider/,
     'Compact mode hides the initial unfiltered results',
   );
-  assert.match(commandPaletteSource, /\{showResults && \(/, 'results appear after typing in Compact mode');
+  assert.match(commandPaletteSource, /\{model\.showResults && \(/, 'results appear after typing in Compact mode');
   assert.match(
     commandPaletteSource,
     /!query\.trim\(\) && !activeProvider && !tabsReady/,
@@ -1583,12 +1640,12 @@ try {
   );
   assert.match(
     commandPaletteSource,
-    /onKeyDownCapture=\{handleSurfaceEscape\}/,
+    /onKeyDownCapture=\{model\.handleSurfaceEscape\}/,
     'Escape handling runs before focused child controls',
   );
   assert.match(
     commandPaletteSource,
-    /if \(event\.key !== 'Escape' \|\| dialog\) return;/,
+    /if \(event\.key !== 'Escape' \|\| dialog\) \{\s*return;\s*\}/,
     'nested dialogs keep first use of Escape',
   );
   assert.match(
@@ -1607,12 +1664,12 @@ try {
     'the early popup Escape guard defers to the Command Bar before closing',
   );
   assert.match(
-    overlayHostSource,
+    overlayListenersSource,
     /window\.addEventListener\('keydown', closeOnEscape, true\)/,
     'the page overlay catches Escape before its React surface finishes mounting',
   );
   assert.match(
-    overlayHostSource,
+    overlayListenersSource,
     /mountPoint\.querySelector\('dialog\[open\]'\)[\s\S]*?bridge\.pendingOpen/,
     'the early overlay Escape listener lets nested dialogs handle Escape and can cancel a pending open',
   );

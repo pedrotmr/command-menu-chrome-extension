@@ -1,6 +1,6 @@
 import { createElement } from 'react';
 import { TabSwitcher } from '@/components/TabSwitcher';
-import { mountOverlaySurface } from './surfaceHost';
+import { mountOverlaySurface } from './surfaceHost/mountOverlaySurface';
 import styleText from '@/styles/global.css?inline';
 
 mountOverlaySurface(
