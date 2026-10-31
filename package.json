@@ -7,6 +7,10 @@
     "dev": "vite",
     "build": "tsc && vite build && vite build --config vite.content-command.config.ts && vite build --config vite.content-tabs.config.ts && node scripts/post-build.js",
     "test": "node scripts/test-search.mjs",
+    "lint": "eslint . --max-warnings=0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc --noEmit",
     "preview": "vite preview"
   },
   "keywords": [
@@ -17,11 +21,18 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/chrome": "^0.1.24",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "@vitejs/plugin-react": "^5.0.4",
+    "eslint": "^10.14.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.13.0",
+    "prettier": "3.9.10",
     "typescript": "^5.9.3",
+    "typescript-eslint": "^8.72.1",
     "vite": "^7.1.10"
   },
   "dependencies": {

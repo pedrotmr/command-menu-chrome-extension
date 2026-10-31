@@ -11,5 +11,5 @@ mountOverlaySurface('commands', styleText, ({ theme, themeRoot, onClose }) =>
     cacheThemeInLocalStorage: false,
     onClose,
     surface: 'overlay',
-  })
+  }),
 );

@@ -4,13 +4,8 @@ export function asPositiveInteger(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isSafeInteger(value) && value > 0 ? value : undefined;
 }
 
-export async function sendBackground<T>(
-  action: string,
-  payload: Record<string, unknown> = {}
-): Promise<T> {
-  const response = (await chrome.runtime.sendMessage({ action, ...payload })) as
-    | ChromeResponse<T>
-    | undefined;
+export async function sendBackground<T>(action: string, payload: Record<string, unknown> = {}): Promise<T> {
+  const response = (await chrome.runtime.sendMessage({ action, ...payload })) as ChromeResponse<T> | undefined;
 
   if (!response?.success) {
     throw new Error(response?.error ?? 'The browser action could not be completed.');
@@ -21,9 +16,18 @@ export async function sendBackground<T>(
 
 export function formatShortcutLabel(shortcut: string): string {
   const labels: Record<string, string> = {
-    Command: '⌘', Cmd: '⌘', Control: 'Ctrl', Ctrl: 'Ctrl', Shift: '⇧', Option: '⌥', Alt: 'Alt',
+    Command: '⌘',
+    Cmd: '⌘',
+    Control: 'Ctrl',
+    Ctrl: 'Ctrl',
+    Shift: '⇧',
+    Option: '⌥',
+    Alt: 'Alt',
   };
-  return shortcut.split('+').map((part) => labels[part] ?? part.toUpperCase()).join('');
+  return shortcut
+    .split('+')
+    .map((part) => labels[part] ?? part.toUpperCase())
+    .join('');
 }
 
 export function normalizeNavigationUrl(input: string): string | null {
@@ -55,7 +59,8 @@ export function normalizeNavigationUrl(input: string): string | null {
   if (normalized.startsWith('chrome://')) {
     try {
       const url = new URL(value);
-      if (url.protocol !== 'chrome:' || !/^[a-z0-9-]+$/i.test(url.hostname) || url.port || url.username || url.password) return null;
+      if (url.protocol !== 'chrome:' || !/^[a-z0-9-]+$/i.test(url.hostname) || url.port || url.username || url.password)
+        return null;
       if (!url.pathname || url.pathname === '') url.pathname = '/';
       return url.href;
     } catch {
@@ -70,7 +75,9 @@ export function normalizeNavigationUrl(input: string): string | null {
     // Continue to host parsing for addresses entered without a scheme.
   }
 
-  const isBareAddress = /^(?:([\w-]+\.)+[a-z]{2,}|localhost|(?:\d{1,3}\.){3}\d{1,3})(?::\d+)?(?:[/?#].*)?$/i.test(value);
+  const isBareAddress = /^(?:([\w-]+\.)+[a-z]{2,}|localhost|(?:\d{1,3}\.){3}\d{1,3})(?::\d+)?(?:[/?#].*)?$/i.test(
+    value,
+  );
   if (isBareAddress) {
     try {
       const url = new URL(`https://${value}`);

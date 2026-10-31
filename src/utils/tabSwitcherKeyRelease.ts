@@ -20,9 +20,13 @@ export function installTabSwitcherKeyReleaseMonitor(): void {
   const state: KeyReleaseState = { lastModifierReleaseAt: 0 };
   window.__commandMenuKeyReleaseState = state;
 
-  window.addEventListener('keyup', (event: KeyboardEvent) => {
-    if (isTabSwitcherModifierKey(event.key)) state.lastModifierReleaseAt = Date.now();
-  }, true);
+  window.addEventListener(
+    'keyup',
+    (event: KeyboardEvent) => {
+      if (isTabSwitcherModifierKey(event.key)) state.lastModifierReleaseAt = Date.now();
+    },
+    true,
+  );
 }
 
 export function wasTabSwitcherModifierReleasedAfter(startedAt: number | null | undefined): boolean {

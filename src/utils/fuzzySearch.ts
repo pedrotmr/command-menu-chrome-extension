@@ -1,6 +1,11 @@
 import { PaletteItem, UrlItem } from '@/types';
 import { normalizeNavigationUrl } from '@/utils/chromeHelpers';
-import { createProviderSearchItem, parseProviderQuery, SearchProviderDefinition, searchProviders } from '@/utils/searchProviders';
+import {
+  createProviderSearchItem,
+  parseProviderQuery,
+  SearchProviderDefinition,
+  searchProviders,
+} from '@/utils/searchProviders';
 
 interface SearchField {
   value: string;
@@ -134,7 +139,12 @@ function createNavigationItem(url: string): UrlItem {
   };
 }
 
-export function searchItems(items: PaletteItem[], query: string, tabsOnly = false, allowFallback = true): PaletteItem[] {
+export function searchItems(
+  items: PaletteItem[],
+  query: string,
+  tabsOnly = false,
+  allowFallback = true,
+): PaletteItem[] {
   const normalized = query.trim();
   if (!normalized) return rankItems(items, '', 40);
 
@@ -147,9 +157,8 @@ export function searchItems(items: PaletteItem[], query: string, tabsOnly = fals
     }
   }
 
-  const filteredItems = tabsOnly && items.some((item) => item.type !== 'tab')
-    ? items.filter((item) => item.type === 'tab')
-    : items;
+  const filteredItems =
+    tabsOnly && items.some((item) => item.type !== 'tab') ? items.filter((item) => item.type === 'tab') : items;
   const localQuery = providerQuery?.query ?? normalized;
   const matchLimit = providerQuery || (!tabsOnly && allowFallback) ? 99 : 100;
   const matches = rankItems(filteredItems, localQuery, matchLimit);
@@ -182,7 +191,7 @@ export function searchProviderItems(
   items: PaletteItem[],
   query: string,
   provider: SearchProviderDefinition,
-  allowFallback = true
+  allowFallback = true,
 ): PaletteItem[] {
   const normalized = query.trim();
   if (!normalized) return [];

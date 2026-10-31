@@ -17,7 +17,8 @@ export interface CommandItem extends BaseItem {
   category: string;
   permission?: chrome.permissions.Permissions;
   action: string;
-  flow?: 'rename-active' | 'move-active' | 'group-active' | 'assign-group' | 'confirm-close' | 'settings' | 'saved-search';
+  flow?:
+    'rename-active' | 'move-active' | 'group-active' | 'assign-group' | 'confirm-close' | 'settings' | 'saved-search';
 }
 
 export interface TabItem extends BaseItem {
@@ -62,13 +63,7 @@ export interface UrlItem extends BaseItem {
   url: string;
 }
 
-export type PaletteItem =
-  | CommandItem
-  | TabItem
-  | BookmarkItem
-  | HistoryItem
-  | SearchItem
-  | UrlItem;
+export type PaletteItem = CommandItem | TabItem | BookmarkItem | HistoryItem | SearchItem | UrlItem;
 
 export interface RenamedTab {
   tabId: number;

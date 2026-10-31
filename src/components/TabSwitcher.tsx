@@ -32,12 +32,19 @@ function TabFavicon({ src }: { src: string }) {
       loading="lazy"
       hidden={failed}
       onError={() => setFailedUrl(src)}
-      onLoad={() => setFailedUrl((previousUrl) => previousUrl === src ? null : previousUrl)}
+      onLoad={() => setFailedUrl((previousUrl) => (previousUrl === src ? null : previousUrl))}
     />
   );
 }
 
-export function TabSwitcher({ onClose, autoSwitchOnRelease = false, openedAt = 0, modifierReleasedAtOpen = false, surface = 'popup', cycleVersion = 0 }: TabSwitcherProps) {
+export function TabSwitcher({
+  onClose,
+  autoSwitchOnRelease = false,
+  openedAt = 0,
+  modifierReleasedAtOpen = false,
+  surface = 'popup',
+  cycleVersion = 0,
+}: TabSwitcherProps) {
   const onCloseRef = useRef(onClose);
   const [tabs, setTabs] = useState<ManagedTab[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -63,10 +70,11 @@ export function TabSwitcher({ onClose, autoSwitchOnRelease = false, openedAt = 0
   const stateMessage = message || (loading ? 'Loading recent tabs…' : 'No recent tabs are available.');
   const cardCount = Math.max(1, tabs.length);
   const panelWidth = cardCount * 278 + (cardCount - 1) * 7 + 22;
+  const hasTabs = tabs.length > 0;
 
   useLayoutEffect(() => {
     (listboxRef.current ?? stateRef.current)?.focus({ preventScroll: true });
-  }, [tabs.length > 0]);
+  }, [hasTabs]);
 
   useLayoutEffect(() => {
     selectedTabRef.current = selectedTab;
@@ -93,7 +101,7 @@ export function TabSwitcher({ onClose, autoSwitchOnRelease = false, openedAt = 0
       if (!isTabSwitcherModifierKey(event.key)) return;
       event.preventDefault();
       modifierReleasedRef.current = true;
-      activateAfterShortcut(selectedTabRef.current);
+      activateAfterShortcutRef.current(selectedTabRef.current);
     };
     window.addEventListener('keyup', onKeyUp, true);
     return () => window.removeEventListener('keyup', onKeyUp, true);
@@ -106,50 +114,58 @@ export function TabSwitcher({ onClose, autoSwitchOnRelease = false, openedAt = 0
     void Promise.all([
       sendBackground<ManagedTab[]>('tabs:recent'),
       sendBackground<chrome.tabs.Tab | null>('tabs:current'),
-    ]).then(async ([recentTabs, current]) => {
-      if (!mounted) return;
-      const currentId = current?.id ?? null;
-      setCurrentTabId(currentId);
-      currentTabIdRef.current = currentId;
-      windowIdRef.current = current?.windowId;
-      switcherShownRef.current = true;
-      const opened = await sendBackground<{ pendingCycles?: number }>('tabs:switcher-shown', {
-        windowId: current?.windowId,
-        surface,
-      }).catch(() => ({ pendingCycles: 0 }));
-      if (!mounted) {
-        switcherShownRef.current = false;
-        await sendBackground('tabs:switcher-hidden', { windowId: windowIdRef.current }).catch(() => undefined);
-        return;
-      }
-      const previousTabIndex = recentTabs.findIndex((tab) => tab.id !== currentId);
-      const firstIndex = previousTabIndex >= 0 ? previousTabIndex : 0;
-      const pendingCycles = Math.max(0, Number(opened.pendingCycles ?? 0))
-        + Math.max(0, cycleVersionRef.current - previousCycleVersion.current);
-      previousCycleVersion.current = cycleVersionRef.current;
-      const nextIndex = recentTabs.length ? (firstIndex + pendingCycles) % recentTabs.length : 0;
-      selectedTabRef.current = recentTabs[nextIndex];
-      setTabs(recentTabs);
-      setSelectedIndex(nextIndex);
-      if (modifierReleasedRef.current) activateAfterShortcut(recentTabs[nextIndex]);
-      void sendBackground<Record<number, string>>('tabs:recent-previews', {
-        tabIds: recentTabs.flatMap((tab) => tab.id === undefined ? [] : [tab.id]),
-      }).then((previews) => {
+    ])
+      .then(async ([recentTabs, current]) => {
         if (!mounted) return;
-        setTabs((currentTabs) => currentTabs.map((tab) => ({
-          ...tab,
-          previewDataUrl: tab.id === undefined ? undefined : previews[tab.id],
-        })));
-      }).catch(() => undefined);
-    }).catch((error: unknown) => {
-      if (mounted) {
-        console.error('Tab Switcher initialization failed.', error);
-        setMessage('Could not load recent tabs. Close and reopen the switcher to try again.');
-        hideSwitcher();
-      }
-    }).finally(() => {
-      if (mounted) setLoading(false);
-    });
+        const currentId = current?.id ?? null;
+        setCurrentTabId(currentId);
+        currentTabIdRef.current = currentId;
+        windowIdRef.current = current?.windowId;
+        switcherShownRef.current = true;
+        const opened = await sendBackground<{ pendingCycles?: number }>('tabs:switcher-shown', {
+          windowId: current?.windowId,
+          surface,
+        }).catch(() => ({ pendingCycles: 0 }));
+        if (!mounted) {
+          switcherShownRef.current = false;
+          await sendBackground('tabs:switcher-hidden', { windowId: windowIdRef.current }).catch(() => undefined);
+          return;
+        }
+        const previousTabIndex = recentTabs.findIndex((tab) => tab.id !== currentId);
+        const firstIndex = previousTabIndex >= 0 ? previousTabIndex : 0;
+        const pendingCycles =
+          Math.max(0, Number(opened.pendingCycles ?? 0)) +
+          Math.max(0, cycleVersionRef.current - previousCycleVersion.current);
+        previousCycleVersion.current = cycleVersionRef.current;
+        const nextIndex = recentTabs.length ? (firstIndex + pendingCycles) % recentTabs.length : 0;
+        selectedTabRef.current = recentTabs[nextIndex];
+        setTabs(recentTabs);
+        setSelectedIndex(nextIndex);
+        if (modifierReleasedRef.current) activateAfterShortcutRef.current(recentTabs[nextIndex]);
+        void sendBackground<Record<number, string>>('tabs:recent-previews', {
+          tabIds: recentTabs.flatMap((tab) => (tab.id === undefined ? [] : [tab.id])),
+        })
+          .then((previews) => {
+            if (!mounted) return;
+            setTabs((currentTabs) =>
+              currentTabs.map((tab) => ({
+                ...tab,
+                previewDataUrl: tab.id === undefined ? undefined : previews[tab.id],
+              })),
+            );
+          })
+          .catch(() => undefined);
+      })
+      .catch((error: unknown) => {
+        if (mounted) {
+          console.error('Tab Switcher initialization failed.', error);
+          setMessage('Could not load recent tabs. Close and reopen the switcher to try again.');
+          hideSwitcher();
+        }
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
 
     return () => {
       mounted = false;
@@ -162,7 +178,7 @@ export function TabSwitcher({ onClose, autoSwitchOnRelease = false, openedAt = 0
     if (cycleVersion === previousCycleVersion.current || tabs.length < 2) return;
     const cycles = cycleVersion - previousCycleVersion.current;
     previousCycleVersion.current = cycleVersion;
-    const nextIndex = ((selectedIndex + cycles) % tabs.length + tabs.length) % tabs.length;
+    const nextIndex = (((selectedIndex + cycles) % tabs.length) + tabs.length) % tabs.length;
     selectedTabRef.current = tabs[nextIndex];
     setSelectedIndex(nextIndex);
   }, [cycleVersion, selectedIndex, tabs]);
@@ -283,7 +299,9 @@ export function TabSwitcher({ onClose, autoSwitchOnRelease = false, openedAt = 0
         }
       }}
     >
-      <h1 className="visually-hidden" id="tab-switcher-title">Recent tabs</h1>
+      <h1 className="visually-hidden" id="tab-switcher-title">
+        Recent tabs
+      </h1>
       {tabs.length ? (
         <div
           ref={listboxRef}
@@ -299,10 +317,12 @@ export function TabSwitcher({ onClose, autoSwitchOnRelease = false, openedAt = 0
               listboxRef.current?.focus({ preventScroll: true });
             }
           }}
-          style={{
-            '--tab-switcher-panel-width': `${panelWidth}px`,
-            gridTemplateColumns: `repeat(${cardCount}, minmax(0, 1fr))`,
-          } as CSSProperties}
+          style={
+            {
+              '--tab-switcher-panel-width': `${panelWidth}px`,
+              gridTemplateColumns: `repeat(${cardCount}, minmax(0, 1fr))`,
+            } as CSSProperties
+          }
         >
           {tabs.map((tab, index) => {
             const tabId = tab.id;
@@ -310,8 +330,11 @@ export function TabSwitcher({ onClose, autoSwitchOnRelease = false, openedAt = 0
             const title = tab.customName || tab.title || tab.url || 'Untitled tab';
             const selected = index === selectedIndex;
             const host = (() => {
-              try { return new URL(tab.url || '').hostname.replace(/^www\./, ''); }
-              catch { return ''; }
+              try {
+                return new URL(tab.url || '').hostname.replace(/^www\./, '');
+              } catch {
+                return '';
+              }
             })();
             const accessibleLabel = [
               `${index + 1} of ${tabs.length}`,
@@ -320,7 +343,9 @@ export function TabSwitcher({ onClose, autoSwitchOnRelease = false, openedAt = 0
               tabId === currentTabId ? 'current tab' : '',
               tab.pinned ? 'pinned' : '',
               tab.audible ? 'playing audio' : '',
-            ].filter(Boolean).join(', ');
+            ]
+              .filter(Boolean)
+              .join(', ');
 
             return (
               <div
@@ -343,7 +368,9 @@ export function TabSwitcher({ onClose, autoSwitchOnRelease = false, openedAt = 0
                   }
                 }}
                 onMouseDown={(event) => event.preventDefault()}
-                onClick={() => { void activate(tab); }}
+                onClick={() => {
+                  void activate(tab);
+                }}
               >
                 <div className="tab-card-preview" aria-hidden="true">
                   {tab.previewDataUrl ? (
@@ -364,11 +391,21 @@ export function TabSwitcher({ onClose, autoSwitchOnRelease = false, openedAt = 0
                     {tab.favIconUrl && <TabFavicon key={tab.favIconUrl} src={tab.favIconUrl} />}
                   </span>
                   <span className="tab-card-title">{title}</span>
-                  {tab.audible && <span className="tab-card-status is-audible" aria-hidden="true" title="Playing audio">♫</span>}
+                  {tab.audible && (
+                    <span className="tab-card-status is-audible" aria-hidden="true" title="Playing audio">
+                      ♫
+                    </span>
+                  )}
                   {tab.pinned && (
                     <span className="tab-card-status" aria-hidden="true" title="Pinned">
                       <svg viewBox="0 0 16 16" fill="none">
-                        <path d="M5.25 2.5h5.5M6.5 2.5v3.6l-2 2v1h7v-1l-2-2V2.5M8 9.1v4.4" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
+                        <path
+                          d="M5.25 2.5h5.5M6.5 2.5v3.6l-2 2v1h7v-1l-2-2V2.5M8 9.1v4.4"
+                          stroke="currentColor"
+                          strokeWidth="1.35"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
                       </svg>
                     </span>
                   )}
@@ -387,10 +424,23 @@ export function TabSwitcher({ onClose, autoSwitchOnRelease = false, openedAt = 0
             stateRef.current?.focus({ preventScroll: true });
           }}
         >
-          <p ref={stateRef} className="tab-switcher-state" role="status" aria-live="polite" aria-atomic="true" tabIndex={0}>{stateMessage}</p>
+          <p
+            ref={stateRef}
+            className="tab-switcher-state"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            tabIndex={0}
+          >
+            {stateMessage}
+          </p>
         </div>
       )}
-      {tabs.length > 0 && message && <p className="tab-switcher-state" role="status" aria-live="polite" aria-atomic="true">{message}</p>}
+      {tabs.length > 0 && message && (
+        <p className="tab-switcher-state" role="status" aria-live="polite" aria-atomic="true">
+          {message}
+        </p>
+      )}
     </div>
   );
 }

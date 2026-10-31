@@ -83,9 +83,9 @@ function mixColors(first: string, second: string, amount: number): string {
 }
 
 function luminance(color: string): number {
-  const [red, green, blue] = hexChannels(color).map((channel) => channel / 255).map((channel) =>
-    channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4
-  );
+  const [red, green, blue] = hexChannels(color)
+    .map((channel) => channel / 255)
+    .map((channel) => (channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4));
   return red * 0.2126 + green * 0.7152 + blue * 0.0722;
 }
 
@@ -126,7 +126,11 @@ function resolveAccent(source: ThemeSourceColors, isDark: boolean): ResolvedAcce
   let accent = source.accent;
   let accentSoft = mixColors(input, accent, accentBlend);
   for (let attempt = 0; attempt < 4; attempt++) {
-    const nextAccent = ensureContrast(source.accent, [source.panel, source.raised, input, source.selection, accentSoft], 4.5);
+    const nextAccent = ensureContrast(
+      source.accent,
+      [source.panel, source.raised, input, source.selection, accentSoft],
+      4.5,
+    );
     if (nextAccent === accent) break;
     accent = nextAccent;
     accentSoft = mixColors(input, accent, accentBlend);
@@ -140,7 +144,11 @@ function resolveAccent(source: ThemeSourceColors, isDark: boolean): ResolvedAcce
   return { accent, accentSoft };
 }
 
-function sourceTokens(source: ThemeSourceColors, isDark: boolean, resolvedAccent = resolveAccent(source, isDark)): ThemeTokens {
+function sourceTokens(
+  source: ThemeSourceColors,
+  isDark: boolean,
+  resolvedAccent = resolveAccent(source, isDark),
+): ThemeTokens {
   const { accent, accentSoft } = resolvedAccent;
   const input = source.panel;
   const textSurfaces = [source.background, source.panel, source.raised, input, source.selection, accentSoft];
@@ -208,14 +216,14 @@ function alternateAppearance(source: ThemeSourceColors, isDark: boolean): ThemeS
 function lazyPalette(
   source: Pick<PairedThemeSource, 'id' | 'name' | 'description'>,
   lightSource: ThemeSourceColors,
-  darkSource: ThemeSourceColors
+  darkSource: ThemeSourceColors,
 ): ThemePalette {
   let lightTokens: ThemeTokens | undefined;
   let darkTokens: ThemeTokens | undefined;
   let lightAccent: ResolvedAccent | undefined;
   let darkAccent: ResolvedAccent | undefined;
-  const getLightAccent = () => lightAccent ??= resolveAccent(lightSource, false);
-  const getDarkAccent = () => darkAccent ??= resolveAccent(darkSource, true);
+  const getLightAccent = () => (lightAccent ??= resolveAccent(lightSource, false));
+  const getDarkAccent = () => (darkAccent ??= resolveAccent(darkSource, true));
   return {
     id: source.id,
     name: source.name,
@@ -225,10 +233,10 @@ function lazyPalette(
       dark: { background: darkSource.background, accent: getDarkAccent().accent },
     },
     get light() {
-      return lightTokens ??= sourceTokens(lightSource, false, getLightAccent());
+      return (lightTokens ??= sourceTokens(lightSource, false, getLightAccent()));
     },
     get dark() {
-      return darkTokens ??= sourceTokens(darkSource, true, getDarkAccent());
+      return (darkTokens ??= sourceTokens(darkSource, true, getDarkAccent()));
     },
   };
 }
@@ -249,38 +257,255 @@ const plain = pairedPalette({
   name: 'Plain',
   description: 'Black and white',
   light: {
-    background: '#ffffff', panel: '#ffffff', raised: '#f4f4f4', accent: '#111111', border: '#e4e4e4',
-    text: '#111111', muted: '#555555', subtle: '#5c5c5c', hover: '#f2f2f2', selection: '#e9e9e9',
+    background: '#ffffff',
+    panel: '#ffffff',
+    raised: '#f4f4f4',
+    accent: '#111111',
+    border: '#e4e4e4',
+    text: '#111111',
+    muted: '#555555',
+    subtle: '#5c5c5c',
+    hover: '#f2f2f2',
+    selection: '#e9e9e9',
   },
   dark: {
-    background: '#050505', panel: '#111111', raised: '#1d1d1d', accent: '#ffffff', border: '#353535',
-    text: '#fafafa', muted: '#c2c2c2', subtle: '#b4b4b4', hover: '#1d1d1d', selection: '#292929',
+    background: '#050505',
+    panel: '#111111',
+    raised: '#1d1d1d',
+    accent: '#ffffff',
+    border: '#353535',
+    text: '#fafafa',
+    muted: '#c2c2c2',
+    subtle: '#b4b4b4',
+    hover: '#1d1d1d',
+    selection: '#292929',
   },
 });
 
 // Native appearance colors are ported from the user's Termscape palette definitions.
 const termscapePalettes: ThemeSource[] = [
-  { id: 'cursor-dark', name: 'Cursor Dark', description: 'Graphite and pale cyan', appearance: 'dark', colors: { background: '#141414', panel: '#181818', raised: '#262626', accent: '#88c0d0', border: '#292929', text: '#e4e4e4', muted: '#888888', subtle: '#636363', hover: '#272727', selection: '#343434' } },
-  { id: 'cursor-midnight', name: 'Cursor Midnight', description: 'Midnight slate and sea glass', appearance: 'dark', colors: { background: '#191c22', panel: '#1e2127', raised: '#434c5e', accent: '#8fbcbb', border: '#292c32', text: '#d8dee9', muted: '#7b88a1', subtle: '#4b5163', hover: '#2a2d33', selection: '#35373d' } },
-  { id: 'vscode-dark-vs', name: 'VS Code Dark', description: 'Classic editor charcoal', appearance: 'dark', colors: { background: '#252526', panel: '#1e1e1e', raised: '#2d2d2e', accent: '#007acc', border: '#303030', text: '#d4d4d4', muted: '#8c8c8c', subtle: '#616161', hover: '#2a2a2a', selection: '#353535' } },
-  { id: 'tobacco', name: 'Tobacco', description: 'Warm charcoal and amber', appearance: 'dark', colors: { background: '#242222', panel: '#201e1c', raised: '#2d2a2a', accent: '#eb9c3d', border: '#343230', text: '#ededed', muted: '#a1a0a0', subtle: '#706f6e', hover: '#302e2c', selection: '#3d3b3a' } },
-  { id: 'dracula', name: 'Dracula', description: 'Charcoal with violet', appearance: 'dark', colors: { background: '#21222c', panel: '#282a36', raised: '#44475a', accent: '#bd93f9', border: '#394057', text: '#e7e8e3', muted: '#9a9b9d', subtle: '#6b6c72', hover: '#343246', selection: '#403b55' } },
-  { id: 'catppuccin', name: 'Catppuccin', description: 'Mocha and lavender', appearance: 'dark', colors: { background: '#1e1e2e', panel: '#181825', raised: '#313244', accent: '#cba6f7', border: '#313242', text: '#bfc7e3', muted: '#767b91', subtle: '#4b4d5f', hover: '#252234', selection: '#332d45' } },
-  { id: 'aurora', name: 'Aurora', description: 'Deep space and cyan', appearance: 'dark', colors: { background: '#10151e', panel: '#0a0e16', raised: '#181f2d', accent: '#00d8ff', border: '#082e3b', text: '#b0d1ec', muted: '#6d8396', subtle: '#404e5c', hover: '#091c26', selection: '#092a37' } },
-  { id: 'gruvbox', name: 'Gruvbox', description: 'Earthy retro warmth', appearance: 'dark', colors: { background: '#282828', panel: '#1d2021', raised: '#3c3836', accent: '#fe8019', border: '#35312d', text: '#dbcca6', muted: '#9a8d7a', subtle: '#5b584c', hover: '#2f2820', selection: '#3f2e20' } },
-  { id: 'nordic', name: 'Nordic', description: 'Polar slate and frost', appearance: 'dark', colors: { background: '#2e3440', panel: '#242933', raised: '#3b4252', accent: '#88c0d0', border: '#3a3e47', text: '#d9dbe1', muted: '#92969d', subtle: '#646871', hover: '#333841', selection: '#3e434b' } },
+  {
+    id: 'cursor-dark',
+    name: 'Cursor Dark',
+    description: 'Graphite and pale cyan',
+    appearance: 'dark',
+    colors: {
+      background: '#141414',
+      panel: '#181818',
+      raised: '#262626',
+      accent: '#88c0d0',
+      border: '#292929',
+      text: '#e4e4e4',
+      muted: '#888888',
+      subtle: '#636363',
+      hover: '#272727',
+      selection: '#343434',
+    },
+  },
+  {
+    id: 'cursor-midnight',
+    name: 'Cursor Midnight',
+    description: 'Midnight slate and sea glass',
+    appearance: 'dark',
+    colors: {
+      background: '#191c22',
+      panel: '#1e2127',
+      raised: '#434c5e',
+      accent: '#8fbcbb',
+      border: '#292c32',
+      text: '#d8dee9',
+      muted: '#7b88a1',
+      subtle: '#4b5163',
+      hover: '#2a2d33',
+      selection: '#35373d',
+    },
+  },
+  {
+    id: 'vscode-dark-vs',
+    name: 'VS Code Dark',
+    description: 'Classic editor charcoal',
+    appearance: 'dark',
+    colors: {
+      background: '#252526',
+      panel: '#1e1e1e',
+      raised: '#2d2d2e',
+      accent: '#007acc',
+      border: '#303030',
+      text: '#d4d4d4',
+      muted: '#8c8c8c',
+      subtle: '#616161',
+      hover: '#2a2a2a',
+      selection: '#353535',
+    },
+  },
+  {
+    id: 'tobacco',
+    name: 'Tobacco',
+    description: 'Warm charcoal and amber',
+    appearance: 'dark',
+    colors: {
+      background: '#242222',
+      panel: '#201e1c',
+      raised: '#2d2a2a',
+      accent: '#eb9c3d',
+      border: '#343230',
+      text: '#ededed',
+      muted: '#a1a0a0',
+      subtle: '#706f6e',
+      hover: '#302e2c',
+      selection: '#3d3b3a',
+    },
+  },
+  {
+    id: 'dracula',
+    name: 'Dracula',
+    description: 'Charcoal with violet',
+    appearance: 'dark',
+    colors: {
+      background: '#21222c',
+      panel: '#282a36',
+      raised: '#44475a',
+      accent: '#bd93f9',
+      border: '#394057',
+      text: '#e7e8e3',
+      muted: '#9a9b9d',
+      subtle: '#6b6c72',
+      hover: '#343246',
+      selection: '#403b55',
+    },
+  },
+  {
+    id: 'catppuccin',
+    name: 'Catppuccin',
+    description: 'Mocha and lavender',
+    appearance: 'dark',
+    colors: {
+      background: '#1e1e2e',
+      panel: '#181825',
+      raised: '#313244',
+      accent: '#cba6f7',
+      border: '#313242',
+      text: '#bfc7e3',
+      muted: '#767b91',
+      subtle: '#4b4d5f',
+      hover: '#252234',
+      selection: '#332d45',
+    },
+  },
+  {
+    id: 'aurora',
+    name: 'Aurora',
+    description: 'Deep space and cyan',
+    appearance: 'dark',
+    colors: {
+      background: '#10151e',
+      panel: '#0a0e16',
+      raised: '#181f2d',
+      accent: '#00d8ff',
+      border: '#082e3b',
+      text: '#b0d1ec',
+      muted: '#6d8396',
+      subtle: '#404e5c',
+      hover: '#091c26',
+      selection: '#092a37',
+    },
+  },
+  {
+    id: 'gruvbox',
+    name: 'Gruvbox',
+    description: 'Earthy retro warmth',
+    appearance: 'dark',
+    colors: {
+      background: '#282828',
+      panel: '#1d2021',
+      raised: '#3c3836',
+      accent: '#fe8019',
+      border: '#35312d',
+      text: '#dbcca6',
+      muted: '#9a8d7a',
+      subtle: '#5b584c',
+      hover: '#2f2820',
+      selection: '#3f2e20',
+    },
+  },
+  {
+    id: 'nordic',
+    name: 'Nordic',
+    description: 'Polar slate and frost',
+    appearance: 'dark',
+    colors: {
+      background: '#2e3440',
+      panel: '#242933',
+      raised: '#3b4252',
+      accent: '#88c0d0',
+      border: '#3a3e47',
+      text: '#d9dbe1',
+      muted: '#92969d',
+      subtle: '#646871',
+      hover: '#333841',
+      selection: '#3e434b',
+    },
+  },
 ];
 
 const pairedPalettes: PairedThemeSource[] = [
   {
-    id: 't3-code', name: 'T3 Code', description: 'Clean neutrals and blue',
-    light: { background: '#fcfcfc', panel: '#ffffff', raised: '#f4f4f5', accent: '#1b4ed8', border: '#e4e4e7', text: '#27272a', muted: '#71717b', subtle: '#71717b', hover: '#f4f4f5', selection: '#e0e6f7' },
-    dark: { background: '#0a0a0a', panel: '#111111', raised: '#141414', accent: '#346bf1', border: '#292929', text: '#f5f5f5', muted: '#a3a3a3', subtle: '#a3a3a3', hover: '#141414', selection: '#1a1b1b' },
+    id: 't3-code',
+    name: 'T3 Code',
+    description: 'Clean neutrals and blue',
+    light: {
+      background: '#fcfcfc',
+      panel: '#ffffff',
+      raised: '#f4f4f5',
+      accent: '#1b4ed8',
+      border: '#e4e4e7',
+      text: '#27272a',
+      muted: '#71717b',
+      subtle: '#71717b',
+      hover: '#f4f4f5',
+      selection: '#e0e6f7',
+    },
+    dark: {
+      background: '#0a0a0a',
+      panel: '#111111',
+      raised: '#141414',
+      accent: '#346bf1',
+      border: '#292929',
+      text: '#f5f5f5',
+      muted: '#a3a3a3',
+      subtle: '#a3a3a3',
+      hover: '#141414',
+      selection: '#1a1b1b',
+    },
   },
   {
-    id: 't3-ocean', name: 'Ocean', description: 'Blue-gray with sea glass',
-    light: { background: '#f5f7f8', panel: '#f5f7f8', raised: '#edeff1', accent: '#2672af', border: '#cdd4dc', text: '#241523', muted: '#746c75', subtle: '#746c75', hover: '#cdddea', selection: '#b7cfe2' },
-    dark: { background: '#17212b', panel: '#17212b', raised: '#333b45', accent: '#70b9ee', border: '#405567', text: '#fffaff', muted: '#8d8f97', subtle: '#8d8f97', hover: '#283e50', selection: '#324f66' },
+    id: 't3-ocean',
+    name: 'Ocean',
+    description: 'Blue-gray with sea glass',
+    light: {
+      background: '#f5f7f8',
+      panel: '#f5f7f8',
+      raised: '#edeff1',
+      accent: '#2672af',
+      border: '#cdd4dc',
+      text: '#241523',
+      muted: '#746c75',
+      subtle: '#746c75',
+      hover: '#cdddea',
+      selection: '#b7cfe2',
+    },
+    dark: {
+      background: '#17212b',
+      panel: '#17212b',
+      raised: '#333b45',
+      accent: '#70b9ee',
+      border: '#405567',
+      text: '#fffaff',
+      muted: '#8d8f97',
+      subtle: '#8d8f97',
+      hover: '#283e50',
+      selection: '#324f66',
+    },
   },
 ];
 
@@ -313,11 +538,41 @@ export interface CommandBarFontOption {
 }
 
 export const commandBarFonts: CommandBarFontOption[] = [
-  { id: 'open-sans', label: 'Open Sans', description: 'Balanced and familiar', stack: '"Command Menu Open Sans", sans-serif', sample: 'aG 01' },
-  { id: 'outfit', label: 'Outfit', description: 'Rounded and playful', stack: '"Command Menu Outfit", sans-serif', sample: 'aG 01' },
-  { id: 'nunito-sans', label: 'Nunito Sans', description: 'Warm and soft', stack: '"Command Menu Nunito Sans", sans-serif', sample: 'aG 01' },
-  { id: 'sora', label: 'Sora', description: 'Distinct and geometric', stack: '"Command Menu Sora", sans-serif', sample: 'aG 01' },
-  { id: 'ibm-plex-mono', label: 'IBM Plex Mono', description: 'Code inspired, slightly smaller', stack: '"Command Menu IBM Plex Mono", monospace', sample: 'aG 01' },
+  {
+    id: 'open-sans',
+    label: 'Open Sans',
+    description: 'Balanced and familiar',
+    stack: '"Command Menu Open Sans", sans-serif',
+    sample: 'aG 01',
+  },
+  {
+    id: 'outfit',
+    label: 'Outfit',
+    description: 'Rounded and playful',
+    stack: '"Command Menu Outfit", sans-serif',
+    sample: 'aG 01',
+  },
+  {
+    id: 'nunito-sans',
+    label: 'Nunito Sans',
+    description: 'Warm and soft',
+    stack: '"Command Menu Nunito Sans", sans-serif',
+    sample: 'aG 01',
+  },
+  {
+    id: 'sora',
+    label: 'Sora',
+    description: 'Distinct and geometric',
+    stack: '"Command Menu Sora", sans-serif',
+    sample: 'aG 01',
+  },
+  {
+    id: 'ibm-plex-mono',
+    label: 'IBM Plex Mono',
+    description: 'Code inspired, slightly smaller',
+    stack: '"Command Menu IBM Plex Mono", monospace',
+    sample: 'aG 01',
+  },
 ];
 
 export const defaultThemePreferences: ThemePreferences = {
@@ -336,9 +591,7 @@ export function normalizeThemePreferences(value: unknown): ThemePreferences {
   if (!value || typeof value !== 'object') return defaultThemePreferences;
   const candidate = value as Partial<ThemePreferences>;
   const appearance: AppearanceMode =
-    candidate.appearance === 'light' || candidate.appearance === 'dark'
-      ? candidate.appearance
-      : 'system';
+    candidate.appearance === 'light' || candidate.appearance === 'dark' ? candidate.appearance : 'system';
   const legacyPaletteIds: Record<string, string> = {
     raycast: 'plain',
     slate: 'plain',
@@ -357,9 +610,10 @@ export function normalizeThemePreferences(value: unknown): ThemePreferences {
     chalk: 't3-code',
     parchment: 'tobacco',
   };
-  const requestedPalette = typeof candidate.palette === 'string'
-    ? legacyPaletteIds[candidate.palette] ?? candidate.palette
-    : defaultThemePreferences.palette;
+  const requestedPalette =
+    typeof candidate.palette === 'string'
+      ? (legacyPaletteIds[candidate.palette] ?? candidate.palette)
+      : defaultThemePreferences.palette;
   const palette = themeRegistry.some((theme) => theme.id === requestedPalette)
     ? requestedPalette
     : defaultThemePreferences.palette;
@@ -393,7 +647,7 @@ export function cacheThemePreferences(preferences: ThemePreferences): void {
 export function applyTheme(
   preferences: ThemePreferences,
   systemDark: boolean,
-  root: HTMLElement = document.documentElement
+  root: HTMLElement = document.documentElement,
 ): void {
   const theme = themeRegistry.find((candidate) => candidate.id === preferences.palette) ?? plain;
   const isDark = preferences.appearance === 'dark' || (preferences.appearance === 'system' && systemDark);

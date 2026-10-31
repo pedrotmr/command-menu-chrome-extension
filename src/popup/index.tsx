@@ -2,10 +2,19 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Popup } from './Popup';
 import { PermissionRequest } from './PermissionRequest';
-import { applyTheme, defaultThemePreferences, normalizeThemePreferences, readThemeCache, themePreferencesStorageKey } from '@/themes';
+import {
+  applyTheme,
+  defaultThemePreferences,
+  normalizeThemePreferences,
+  readThemeCache,
+  themePreferencesStorageKey,
+} from '@/themes';
 import { PaletteMode, ThemePreferences } from '@/types';
 import { installProductFont } from '@/utils/installProductFont';
-import { installTabSwitcherKeyReleaseMonitor, wasTabSwitcherModifierReleasedAfter } from '@/utils/tabSwitcherKeyRelease';
+import {
+  installTabSwitcherKeyReleaseMonitor,
+  wasTabSwitcherModifierReleasedAfter,
+} from '@/utils/tabSwitcherKeyRelease';
 import '@/styles/global.css';
 
 const urlParameters = new URLSearchParams(window.location.search);
@@ -52,9 +61,13 @@ async function start(): Promise<void> {
     const allowedPermissions = new Set(['bookmarks', 'history', 'tabGroups', 'sessions', 'clipboardWrite']);
     const permissions = (urlParameters.get('permissions') ?? '')
       .split(',')
-      .filter((permission) => allowedPermissions.has(permission)) as NonNullable<chrome.permissions.Permissions['permissions']>;
+      .filter((permission) => allowedPermissions.has(permission)) as NonNullable<
+      chrome.permissions.Permissions['permissions']
+    >;
     createRoot(rootElement).render(
-      <StrictMode><PermissionRequest permissions={permissions} /></StrictMode>
+      <StrictMode>
+        <PermissionRequest permissions={permissions} />
+      </StrictMode>,
     );
     return;
   }
@@ -79,7 +92,9 @@ async function start(): Promise<void> {
     switcherOpenedAt = popupRequestedAt ?? 0;
     switcherModifierReleased = switcherAutoSwitchOnRelease && wasTabSwitcherModifierReleasedAfter(switcherOpenedAt);
     initialTheme = normalizeThemePreferences(themeValues[themePreferencesStorageKey] ?? defaultThemePreferences);
-    void chrome.storage.session.remove(['nextPaletteMode', 'nextTabSwitcherAutoSwitchOnRelease', 'paletteRequestedAt']).catch(() => undefined);
+    void chrome.storage.session
+      .remove(['nextPaletteMode', 'nextTabSwitcherAutoSwitchOnRelease', 'paletteRequestedAt'])
+      .catch(() => undefined);
   } catch {
     // Cached appearance and the normal command mode keep the popup usable if storage is unavailable.
   }
@@ -99,14 +114,14 @@ async function start(): Promise<void> {
         initialSwitcherOpenedAt={switcherOpenedAt}
         initialSwitcherModifierReleased={switcherModifierReleased}
       />
-    </StrictMode>
+    </StrictMode>,
   );
 
   requestAnimationFrame(() => {
-    const durationMs = popupRequestedAt === null
-      ? performance.now()
-      : Math.max(0, Date.now() - popupRequestedAt);
-    const host = window as Window & { __commandCenterTimings?: Array<{ name: string; durationMs: number; at: number }> };
+    const durationMs = popupRequestedAt === null ? performance.now() : Math.max(0, Date.now() - popupRequestedAt);
+    const host = window as Window & {
+      __commandCenterTimings?: Array<{ name: string; durationMs: number; at: number }>;
+    };
     const metrics = host.__commandCenterTimings ?? (host.__commandCenterTimings = []);
     metrics.push({ name: 'popup-first-frame', durationMs, at: Date.now() });
     if (metrics.length > 100) metrics.splice(0, metrics.length - 100);

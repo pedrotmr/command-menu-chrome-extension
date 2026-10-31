@@ -4,19 +4,8 @@
   "version": "3.0.0",
   "description": "A fast, keyboard-first command menu for Chrome.",
   "minimum_chrome_version": "127",
-  "permissions": [
-    "activeTab",
-    "scripting",
-    "tabs",
-    "storage"
-  ],
-  "optional_permissions": [
-    "bookmarks",
-    "history",
-    "tabGroups",
-    "sessions",
-    "clipboardWrite"
-  ],
+  "permissions": ["activeTab", "scripting", "tabs", "storage"],
+  "optional_permissions": ["bookmarks", "history", "tabGroups", "sessions", "clipboardWrite"],
   "background": {
     "service_worker": "background.js",
     "type": "module"
@@ -58,10 +47,7 @@
         "assets/fonts/ibm-plex-mono/IBMPlexMono-600-Latin.woff2",
         "assets/fonts/ibm-plex-mono/IBMPlexMono-700-Latin.woff2"
       ],
-      "matches": [
-        "http://*/*",
-        "https://*/*"
-      ]
+      "matches": ["http://*/*", "https://*/*"]
     }
   ]
 }

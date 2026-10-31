@@ -45,7 +45,11 @@ for (const file of contentBundles) {
     throw new Error(`${file} contains an unbundled NODE_ENV reference.`);
   }
 }
-if (manifest.content_scripts?.length || manifest.host_permissions?.length || manifest.optional_host_permissions?.length) {
+if (
+  manifest.content_scripts?.length ||
+  manifest.host_permissions?.length ||
+  manifest.optional_host_permissions?.length
+) {
   throw new Error('The extension build unexpectedly includes page injection or host permissions.');
 }
 
