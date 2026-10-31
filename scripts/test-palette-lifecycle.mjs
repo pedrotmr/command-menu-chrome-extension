@@ -204,11 +204,15 @@ try {
   assert.equal(model.query, 'Composing text', 'IME cancellation cannot reset the search');
   await unmount(keyboardEnv);
 
-  const bookmarks = deferred();
-  const history = deferred();
+  const savedRequests = { bookmarks: [], history: [] };
+  const loadSaved = (source) => {
+    const request = deferred();
+    savedRequests[source].push(request);
+    return request.promise;
+  };
   const permissionEnv = await mount({
     granted: ['bookmarks', 'history'],
-    handlers: { 'bookmarks:list': () => bookmarks.promise, 'history:list': () => history.promise },
+    handlers: { 'bookmarks:list': () => loadSaved('bookmarks'), 'history:list': () => loadSaved('history') },
   });
   await act(async () => model.handleQueryChange('Saved needle'));
   assert.equal(model.localDataLoading, true);
@@ -217,8 +221,8 @@ try {
     permissionEnv.runtimeEvent.emit({ action: 'ui:permissions-changed' });
   });
   await act(async () => {
-    bookmarks.resolve([{ id: '1', title: 'Saved needle bookmark', url: 'https://saved.test/' }]);
-    history.resolve([{ id: '2', title: 'Saved needle history', url: 'https://history.test/' }]);
+    savedRequests.bookmarks[0].resolve([{ id: '1', title: 'Saved needle old bookmark', url: 'https://saved.test/' }]);
+    savedRequests.history[0].resolve([{ id: '2', title: 'Saved needle old history', url: 'https://history.test/' }]);
   });
   assert.equal(model.localDataLoading, false);
   assert.ok(
@@ -230,7 +234,17 @@ try {
     permissionEnv.runtimeEvent.emit({ action: 'ui:permissions-changed' });
   });
   assert.ok(
-    model.results.some((item) => item.type === 'bookmark'),
+    !model.results.some((item) => item.type === 'bookmark' || item.type === 'history'),
+    'a new grant cannot expose old responses before its own load completes',
+  );
+  assert.equal(savedRequests.bookmarks.length, 2, 'a new grant issues a fresh bookmark request');
+  assert.equal(savedRequests.history.length, 2, 'a new grant issues a fresh history request');
+  await act(async () => {
+    savedRequests.bookmarks[1].resolve([{ id: '3', title: 'Saved needle fresh bookmark', url: 'https://fresh.test/' }]);
+    savedRequests.history[1].resolve([]);
+  });
+  assert.ok(
+    model.results.some((item) => item.type === 'bookmark' && item.title === 'Saved needle fresh bookmark'),
     'a new grant permits a fresh load',
   );
   await act(async () => {
