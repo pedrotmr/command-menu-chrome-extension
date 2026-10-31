@@ -1,10 +1,11 @@
+import type { RefObject } from 'react';
 import type { ToastMessage } from '../types';
 
 interface NoticeContainerProps {
   toast: ToastMessage | null;
   liveStatusText: string;
   dismissToast: (restoreFocus?: boolean) => void;
-  dismissButtonRef: React.RefObject<HTMLButtonElement | null>;
+  dismissButtonRef: RefObject<HTMLButtonElement | null>;
 }
 
 export function NoticeContainer({ toast, liveStatusText, dismissToast, dismissButtonRef }: NoticeContainerProps) {
