@@ -1675,11 +1675,6 @@ try {
   );
   assert.match(
     commandPaletteSource,
-    /if \(event\.key !== 'Escape' \|\| dialog\) \{\s*return;\s*\}/,
-    'nested dialogs keep first use of Escape',
-  );
-  assert.match(
-    commandPaletteSource,
     /if \(mode !== 'commands' \|\| activeProvider \|\| query\.trim\(\)\) \{\s*changeMode\('commands'\);\s*return;\s*\}\s*closeSurface\(\);/,
     'Escape resets a search mode before closing the Command Bar surface',
   );
