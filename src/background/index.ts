@@ -631,7 +631,6 @@ chrome.commands.onCommand.addListener((command, tab) => {
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
-  void removeTabPreview(tabId).catch(() => undefined);
   void tabNameSessionInitialization
     .then(() =>
       withTabNamesMutation(async (names) => {
