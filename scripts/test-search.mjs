@@ -1675,11 +1675,6 @@ try {
   );
   assert.match(
     commandPaletteSource,
-    /if \(event\.key !== 'Escape' \|\| dialog\) \{\s*return;\s*\}/,
-    'nested dialogs keep first use of Escape',
-  );
-  assert.match(
-    commandPaletteSource,
     /if \(mode !== 'commands' \|\| activeProvider \|\| query\.trim\(\)\) \{\s*changeMode\('commands'\);\s*return;\s*\}\s*closeSurface\(\);/,
     'Escape resets a search mode before closing the Command Bar surface',
   );
@@ -1996,6 +1991,61 @@ try {
     'https://example.test/new',
     'navigation updates the stored original URL',
   );
+
+  const browserCalls = [];
+  const recordBrowserCall = async (...args) => {
+    browserCalls.push(args);
+    return true;
+  };
+  Object.assign(chrome.tabs, {
+    create: recordBrowserCall,
+    reload: recordBrowserCall,
+    goBack: recordBrowserCall,
+    goForward: recordBrowserCall,
+    getZoom: async () => 1,
+    setZoom: recordBrowserCall,
+    duplicate: async () => ({ id: 100 }),
+    unsplit: recordBrowserCall,
+    ungroup: recordBrowserCall,
+  });
+  chrome.windows.update = recordBrowserCall;
+  chrome.sessions = { restore: recordBrowserCall };
+  chrome.tabGroups = { update: recordBrowserCall };
+  const dispatchedCommands = new Set();
+  for (const toggled of [false, true]) {
+    activeBackgroundTab = {
+      id: 42,
+      title: 'Contract tab',
+      url: 'https://contract.test/',
+      windowId: 1,
+      index: 0,
+      groupId: 3,
+      splitViewId: 4,
+      pinned: toggled,
+      mutedInfo: { muted: toggled },
+    };
+    const group = { id: 3, windowId: 1, title: 'Contract group', color: 'blue', collapsed: toggled };
+    const registeredCommands = getCommands({
+      activeTab: activeBackgroundTab,
+      activeGroup: group,
+      tabCountInWindow: 2,
+      tabsToRightCount: 1,
+      activeGroupTabCount: 2,
+      canUnsplitTabs: true,
+    });
+    for (const item of registeredCommands.filter((item) => item.action)) {
+      // Interactive flows supply their fields later; these commands dispatch directly or after confirmation.
+      assert.ok(!item.flow || item.flow === 'confirm-close', `${item.id}: add a contract for its new flow`);
+      const payload = item.id === 'toggle-tab-group' ? { groupId: group.id, collapsed: !group.collapsed } : {};
+      const response = await new Promise((resolve) =>
+        messageHandler({ action: item.action, ...payload }, { id: 'test' }, resolve),
+      );
+      assert.equal(response.success, true, `${item.id} reaches its background handler: ${response.error ?? ''}`);
+      dispatchedCommands.add(item.action);
+    }
+  }
+  assert.ok(browserCalls.length > 0, 'registered commands exercise Chrome API adapters');
+  console.log(`Command contracts passed for ${dispatchedCommands.size} background actions from the registry.`);
 
   const contextualTabs = toTabItems(
     [

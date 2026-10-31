@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Command Menu audit fixture</title>
+    <style>
+      * {
+        font-family: serif !important;
+        border-radius: 0 !important;
+        text-transform: uppercase !important;
+      }
+      body {
+        margin: 24px;
+        background: #ffef96;
+        color: #151515;
+        transform: translateX(3px);
+      }
+      input,
+      button,
+      a {
+        font-size: 24px;
+        padding: 12px;
+        margin: 10px;
+        max-width: 100%;
+        box-sizing: border-box;
+      }
+      button:focus,
+      input:focus,
+      a:focus {
+        outline: 4px solid blue;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Aggressive CSS and focus fixture</h1>
+    <p>This page deliberately applies global styles. The extension should retain its own appearance.</p>
+    <label for="page-field">Page field</label>
+    <input id="page-field" value="Focus should return here" />
+    <button id="page-button" type="button">Page button</button>
+    <div id="component"></div>
+    <p id="status" role="status">Page ready</p>
+    <a href="#bottom">Page link</a>
+    <p id="bottom">Use the page field or shadow field as the focus restoration target.</p>
+    <script type="module" src="./extension-audit.js"></script>
+  </body>
+</html>
