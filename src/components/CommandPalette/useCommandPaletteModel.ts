@@ -9,8 +9,10 @@ import {
   type KeyboardEvent,
   type MouseEvent,
 } from 'react';
-import type { BookmarkItem, CommandItem, HistoryItem, PaletteItem, ThemePreferences } from '@/types';
+import type { CommandItem, PaletteItem, ThemePreferences } from '@/types';
+import { useSavedPages } from './useSavedPages';
 import { getCommands } from '@/utils/commands';
+import { bulkCloseTabIds, isBulkCloseAction } from '@/utils/bulkClose';
 import { normalizeNavigationUrl, sendBackground } from '@/utils/chromeHelpers';
 import { writeClipboardText } from '@/utils/clipboard';
 import { findSearchProvider, parseProviderQuery } from '@/utils/searchProviders';
@@ -25,8 +27,6 @@ import type { ActionDockItem } from '../ActionDock/types';
 import {
   actionDockId,
   findPaletteResults,
-  flattenBookmarks,
-  getConfirmCloseCount,
   getConfirmCloseTitle,
   getEmptyState,
   getLiveStatusText,
@@ -36,7 +36,6 @@ import {
   recordTiming,
   resultPageSize,
   tabbableSelector,
-  toHistoryItems,
 } from './helpers';
 import type {
   ActionDockState,
@@ -64,11 +63,6 @@ export const useCommandPaletteModel = ({
   const [tabsReady, setTabsReady] = useState(false);
   const [currentTabId, setCurrentTabId] = useState<number | null>(null);
   const [currentWindowId, setCurrentWindowId] = useState<number | null>(null);
-
-  const [bookmarks, setBookmarks] = useState<BookmarkItem[]>([]);
-  const [history, setHistory] = useState<HistoryItem[]>([]);
-  const [localDataLoading, setLocalDataLoading] = useState(false);
-  const [localDataLoaded, setLocalDataLoaded] = useState(false);
 
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [keyboardNavigationVersion, setKeyboardNavigationVersion] = useState(0);
@@ -106,14 +100,12 @@ export const useCommandPaletteModel = ({
   const actionDockReturnFocus = useRef<HTMLElement | null>(null);
 
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tabRefreshVersion = useRef(0);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toastDismissRef = useRef<HTMLButtonElement>(null);
-  const localDataRequest = useRef<Promise<void> | null>(null);
-  const localDataVersion = useRef(0);
   const handoffPending = useRef(false);
   const executionPending = useRef(false);
   const dialogPending = useRef(false);
-  const tabsRequestVersion = useRef(0);
 
   const restorePaletteFocus = useCallback(() => {
     requestAnimationFrame(() => {
@@ -149,42 +141,7 @@ export const useCommandPaletteModel = ({
     [restorePaletteFocus],
   );
 
-  const loadLocalData = useCallback(async () => {
-    if (localDataLoaded) {
-      return;
-    }
-
-    if (localDataRequest.current) {
-      return localDataRequest.current;
-    }
-
-    const version = ++localDataVersion.current;
-    setLocalDataLoading(true);
-
-    const request = Promise.all([
-      sendBackground<chrome.bookmarks.BookmarkTreeNode[]>('bookmarks:list'),
-      sendBackground<chrome.history.HistoryItem[]>('history:list'),
-    ])
-      .then(([bookmarkTree, historyEntries]) => {
-        if (version !== localDataVersion.current) return;
-        setBookmarks(flattenBookmarks(bookmarkTree));
-        setHistory(toHistoryItems(historyEntries));
-      })
-      .catch(() => {
-        if (version !== localDataVersion.current) return;
-        notify('Could not load bookmarks and history. Commands and open tabs are still available.');
-      })
-      .finally(() => {
-        if (version !== localDataVersion.current) return;
-        localDataRequest.current = null;
-        setLocalDataLoaded(true);
-        setLocalDataLoading(false);
-      });
-
-    localDataRequest.current = request;
-
-    return request;
-  }, [localDataLoaded, notify]);
+  const { bookmarks, history, localDataLoading, localDataLoaded, loadLocalData } = useSavedPages(permissions, notify);
 
   const systemAppearance = useMemo(() => window.matchMedia('(prefers-color-scheme: dark)'), []);
   const [systemDark, setSystemDark] = useState(systemAppearance.matches);
@@ -224,9 +181,9 @@ export const useCommandPaletteModel = ({
   }, []);
 
   const refreshTabs = async () => {
-    const version = ++tabsRequestVersion.current;
+    const requestVersion = ++tabRefreshVersion.current;
     const started = performance.now();
-    const [nextTabs, currentTab, groupsAllowed, splitSupport] = await Promise.all([
+    const snapshot = await Promise.all([
       sendBackground<ManagedTab[]>('tabs:list'),
       sendBackground<chrome.tabs.Tab | null>('tabs:current'),
       sendBackground<boolean>('permissions:contains', { permissions: ['tabGroups'] }).catch(() => false),
@@ -234,7 +191,12 @@ export const useCommandPaletteModel = ({
         create: false,
         unsplit: false,
       })),
-    ]);
+    ]).catch((error: unknown) => {
+      if (requestVersion === tabRefreshVersion.current) throw error;
+      return null;
+    });
+    if (!snapshot) return;
+    const [nextTabs, currentTab, groupsAllowed, splitSupport] = snapshot;
 
     const currentId = currentTab?.id ?? null;
     let nextGroups: chrome.tabGroups.TabGroup[] = [];
@@ -243,7 +205,7 @@ export const useCommandPaletteModel = ({
       nextGroups = await sendBackground<chrome.tabGroups.TabGroup[]>('groups:list').catch(() => []);
     }
 
-    if (version !== tabsRequestVersion.current) {
+    if (requestVersion !== tabRefreshVersion.current) {
       return;
     }
 
@@ -315,7 +277,7 @@ export const useCommandPaletteModel = ({
     chrome.runtime.onMessage.addListener(handleRuntimeMessage);
 
     return () => {
-      tabsRequestVersion.current++;
+      tabRefreshVersion.current++;
       if (refreshTimer.current) {
         clearTimeout(refreshTimer.current);
       }
@@ -324,28 +286,6 @@ export const useCommandPaletteModel = ({
     };
     // Popup lifetime is short; refreshTabs is intentionally captured once for these browser event listeners.
   }, []);
-
-  useEffect(() => {
-    if (permissions.has('bookmarks') && permissions.has('history')) return;
-    localDataVersion.current++;
-    localDataRequest.current = null;
-    setBookmarks([]);
-    setHistory([]);
-    setLocalDataLoaded(false);
-    setLocalDataLoading(false);
-  }, [permissions]);
-
-  useEffect(() => {
-    if (mode !== 'commands' || activeProvider || localDataLoaded || localDataRequest.current) {
-      return;
-    }
-
-    if (!permissions.has('bookmarks') || !permissions.has('history')) {
-      return;
-    }
-
-    void loadLocalData();
-  }, [mode, query, activeProvider, localDataLoaded, permissions, loadLocalData]);
 
   useEffect(() => {
     const dialogElement = dialogRef.current;
@@ -441,15 +381,25 @@ export const useCommandPaletteModel = ({
   const savedSearchPrompt = useMemo<CommandItem | null>(() => {
     const term = query.trim();
 
-    if (!term || mode !== 'commands' || (permissions.has('bookmarks') && permissions.has('history'))) {
+    if (
+      !term ||
+      mode !== 'commands' ||
+      (permissions.has('bookmarks') && permissions.has('history') && (localDataLoaded || localDataLoading))
+    ) {
       return null;
     }
 
     return {
       id: 'search-saved-pages',
       title: `Search bookmarks and history for “${term}”`,
-      description: 'Grant optional access to search saved pages and recent visits on this device.',
-      subtitle: 'Requires optional bookmarks and history access',
+      description:
+        permissions.has('bookmarks') && permissions.has('history')
+          ? 'Retry loading saved pages. Results already loaded remain available.'
+          : 'Grant optional access to search saved pages and recent visits on this device.',
+      subtitle:
+        permissions.has('bookmarks') && permissions.has('history')
+          ? 'Retry saved-page search'
+          : 'Requires optional bookmarks and history access',
       category: 'Saved pages',
       icon: '⌕',
       type: 'command',
@@ -458,7 +408,7 @@ export const useCommandPaletteModel = ({
       permission: { permissions: ['bookmarks', 'history'] },
       keywords: [term, 'bookmarks', 'history', 'saved pages'],
     };
-  }, [mode, query, permissions]);
+  }, [mode, query, permissions, localDataLoaded, localDataLoading]);
 
   const providerCandidate = useMemo(() => {
     const term = query.trim();
@@ -694,12 +644,15 @@ export const useCommandPaletteModel = ({
     }
 
     if (command.flow === 'saved-search') {
-      await loadLocalData();
+      dismissToast();
+      await loadLocalData(new Set(['bookmarks', 'history']));
       return;
     }
 
     if (command.flow === 'confirm-close') {
-      const count = getConfirmCloseCount(command.id, tabCountInWindow, tabsToRightCount, activeGroupTabCount);
+      if (!activeTab?.id || !isBulkCloseAction(command.action)) return;
+      const tabIds = bulkCloseTabIds(tabs, activeTab, command.action);
+      const count = tabIds.length;
 
       if (!count) {
         return;
@@ -710,7 +663,15 @@ export const useCommandPaletteModel = ({
 
       dismissToast();
       setDialogError('');
-      setDialog({ kind: 'confirm-close', action: command.action, count, title });
+      setDialog({
+        kind: 'confirm-close',
+        action: command.action,
+        count,
+        title,
+        anchorTabId: activeTab.id,
+        windowId: activeTab.windowId,
+        tabIds,
+      });
       return;
     }
 
@@ -1052,7 +1013,12 @@ export const useCommandPaletteModel = ({
     dialogPending.current = true;
     try {
       if (dialog.kind === 'confirm-close') {
-        await sendBackground(dialog.action);
+        await sendBackground('tabs:close-confirmed', {
+          closeAction: dialog.action,
+          anchorTabId: dialog.anchorTabId,
+          windowId: dialog.windowId,
+          tabIds: dialog.tabIds,
+        });
         closeSurface();
         return;
       }
@@ -1101,6 +1067,11 @@ export const useCommandPaletteModel = ({
         notify(dialog.groupId === null ? 'Tab group created.' : 'Tab group updated.', 'success');
       }
     } catch (error) {
+      if (dialog.kind === 'confirm-close') {
+        await refreshTabs().catch(() =>
+          notify('Could not refresh tabs. Close and reopen the Command Bar to try again.'),
+        );
+      }
       setDialogError(error instanceof Error ? error.message : 'Could not complete that action.');
     } finally {
       dialogPending.current = false;

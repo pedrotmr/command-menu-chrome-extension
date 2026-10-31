@@ -6,12 +6,16 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build && vite build --config vite.content-command.config.ts && vite build --config vite.content-tabs.config.ts && node scripts/post-build.js",
-    "test": "node scripts/test-search.mjs",
+    "test": "node scripts/test-search.mjs && node --test tests/reliability.test.mjs",
     "lint": "eslint . --max-warnings=0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:e2e": "npm run build && playwright test",
+    "test:benchmark": "node scripts/test-search.mjs --benchmark",
+    "release:check": "npm run lint && npm run format:check && npm run typecheck && npm test && npm run test:e2e",
+    "package:extension": "npm run release:check && node scripts/package-extension.mjs"
   },
   "keywords": [
     "chrome-extension",
@@ -22,6 +26,7 @@
   "license": "ISC",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.64.1",
     "@types/chrome": "^0.1.24",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
