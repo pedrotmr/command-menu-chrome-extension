@@ -7,6 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify, parseArgs } from 'node:util';
 import { randomUUID } from 'node:crypto';
+import { applyEdits, findNodeAtLocation, parseTree } from 'jsonc-parser';
 
 const run = promisify(execFile);
 const command = 'open-tab-switcher';
@@ -43,11 +44,14 @@ export function planShortcut(preferences, extensionId, platform = 'mac') {
       continue;
     }
     if (label === 'account' && !current.length) continue;
+    const value = current.length
+      ? bindings[current[0]]
+      : { command_name: command, extension: extensionId, global: false };
     if (current.length) {
       assert.equal(bindings[current[0]].global, false, 'Set shortcut scope to In Chrome first');
       delete bindings[current[0]];
     }
-    bindings[destination] = { command_name: command, extension: extensionId, global: false };
+    bindings[destination] = value;
     changes.push({ scope: label, from: current[0] ?? null, to: destination });
   }
   return { preferences: result, changes };
@@ -71,21 +75,36 @@ export async function waitForBrowserExit(isRunning, timeoutMs) {
   }
 }
 
+function editShortcutText(text, plan) {
+  const tree = parseTree(text);
+  const edits = plan.changes.map((change) => {
+    const location =
+      change.scope === 'account' ? ['account_values', 'extensions', 'commands'] : ['extensions', 'commands'];
+    if (change.from) {
+      const key = findNodeAtLocation(tree, [...location, change.from]).parent.children[0];
+      return { offset: key.offset, length: key.length, content: JSON.stringify(change.to) };
+    }
+    const object = findNodeAtLocation(tree, location);
+    const scope = change.scope === 'account' ? plan.preferences.account_values : plan.preferences;
+    return {
+      offset: object.offset + object.length - 1,
+      length: 0,
+      content: `${object.children.length ? ',' : ''}${JSON.stringify(change.to)}:${JSON.stringify(scope.extensions.commands[change.to])}`,
+    };
+  });
+  const updated = applyEdits(text, edits);
+  assert.deepEqual(JSON.parse(updated), plan.preferences, 'Shortcut edit changed unexpected preferences');
+  return updated;
+}
+
 export async function configureProfile({ profile, extensionId, apply = false, isRunning, timeoutMs = 15000 }) {
   if (apply) await waitForBrowserExit(isRunning, timeoutMs);
   const directory = await realpath(profile);
   const file = path.join(directory, 'Preferences');
   const original = await readFile(file);
-  const preferences = JSON.parse(original, (_key, value) => {
-    if (typeof value === 'number') {
-      assert.ok(
-        Number.isFinite(value) && (!Number.isInteger(value) || Number.isSafeInteger(value)),
-        'Preferences contain a number that cannot be safely rewritten; use the manual setup',
-      );
-    }
-    return value;
-  });
-  assert.deepEqual(JSON.parse(JSON.stringify(preferences)), preferences, 'Preferences cannot be safely rewritten');
+  const text = original.toString('utf8');
+  assert.deepEqual(Buffer.from(text), original, 'Preferences must contain valid UTF-8');
+  const preferences = JSON.parse(text);
   let secure = {};
   try {
     secure = JSON.parse(await readFile(path.join(directory, 'Secure Preferences'), 'utf8'));
@@ -94,6 +113,7 @@ export async function configureProfile({ profile, extensionId, apply = false, is
   }
   const id = findExtension(preferences, secure, extensionId);
   const plan = planShortcut(preferences, id);
+  const updated = editShortcutText(text, plan);
   const summary = { profile: directory, extensionId: id, apply, changes: plan.changes };
   if (!apply || !plan.changes.length) return summary;
 
@@ -107,7 +127,7 @@ export async function configureProfile({ profile, extensionId, apply = false, is
     await chmod(backup, 0o600);
     const handle = await open(temporary, 'wx', (await stat(file)).mode & 0o777);
     try {
-      await handle.writeFile(JSON.stringify(plan.preferences));
+      await handle.writeFile(updated);
       await handle.sync();
     } finally {
       await handle.close();
@@ -115,7 +135,7 @@ export async function configureProfile({ profile, extensionId, apply = false, is
     assert.ok(!(await isRunning()), 'Browser restarted; no preferences changed');
     assert.deepEqual(await readFile(file), original, 'Preferences changed; no preferences overwritten');
     await rename(temporary, file);
-    assert.deepEqual(JSON.parse(await readFile(file, 'utf8')), plan.preferences, 'Preference verification failed');
+    assert.deepEqual(await readFile(file), Buffer.from(updated), 'Preference verification failed');
     return { ...summary, backup, verified: true };
   } finally {
     await rm(temporary, { force: true });

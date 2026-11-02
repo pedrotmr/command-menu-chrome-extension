@@ -129,14 +129,15 @@ test('CLI defaults to a dry run on a temporary profile', { skip: process.platfor
   );
 });
 
-test('numeric values that would lose precision are refused before any profile write', async (t) => {
+test('unrelated numeric tokens and formatting survive both dry run and apply exactly', async (t) => {
   const f = await fixture(t);
-  const unsafe = f.original.replace('42', '9007199254740993');
-  await writeFile(f.file, unsafe);
-  const files = await readdir(f.profile);
-  await assert.rejects(configureProfile({ ...f, apply: true }), /cannot be safely rewritten/);
-  assert.equal(await readFile(f.file, 'utf8'), unsafe);
-  assert.deepEqual(await readdir(f.profile), files);
+  const original = f.original.replace('42', '9007199254740993, 1.3438128418436612e+16, -0');
+  await writeFile(f.file, original);
+  await configureProfile(f);
+  assert.equal(await readFile(f.file, 'utf8'), original);
+  const result = await configureProfile({ ...f, apply: true });
+  assert.equal(await readFile(result.backup, 'utf8'), original);
+  assert.equal(await readFile(f.file, 'utf8'), original.replaceAll('"mac:Ctrl+A":', '"mac:Ctrl+Tab":'));
 });
 
 test('apply backs up exact bytes, preserves other settings, verifies output, and is idempotent', async (t) => {

@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { test, expect } from './fixtures.mjs';
+import { configureProfile } from '../../scripts/configure-tab-shortcut.mjs';
 
 test('fresh installation registers suggested shortcuts except the reserved new-tab combination', async ({
   extension,
@@ -32,4 +33,20 @@ test('macOS stores physical Control as Ctrl in profile preferences', async ({ ex
     extension: extension.id,
     global: false,
   });
+});
+
+test('helper updates a real temporary Chromium profile without rewriting unrelated data', async ({ extension }) => {
+  test.skip(process.platform !== 'darwin', 'macOS profile helper');
+  await extension.context.close();
+  const profile = path.join(extension.profile, 'Default');
+  const original = await readFile(path.join(profile, 'Preferences'), 'utf8');
+  const preview = await configureProfile({ profile });
+  expect(preview.changes.length).toBeGreaterThan(0);
+  expect(await readFile(path.join(profile, 'Preferences'), 'utf8')).toBe(original);
+  const result = await configureProfile({ profile, apply: true, isRunning: async () => false });
+  expect(result.verified).toBe(true);
+  expect(await readFile(result.backup, 'utf8')).toBe(original);
+  const updated = await readFile(path.join(profile, 'Preferences'), 'utf8');
+  expect(updated).toBe(original.replaceAll('"mac:Ctrl+A":', '"mac:Ctrl+Tab":'));
+  expect((await configureProfile({ profile })).changes).toEqual([]);
 });
