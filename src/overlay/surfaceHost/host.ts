@@ -88,6 +88,8 @@ export const createHost = (hostId: string, styles: string): CreatedOverlayHost =
   document.documentElement.appendChild(host);
 
   const shadowRoot = host.attachShadow({ mode: 'closed' });
+  shadowRoot.addEventListener('keydown', (event) => event.stopPropagation());
+
   const style = document.createElement('style');
   style.textContent = styles;
   const mountPoint = document.createElement('div');
