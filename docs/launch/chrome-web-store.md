@@ -1,0 +1,132 @@
+# Chrome Web Store launch kit
+
+**Product name (working label):** Command Menu
+
+**Live listing check:** November 2, 2026
+
+## Closest live listings
+
+The Store's user counts, ratings, and update dates below were read from each live listing on November 2, 2026. Ratings can change daily, as the Store notes on the pages.
+
+| Listing | Users | Rating | Last updated | Short description | Screenshots and privacy |
+| --- | ---: | ---: | --- | --- | --- |
+| [Omni — Bookmark, History, & Tab Manager](https://chromewebstore.google.com/detail/omni-bookmark-history-tab/mapjgeachilmcbbokkgcbgpbakaaeehi?hl=en) | 10,000 | 4.4 / 5 (67 ratings) | March 22, 2022 | “Supercharge Chrome with commands, shortcuts, and more” | One static screenshot: a dark, angled collage of the command interface, tab/history results, and actions; the listing also has a demo video. [Store screenshot](https://lh3.googleusercontent.com/P4tnISAD7L4I1ePDn5_CGr5mQTsVWWOKa35hZSwTW4z5fOOkWMBPR8z7xltoHkwfNqKT8E3CRYpzCThio30Pq2-E). Privacy says the developer will not collect or use data and shows the three standard data-use declarations. |
+| [Command Palette](https://chromewebstore.google.com/detail/command-palette/lfmfhlofoaleegdogpmknfbibciflfek?hl=en) | 307 | 3.7 / 5 (10 ratings) | August 9, 2022 | “A command palette to navigate in Google Chrome faster.” | Two screenshots: a default list of browser commands, and a `laravel` query with matching page results. [Screenshot 1](https://lh3.googleusercontent.com/GTG2n9Fla5mnor_gjcIJI5PxIFdHWnrL9mOh7WYrW9clRstj9psAXt9I64bGDbTwr33_ADbrOtMKh-0iKp2Trp0eYO4) · [Screenshot 2](https://lh3.googleusercontent.com/HYysUt6a8LswngzK8RXvBWEtAvXVgUzeX6sKfq9gJ5KlYJp9wkCPVQ_kRynyMO2xQX_SH1pQsyeotLHQlgEL6PY4). Privacy says the developer will not collect or use data and shows the three standard data-use declarations. |
+| [Chrome Command Bar](https://chromewebstore.google.com/detail/chrome-command-bar/coeabcfopmadgjffgjgpfldnmhgjkmml?hl=en) | 64 | 5.0 / 5 (1 rating) | August 5, 2024 | “Navigate your browser like a pro with just a few clicks.” | One screenshot: a centered command list on a gray background, including browser actions and shortcuts. [Store screenshot](https://lh3.googleusercontent.com/Bl_mln8LRhG_zQxLn28cmFO6xgcvabhvzNF1tjzwrQ2NINQH4nRm8E__tL6axaOOTdl-E8tECFVS-CZdEAIKFVKcES0). Privacy says the developer will not collect or use data and shows the three standard data-use declarations. |
+
+All three listings currently disclose no collection or use of user data. These are the respective developers' disclosures, not an independent audit of those extensions. Command Menu should disclose its own local handling accurately: Chrome's guidance says locally processed or stored user data still counts as handling that should be disclosed. [Omni](https://chromewebstore.google.com/detail/omni-bookmark-history-tab/mapjgeachilmcbbokkgcbgpbakaaeehi?hl=en) · [Command Palette](https://chromewebstore.google.com/detail/command-palette/lfmfhlofoaleegdogpmknfbibciflfek?hl=en) · [Chrome Command Bar](https://chromewebstore.google.com/detail/chrome-command-bar/coeabcfopmadgjffgjgpfldnmhgjkmml?hl=en) · [Chrome Web Store user-data FAQ](https://developer.chrome.com/docs/webstore/program-policies/user-data-faq)
+
+## Store listing copy
+
+### Short description
+
+> A keyboard-first command palette for Google Chrome™ to find tabs, search pages, and run browser actions.
+
+**Length:** 104 characters (132-character maximum).
+
+### Detailed description
+
+Bring tab search and browser commands together in one keyboard-first Command Bar.
+
+Open it from the extension button or its keyboard shortcut on a regular web page. On Chrome and extension pages, Chrome opens the extension popup instead. You can change both shortcuts at `chrome://extensions/shortcuts`; Chrome may reserve the suggested new-tab shortcut.
+
+Type to find open tabs, enter a web address, or search browser commands. Rename, pin, mute, move, group, duplicate, or close tabs; copy a page title or URL; navigate, adjust zoom, manage windows, or use Chrome's native Split View when that API is available.
+
+Search prefixes such as `yt`, `g`, `ai`, `cl`, `p`, `x`, and `y` open the matching provider's search page with your query in its URL. These are user-selected URL handoffs, not API-backed search or embedded results. An unmatched query offers a Google web search. Local tab and command results do not wait for those network handoffs.
+
+The separate Tab Switcher shows the five most recently accessed tabs in the current window. Use the Command Bar to search tabs, rename them, and find additional tab actions.
+
+Choose **Search saved pages** to search bookmarks or history. Chrome asks for the corresponding optional access only after you choose the feature. History search is limited to 500 visits from the last 30 days.
+
+Set a light, dark, or system theme, choose a palette and font, and adjust the Command Bar width or window mode. Custom tab names are extension metadata stored locally; they do not change a website's title or favicon.
+
+Command Menu has no host permissions, analytics, or background network requests. A tab preview is captured only after you explicitly open the Command Bar or Tab Switcher on a regular web page, stays in session storage, and is never uploaded.
+
+Google Chrome is a trademark of Google LLC.
+
+## Screenshot captions
+
+Use real captures from the release build with non-sensitive sample tabs and queries. The first image should establish the primary Command Bar experience.
+
+1. **Find a tab or command from one keyboard-first bar.** Show the Command Bar with a typed query and a mix of matching tab and command results.
+2. **Run browser actions without hunting through menus.** Show searchable commands such as pin, mute, rename, move, or duplicate on a selected tab.
+3. **Search the web with a provider shortcut.** Show a prefix and query, with the result clearly handed off to that provider's website.
+4. **Switch between your five most recently accessed tabs.** Show the separate Tab Switcher with the current window's recent tabs.
+5. **Find a saved page when you need it.** Show bookmark or history results after the user chooses that feature and grants its optional permission.
+
+## Privacy practices tab answers
+
+Chrome asks for a narrow single-purpose statement, a justification for every manifest permission, a remote-code answer, data-use disclosures, and the limited-use certification. Permissions must be no broader than the features require; disclosures must match the policy and actual behavior. [Privacy practices guidance](https://developer.chrome.com/docs/webstore/cws-dashboard-privacy) · [Use of permissions](https://developer.chrome.com/docs/webstore/program-policies/permissions) · [Program policies](https://developer.chrome.com/docs/webstore/program-policies)
+
+### Single purpose
+
+> A keyboard-first command palette for Google Chrome™ to find open tabs and run browser actions.
+
+### Permission justifications
+
+The manifest declares four required and five optional permissions. Keep the justifications below aligned with the permission name shown by the dashboard.
+
+| Permission | Suggested justification |
+| --- | --- |
+| `activeTab` | Temporarily access the current regular web page after the user opens Command Menu, so it can mount the overlay and capture a preview of the visible tab. Access is limited to the user-invoked tab. |
+| `scripting` | Inject the extension's locally packaged overlay scripts into the current tab after the user opens Command Menu or the Tab Switcher. |
+| `tabs` | Read tab IDs, titles, URLs, favicons, and window state so users can search and switch tabs and run tab actions such as rename, pin, mute, move, group, duplicate, or close. |
+| `storage` | Save appearance preferences and custom tab names in local storage, and keep temporary overlay state and tab-preview data in session storage. |
+| `bookmarks` (optional) | When the user chooses saved-page search, read and search the bookmark tree locally. Request this permission only for that feature. |
+| `history` (optional) | When the user chooses saved-page search, search up to 500 Chrome history visits from the last 30 days. Request this permission only for that feature. |
+| `tabGroups` (optional) | When the user chooses a tab-group command, read and create or update Chrome tab groups for the selected tabs. Request this permission only for group features. |
+| `sessions` (optional) | When the user chooses **Reopen closed tab**, ask Chrome to restore the most recently closed tab. Request this permission only for that command. |
+| `clipboardWrite` (optional) | When the user chooses **Copy current URL** or **Copy current tab title**, write that value to the clipboard. Request this permission only for copy commands. |
+
+### Remote code
+
+> **No.** Command Menu does not load or execute remotely hosted code. Its scripts, styles, and fonts are packaged with the extension. Provider search is a URL handoff, not remote code execution.
+
+Manifest V3 does not allow remotely hosted executable code; the dashboard asks developers to select “No” when the extension does not execute remote code. [Privacy practices guidance](https://developer.chrome.com/docs/webstore/cws-dashboard-privacy)
+
+### Data usage
+
+Disclose the following types because Command Menu accesses or processes them locally for user-facing features. Chrome's policy counts local processing and storage as data handling, and identifies browsing activity and captured page content as user data. [User-data FAQ](https://developer.chrome.com/docs/webstore/program-policies/user-data-faq) · [Limited Use](https://developer.chrome.com/docs/webstore/program-policies/limited-use)
+
+| Dashboard data type | Select? | What Command Menu handles and why |
+| --- | --- | --- |
+| Web history | Yes | Open-tab titles and URLs support tab search and actions. If the user grants optional `history` access, matching visit titles and URLs support saved-page search. The extension processes this in the browser for the command-palette purpose. |
+| User activity | Yes | The palette processes the user's typed query and command selection in memory to filter results and run the selected command. It does not record an activity log or send interaction analytics. |
+| Website content | Yes | After the user opens an overlay on a regular web page, Chrome may capture the currently visible tab for a preview. The preview is kept in session storage, cleared when the tab navigates or closes, and never transmitted. |
+| Personally identifiable information | No | The extension does not ask for or collect identity details. |
+| Health information | No | Not accessed or used. |
+| Financial and payment information | No | Not accessed or used. |
+| Authentication information | No | Not accessed or used. |
+| Personal communications | No | Not accessed or used. |
+| Location | No | Not accessed or used. |
+
+The extension does not send tab data, bookmark data, history entries, custom names, previews, or usage events to the developer. If the user chooses a provider prefix or accepts the offered Google web search, the query is placed in the destination URL and sent to that provider by the browser. Chrome also loads favicon images from URLs it reports for tabs. These are feature-specific browser requests; the extension makes no background network requests.
+
+### Data-use certifications
+
+Select each certification only while the shipped behavior remains as described above:
+
+- **Yes:** Data is not sold to third parties outside approved use cases.
+- **Yes:** Data is not used or transferred for purposes unrelated to Command Menu's core functionality.
+- **Yes:** Data is not used or transferred to determine creditworthiness or for lending purposes.
+- **Yes:** Data use complies with Chrome Web Store Limited Use requirements.
+
+Chrome's Limited Use policy restricts data use to the disclosed purpose, restricts transfers, and prohibits personalized advertising use. The policy asks extensions that access user data to include an affirmative Limited Use statement on a site or privacy-policy page. [Limited Use policy](https://developer.chrome.com/docs/webstore/program-policies/limited-use)
+
+### Positioning decision
+
+Position Command Menu as a **command palette**. Product's purpose names the Command Bar as the primary surface and the Tab Switcher as a separate, supporting view. The command-palette position can accurately cover tab search, browser actions, provider handoffs, optional saved-page search, and the distinct recent-tab switcher without implying that the extension is only for organizing tabs.
+
+For this position, use the single-purpose text above and make screenshot 1 show the Command Bar with a query plus matching tabs and commands.
+
+If you instead position it as a **tab manager**, change the single-purpose text to:
+
+> A keyboard-first tab manager for Google Chrome™ to find, rename, organize, and switch tabs.
+
+Then make screenshot 1 show the tab-focused experience: a search for open tabs with a clear rename or organize action, or the Tab Switcher if recent-tab switching is the core promise. Keep the first image focused on tabs and avoid leading with provider search or general browser commands.
+
+The Command Palette position is recommended because it matches `PRODUCT.md` and the README's stated primary surface. The Store's branding rules require “for,” “for use with,” or “compatible with” plus ™ when describing compatibility with Google products, and proper attribution when using a Google trademark in the listing. [Branding guidelines](https://developer.chrome.com/docs/webstore/branding)
+
+## Release artifact
+
+PR [#12](https://github.com/pedrotmr/command-menu-chrome-extension/pull/12) is merged and added the release-check path used by `npm run package:extension`. The repository describes that command as running the release checks before creating `release/command-menu-<version>.zip`; this launch kit does not publish the artifact or submit the Store listing.
