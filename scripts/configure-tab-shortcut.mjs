@@ -138,9 +138,15 @@ export async function configureProfile({ profile, extensionId, apply = false, is
     assert.deepEqual(await readFile(file), Buffer.from(updated), 'Preference verification failed');
     return { ...summary, backup, verified: true };
   } finally {
-    await rm(temporary, { force: true });
-    await lock.close();
-    await rm(`${file}.command-menu.lock`, { force: true });
+    try {
+      await rm(temporary, { force: true });
+    } finally {
+      try {
+        await lock.close();
+      } finally {
+        await rm(`${file}.command-menu.lock`, { force: true });
+      }
+    }
   }
 }
 
