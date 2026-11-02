@@ -4,7 +4,7 @@
 2. Open `chrome://version` and copy **Profile Path**.
 3. Quit the browser completely.
 4. Back up the `Preferences` file in that folder, then open it in a text editor.
-5. Inside `extensions.commands`, find Command Menu's `open-tab-switcher` entry. Rename `mac:Ctrl+A` to `mac:Ctrl+Tab`. Keep `windows:` or `linux:` on those systems. Repeat under `account_values` if the same binding appears there. Leave other shortcuts unchanged.
+5. Inside `extensions.commands`, find Command Menu's `open-tab-switcher` entry. Rename `mac:Ctrl+A` → `mac:Ctrl+Tab`, `windows:Ctrl+A` → `windows:Ctrl+Tab`, or `linux:Ctrl+A` → `linux:Ctrl+Tab`. Repeat under `account_values` if the same binding appears there. Leave other shortcuts unchanged.
 6. Save, reopen the browser, and try **Control+Tab** on a regular web page.
 
 If the entry is missing or Ctrl+Tab is already assigned, use `chrome://extensions/shortcuts` instead. Restore a supported shortcut there to undo the change.
