@@ -16,17 +16,17 @@
   "commands": {
     "open-command-palette": {
       "suggested_key": {
-        "windows": "Ctrl+Shift+Y",
-        "linux": "Ctrl+Shift+Y",
-        "mac": "Command+Shift+Y"
+        "windows": "Ctrl+T",
+        "linux": "Ctrl+T",
+        "mac": "Command+T"
       },
       "description": "Open the command menu"
     },
     "open-tab-switcher": {
       "suggested_key": {
-        "windows": "Ctrl+Shift+U",
-        "linux": "Ctrl+Shift+U",
-        "mac": "Command+Shift+U"
+        "windows": "Ctrl+A",
+        "linux": "Ctrl+A",
+        "mac": "MacCtrl+A"
       },
       "description": "Open the tab switcher"
     }
