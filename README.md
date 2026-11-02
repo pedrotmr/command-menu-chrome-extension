@@ -62,7 +62,7 @@ npm test
 
 Install the isolated test browser with `npx playwright install chromium`, then run `npm run test:e2e`. Browser tests load the production extension and cover the overlay, keyboard activation, focus restoration, saved-page failure/retry/revocation, stale responses, bulk-close recovery, worker restart, and a complete browser restart with restored tab names. Permission/data failures and response ordering use controlled boundary simulations; real toolbar action and ordinary Chrome APIs run unchanged. No personal browser profile is used.
 
-The browser suite also checks fresh-install shortcut registration, allowing the deliberately reserved Cmd/Ctrl+T suggestion to remain unassigned. A focused macOS CI job verifies physical Control+A and its stored `mac:Ctrl+A` notation.
+The browser suite also checks fresh-install shortcut registration, allowing the deliberately reserved Cmd/Ctrl+T suggestion to remain unassigned. A focused macOS CI job checks the registered Control+A shortcut and stored `mac:Ctrl+A` notation; it does not verify activation by a physical keypress.
 
 To prepare a distributable ZIP, run `npm run package:extension`. This requires the `zip` command and runs lint, formatting, type checks, unit/integration tests, the production build, and browser tests before creating `release/command-menu-<version>.zip`. Third-party notices and font licenses ship inside the package. The command prints its SHA-256 checksum. CI runs the browser suite after building as well. Publishing to the Chrome Web Store remains a separate account and listing operation.
 

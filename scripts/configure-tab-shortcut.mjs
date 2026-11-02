@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { constants } from 'node:fs';
-import { chmod, copyFile, open, readFile, realpath, rename, rm, stat } from 'node:fs/promises';
+import fsPromises, { chmod, copyFile, open, realpath, rename, rm, stat } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -101,13 +101,13 @@ export async function configureProfile({ profile, extensionId, apply = false, is
   if (apply) await waitForBrowserExit(isRunning, timeoutMs);
   const directory = await realpath(profile);
   const file = path.join(directory, 'Preferences');
-  const original = await readFile(file);
+  const original = await fsPromises.readFile(file);
   const text = original.toString('utf8');
   assert.deepEqual(Buffer.from(text), original, 'Preferences must contain valid UTF-8');
   const preferences = JSON.parse(text);
   let secure = {};
   try {
-    secure = JSON.parse(await readFile(path.join(directory, 'Secure Preferences'), 'utf8'));
+    secure = JSON.parse(await fsPromises.readFile(path.join(directory, 'Secure Preferences'), 'utf8'));
   } catch (error) {
     if (error.code !== 'ENOENT') throw error;
   }
@@ -122,7 +122,7 @@ export async function configureProfile({ profile, extensionId, apply = false, is
   const backup = `${file}.before-ctrl-tab-${randomUUID()}.bak`;
   try {
     assert.ok(!(await isRunning()), 'Browser restarted; no preferences changed');
-    assert.deepEqual(await readFile(file), original, 'Preferences changed; retry from the current file');
+    assert.deepEqual(await fsPromises.readFile(file), original, 'Preferences changed; retry from the current file');
     await copyFile(file, backup, constants.COPYFILE_EXCL);
     await chmod(backup, 0o600);
     const handle = await open(temporary, 'wx', (await stat(file)).mode & 0o777);
@@ -133,9 +133,15 @@ export async function configureProfile({ profile, extensionId, apply = false, is
       await handle.close();
     }
     assert.ok(!(await isRunning()), 'Browser restarted; no preferences changed');
-    assert.deepEqual(await readFile(file), original, 'Preferences changed; no preferences overwritten');
+    assert.deepEqual(await fsPromises.readFile(file), original, 'Preferences changed; no preferences overwritten');
     await rename(temporary, file);
-    assert.deepEqual(await readFile(file), Buffer.from(updated), 'Preference verification failed');
+    try {
+      assert.deepEqual(await fsPromises.readFile(file), Buffer.from(updated), 'Preference verification failed');
+    } catch (error) {
+      throw new Error(`Preference verification failed. Backup: ${backup}. Quit the browser before restoring it.`, {
+        cause: error,
+      });
+    }
     return { ...summary, backup, verified: true };
   } finally {
     try {
@@ -176,7 +182,7 @@ async function main() {
   const root = path.join(os.homedir(), 'Library/Application Support', browser.directory);
   let profile = values.profile;
   if (!profile) {
-    const state = JSON.parse(await readFile(path.join(root, 'Local State'), 'utf8'));
+    const state = JSON.parse(await fsPromises.readFile(path.join(root, 'Local State'), 'utf8'));
     const name = state.profile?.last_used;
     assert.ok(
       typeof name === 'string' && name && name !== '.' && name !== '..' && path.basename(name) === name,

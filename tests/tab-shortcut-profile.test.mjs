@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { test } from 'node:test';
-import { mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { test, mock } from 'node:test';
+import fsPromises from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+import { mkdtemp, readFile, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {
@@ -113,9 +115,9 @@ test('dry run leaves all profile files untouched', async (t) => {
 
 test('CLI defaults to a dry run on a temporary profile', { skip: process.platform !== 'darwin' }, async (t) => {
   const f = await fixture(t);
-  const script = new URL('../scripts/configure-tab-shortcut.mjs', import.meta.url);
+  const script = fileURLToPath(new URL('../scripts/configure-tab-shortcut.mjs', import.meta.url));
   const result = JSON.parse(
-    execFileSync(process.execPath, [script.pathname, '--browser', 'helium', '--profile', f.profile], {
+    execFileSync(process.execPath, [script, '--browser', 'helium', '--profile', f.profile], {
       encoding: 'utf8',
     }),
   );
@@ -123,7 +125,7 @@ test('CLI defaults to a dry run on a temporary profile', { skip: process.platfor
   assert.equal(result.extensionId, id);
   assert.equal(await readFile(f.file, 'utf8'), f.original);
   assert.throws(() =>
-    execFileSync(process.execPath, [script.pathname, '--browser', 'toString', '--profile', f.profile], {
+    execFileSync(process.execPath, [script, '--browser', 'toString', '--profile', f.profile], {
       stdio: 'pipe',
     }),
   );
@@ -151,6 +153,38 @@ test('apply backs up exact bytes, preserves other settings, verifies output, and
   const again = await configureProfile({ ...f, apply: true });
   assert.deepEqual(again.changes, []);
   assert.deepEqual(await readdir(f.profile), files);
+});
+
+test('post-replacement read failure reports the exact backup without overwriting newer preferences', async (t) => {
+  const f = await fixture(t);
+  const newer = f.original.replace('42', '43');
+  const actualFile = await realpath(f.file);
+  const actualReadFile = fsPromises.readFile;
+  mock.method(fsPromises, 'readFile', async (...args) => {
+    const data = await actualReadFile(...args);
+    if (args[0] === actualFile && data.toString().includes('"mac:Ctrl+Tab"')) {
+      await writeFile(f.file, newer);
+      throw new Error('simulated verification read failure');
+    }
+    return data;
+  });
+  let failure;
+  try {
+    await assert.rejects(configureProfile({ ...f, apply: true }), (error) => {
+      failure = error;
+      return /Backup: .*Preferences\.before-ctrl-tab-.*\.bak/.test(error.message);
+    });
+  } finally {
+    mock.restoreAll();
+  }
+  const backup = path.join(
+    f.profile,
+    (await readdir(f.profile)).find((name) => name.endsWith('.bak')),
+  );
+  assert.ok(failure.message.includes(backup));
+  assert.equal(await readFile(backup, 'utf8'), f.original);
+  assert.equal(await readFile(f.file, 'utf8'), newer);
+  assert.ok(!(await readdir(f.profile)).some((name) => name.endsWith('.lock')));
 });
 
 test('running browser and restart during apply prevent writes', async (t) => {

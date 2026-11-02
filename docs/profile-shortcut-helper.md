@@ -21,6 +21,8 @@ Use `--browser chrome` for Chrome. Reopen the browser afterward and try Control+
 
 Applying creates an exact backup beside `Preferences`, replaces the file atomically, and verifies the saved JSON. It updates matching local/account bindings, preserves other commands and settings, and refuses conflicts or a second helper holding its lock. Reapplying an unchanged binding creates no extra backup. To restore the exact backup, quit the browser first; restoring a backup also restores its other settings.
 
+If verification fails after replacement, the error identifies the backup. Restore it manually after quitting the browser; the helper does not overwrite a file that another process may have changed.
+
 If macOS reports `Operation not permitted`, grant the app running this command access to the browser's data and retry. If a previous interrupted run left `Preferences.command-menu.lock`, confirm that helper and browser have exited before removing that lock.
 
 For manual steps and shortcut limitations, see the [store description](store-listing.md).
