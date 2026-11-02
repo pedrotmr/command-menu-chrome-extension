@@ -22,7 +22,7 @@ export const test = base.extend({
       const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
       const id = new URL(worker.url()).host;
       const url = `chrome-extension://${id}/src/popup/index.html?mode=commands`;
-      await use({ context, worker, id, url });
+      await use({ context, worker, id, url, profile });
       expect(errors).toEqual([]);
     } finally {
       await context.close();
