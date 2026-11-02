@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { test, mock } from 'node:test';
 import fsPromises from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { mkdtemp, readFile, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, realpath, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {
@@ -129,6 +129,14 @@ test('CLI defaults to a dry run on a temporary profile', { skip: process.platfor
       stdio: 'pipe',
     }),
   );
+});
+
+test('CLI runs through a symlink with spaces in its path', { skip: process.platform === 'win32' }, async (t) => {
+  const f = await fixture(t);
+  const linkedScript = path.join(f.profile, 'helper with spaces.mjs');
+  await symlink(fileURLToPath(new URL('../scripts/configure-tab-shortcut.mjs', import.meta.url)), linkedScript);
+  const output = execFileSync(process.execPath, [linkedScript, '--help'], { encoding: 'utf8' });
+  assert.match(output, /Default: dry run/);
 });
 
 test('unrelated numeric tokens and formatting survive both dry run and apply exactly', async (t) => {
