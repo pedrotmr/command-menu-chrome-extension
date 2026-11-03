@@ -20,7 +20,7 @@ for (const file of [
 }
 const release = path.join(root, 'release');
 mkdirSync(release, { recursive: true });
-const filename = `command-menu-${manifest.version}.zip`;
+const filename = `keybar-${manifest.version}.zip`;
 const output = path.join(release, filename);
 rmSync(output, { force: true });
 const result = spawnSync('zip', ['-q', '-r', output, '.'], { cwd: dist, stdio: 'inherit' });

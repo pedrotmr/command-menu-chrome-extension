@@ -1,5 +1,5 @@
 ---
-name: Command Menu (working label)
+name: Keybar
 description: A quiet, keyboard-first command surface for Chrome.
 ---
 

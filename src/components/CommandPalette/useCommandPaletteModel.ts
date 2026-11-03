@@ -604,7 +604,7 @@ export const useCommandPaletteModel = ({
     try {
       if (surface === 'overlay') {
         await sendBackground<boolean>('permissions:open-request', { permissions: missing });
-        notify('Approve access in the Command Menu window, then choose this command again.', 'success');
+        notify('Approve access in the Keybar window, then choose this command again.', 'success');
         return false;
       }
 

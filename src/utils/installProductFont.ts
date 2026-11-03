@@ -1,11 +1,11 @@
 import type { CommandBarFontFamily } from '@/types';
 
 const productFontFamilies: Record<CommandBarFontFamily, string> = {
-  'open-sans': 'Command Menu Open Sans',
-  outfit: 'Command Menu Outfit',
-  'nunito-sans': 'Command Menu Nunito Sans',
-  sora: 'Command Menu Sora',
-  'ibm-plex-mono': 'Command Menu IBM Plex Mono',
+  'open-sans': 'Keybar Open Sans',
+  outfit: 'Keybar Outfit',
+  'nunito-sans': 'Keybar Nunito Sans',
+  sora: 'Keybar Sora',
+  'ibm-plex-mono': 'Keybar IBM Plex Mono',
 };
 
 const fontFaces = [
@@ -82,8 +82,8 @@ const preloadPaths: Record<CommandBarFontFamily, string> = {
   'ibm-plex-mono': 'assets/fonts/ibm-plex-mono/IBMPlexMono-400-Latin.woff2',
 };
 
-const fontFaceStyle = 'data-command-menu-font-face';
-const fontPreload = 'data-command-menu-font-preload';
+const fontFaceStyle = 'data-keybar-font-face';
+const fontPreload = 'data-keybar-font-preload';
 const pendingPageFontLoads = new WeakMap<Document, Map<CommandBarFontFamily, Promise<void>>>();
 
 export const installProductFont = (target: Document, preferredFont: CommandBarFontFamily = 'open-sans'): void => {

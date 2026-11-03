@@ -61,7 +61,7 @@ export const useOverlayFrame = (controller: SurfaceController): OverlayFrameStat
 
     if (isOpen) {
       void loadProductFontForPage(controller.host.ownerDocument, theme.fontFamily).catch((error: unknown) => {
-        console.warn(`[Command Menu] Failed to load ${theme.fontFamily} font for the page overlay.`, error);
+        console.warn(`[Keybar] Failed to load ${theme.fontFamily} font for the page overlay.`, error);
       });
     }
   }, [theme, systemDark, controller.host, isOpen]);

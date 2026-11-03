@@ -21,7 +21,7 @@
   --cc-selection: #292929;
   --cc-overlay-scrim: rgba(0, 0, 0, 0.48);
   --cc-shadow: 0 10px 28px rgba(0, 0, 0, 0.38);
-  --cc-font: 'Command Menu Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --cc-font: 'Keybar Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   --cc-font-scale: 1;
   --cc-text-xs: calc(12px * var(--cc-font-scale));
   --cc-text-sm: calc(14px * var(--cc-font-scale));
@@ -60,23 +60,23 @@
 
 :root[data-font-family='open-sans'],
 :host([data-font-family='open-sans']) {
-  --cc-font: 'Command Menu Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --cc-font: 'Keybar Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
 }
 :root[data-font-family='outfit'],
 :host([data-font-family='outfit']) {
-  --cc-font: 'Command Menu Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --cc-font: 'Keybar Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
 }
 :root[data-font-family='nunito-sans'],
 :host([data-font-family='nunito-sans']) {
-  --cc-font: 'Command Menu Nunito Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --cc-font: 'Keybar Nunito Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
 }
 :root[data-font-family='sora'],
 :host([data-font-family='sora']) {
-  --cc-font: 'Command Menu Sora', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --cc-font: 'Keybar Sora', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
 }
 :root[data-font-family='ibm-plex-mono'],
 :host([data-font-family='ibm-plex-mono']) {
-  --cc-font: 'Command Menu IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  --cc-font: 'Keybar IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
   --cc-font-scale: 0.92;
 }
 

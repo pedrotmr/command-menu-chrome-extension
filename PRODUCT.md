@@ -6,13 +6,13 @@ Keyboard-first Chrome users who keep many tabs open while researching, writing, 
 
 ## Purpose
 
-Command Menu brings local search, browser commands, external search handoffs, and tab management into one fast interaction model. The Command Bar is the primary surface. The Tab Switcher is a separate, compact recent-tabs view opened with its keyboard shortcut on supported web pages.
+Keybar brings local search, browser commands, external search handoffs, and tab management into one fast interaction model. The Command Bar is the primary surface. The Tab Switcher is a separate, compact recent-tabs view opened with its keyboard shortcut on supported web pages.
 
 Success means local actions feel immediate, tab names survive ordinary navigation, keyboard and screen-reader users can complete the same workflows, and the extension leaves the host page visually untouched.
 
 ## Product character
 
-Quiet, precise, capable. Offer Open Sans, Outfit, Nunito Sans, Sora, and IBM Plex Mono with platform fallbacks and aligned result metadata. Plain is the black-and-white default; the palette can change the color mood without changing the shared hierarchy or interaction language. Keep the selected row clear without gradients, stacked pills, or decorative chrome. Load fonts locally and keep the system fallback responsive while they load. Arc, Lumno, and Raycast are references for selected interaction ideas, not templates to copy. “Command Menu” is the current working label; product naming remains open.
+Quiet, precise, capable. Offer Open Sans, Outfit, Nunito Sans, Sora, and IBM Plex Mono with platform fallbacks and aligned result metadata. Plain is the black-and-white default; the palette can change the color mood without changing the shared hierarchy or interaction language. Keep the selected row clear without gradients, stacked pills, or decorative chrome. Load fonts locally and keep the system fallback responsive while they load. Arc, Lumno, and Raycast are references for selected interaction ideas, not templates to copy. Keybar is the product name.
 
 ## Principles
 

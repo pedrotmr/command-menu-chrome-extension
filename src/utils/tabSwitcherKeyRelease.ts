@@ -4,7 +4,7 @@ interface KeyReleaseState {
 
 declare global {
   interface Window {
-    __commandMenuKeyReleaseState?: KeyReleaseState;
+    __keybarKeyReleaseState?: KeyReleaseState;
   }
 }
 
@@ -15,12 +15,12 @@ export const isTabSwitcherModifierKey = (key: string): key is 'Meta' | 'Control'
 };
 
 export const installTabSwitcherKeyReleaseMonitor = (): void => {
-  if (window.__commandMenuKeyReleaseState) {
+  if (window.__keybarKeyReleaseState) {
     return;
   }
 
   const state: KeyReleaseState = { lastModifierReleaseAt: 0 };
-  window.__commandMenuKeyReleaseState = state;
+  window.__keybarKeyReleaseState = state;
 
   window.addEventListener(
     'keyup',
@@ -39,5 +39,5 @@ export const wasTabSwitcherModifierReleasedAfter = (startedAt: number | null | u
   }
 
   installTabSwitcherKeyReleaseMonitor();
-  return (window.__commandMenuKeyReleaseState?.lastModifierReleaseAt ?? 0) >= startedAt;
+  return (window.__keybarKeyReleaseState?.lastModifierReleaseAt ?? 0) >= startedAt;
 };

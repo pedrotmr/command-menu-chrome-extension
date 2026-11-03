@@ -15,7 +15,7 @@ const TAB_NAMES_SESSION_KEY = 'tabNameIdsCurrentSession';
 
 const TAB_PREVIEW_PREFIX = 'tabPreview:';
 const TAB_PREVIEW_IDS_KEY = 'tabPreviewIds';
-const OVERLAY_TAB_IDS_SESSION_KEY = 'commandMenuOverlayTabIds';
+const OVERLAY_TAB_IDS_SESSION_KEY = 'keybarOverlayTabIds';
 
 const MAX_TAB_PREVIEWS = 5;
 const TAB_SWITCHER_OPENING_TIMEOUT_MS = 5000;
@@ -322,15 +322,15 @@ const installTabSwitcherReleaseMonitor = (tabId: number): Promise<void> => {
       world: 'ISOLATED',
       func: () => {
         const isolatedWindow = window as Window & {
-          __commandMenuKeyReleaseState?: { lastModifierReleaseAt: number };
+          __keybarKeyReleaseState?: { lastModifierReleaseAt: number };
         };
 
-        if (isolatedWindow.__commandMenuKeyReleaseState) {
+        if (isolatedWindow.__keybarKeyReleaseState) {
           return;
         }
 
         const state = { lastModifierReleaseAt: 0 };
-        isolatedWindow.__commandMenuKeyReleaseState = state;
+        isolatedWindow.__keybarKeyReleaseState = state;
         window.addEventListener(
           'keyup',
           (event: KeyboardEvent) => {

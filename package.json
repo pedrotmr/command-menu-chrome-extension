@@ -1,7 +1,7 @@
 {
-  "name": "command-menu-chrome-extension",
+  "name": "keybar",
   "version": "3.0.0",
-  "description": "A keyboard-first command menu for Chrome",
+  "description": "Keybar, a keyboard-first command bar for Chrome",
   "type": "module",
   "scripts": {
     "dev": "vite",

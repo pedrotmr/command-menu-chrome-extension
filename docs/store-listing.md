@@ -1,29 +1,23 @@
-# Shortcuts
+# Chrome Web Store listing
 
-Suggested shortcuts: **Control+A** for tabs; **Cmd+T** for commands (**Ctrl+T** on Windows/Linux). Customize at `chrome://extensions/shortcuts`. Chrome may reserve Cmd/Ctrl+T. On Windows/Linux, Control+A replaces Select All when assigned.
+## Name
 
-## Want Ctrl+Tab?
+Keybar
 
-Chrome doesn't let extensions set Ctrl+Tab by default. First, assign **Control+A** to **Open the tab switcher** at `chrome://extensions/shortcuts`.
+## Short description
 
-### Mac
+Find open tabs and run browser actions from a keyboard-first command bar.
 
-1. Quit Chrome with **Cmd+Q**.
-2. Back up and open `~/Library/Application Support/Google/Chrome/Default/Preferences` in a plain-text editor.
-3. In Command Menu's `open-tab-switcher` entry, change `mac:Ctrl+A` to `mac:Ctrl+Tab`. Save and reopen Chrome.
+## Full description
 
-### Windows
+Keybar helps you find a page or take a browser action without hunting through menus. Open the command bar with a keyboard shortcut, then search open tabs, browser actions, addresses, and provider shortcuts from one focused surface.
 
-1. Quit Chrome completely.
-2. Back up and open `%LOCALAPPDATA%\Google\Chrome\User Data\Default\Preferences` in Notepad.
-3. In Command Menu's `open-tab-switcher` entry, change `windows:Ctrl+A` to `windows:Ctrl+Tab`. Save and reopen Chrome.
+Use the separate Tab Switcher to move through recent tabs. Rename, pin, mute, group, move, duplicate, or close tabs from the command bar. When you choose a search provider prefix, Keybar opens that provider's search page with your query.
 
-### Linux
+Keybar works on regular web pages and uses Chrome's extension popup on Chrome and extension pages, where Chrome does not allow page overlays. Shortcuts can be changed at `chrome://extensions/shortcuts`.
 
-1. Quit Chrome completely.
-2. Back up and open `~/.config/google-chrome/Default/Preferences` in a text editor.
-3. In Command Menu's `open-tab-switcher` entry, change `linux:Ctrl+A` to `linux:Ctrl+Tab`. Save and reopen Chrome.
+## Artwork sources
 
-Different profile or browser? Use **Profile Path** from `chrome://version` before quitting.
-
-Change only this extension's binding, including a matching copy under `account_values`. If Ctrl+Tab is already assigned, stop. Updates or sync may reset this setup. Undo it at `chrome://extensions/shortcuts`.
+- High-resolution PNG: [`assets/branding/Keybar.png`](../assets/branding/Keybar.png)
+- Editable Icon Composer source: [`assets/branding/Keybar.icon`](../assets/branding/Keybar.icon)
+- Chrome extension icon sizes: `public/icons/keybar-16.png`, `public/icons/keybar-48.png`, and `public/icons/keybar-128.png`

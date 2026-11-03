@@ -1,8 +1,13 @@
 {
   "manifest_version": 3,
-  "name": "Command Menu",
+  "name": "Keybar",
   "version": "3.0.0",
-  "description": "A fast, keyboard-first command menu for Chrome.",
+  "description": "A fast, keyboard-first command bar for Chrome.",
+  "icons": {
+    "16": "icons/keybar-16.png",
+    "48": "icons/keybar-48.png",
+    "128": "icons/keybar-128.png"
+  },
   "minimum_chrome_version": "127",
   "permissions": ["activeTab", "scripting", "tabs", "storage"],
   "optional_permissions": ["bookmarks", "history", "tabGroups", "sessions", "clipboardWrite"],
@@ -11,7 +16,11 @@
     "type": "module"
   },
   "action": {
-    "default_title": "Open Command Menu"
+    "default_title": "Open Keybar",
+    "default_icon": {
+      "16": "icons/keybar-16.png",
+      "48": "icons/keybar-48.png"
+    }
   },
   "commands": {
     "open-command-palette": {
@@ -20,7 +29,7 @@
         "linux": "Ctrl+T",
         "mac": "Command+T"
       },
-      "description": "Open the command menu"
+      "description": "Open Keybar"
     },
     "open-tab-switcher": {
       "suggested_key": {

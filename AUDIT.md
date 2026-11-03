@@ -96,7 +96,7 @@ Cenários executados e observações:
 
 Medições complementares, somente depois das correções: 20 chamadas sequenciais a `chrome.tabs.query({})` no worker com duas abas deram p50 aproximadamente 0,10 ms e p95 0,20 ms. Na fixture de sete abas, o buffer de timings da UI registrou 18 amostras de `local-search`, de 0 a 0,70 ms, e quatro de `tab-list`, de 1,20 a 3,70 ms. São amostras pequenas, com resolução limitada do relógio, queries variadas e sem baseline anterior no BrowserOS; não representam input-to-paint nem sustentam comparação causal de ganho.
 
-Limpeza confirmada: seis abas criadas para o teste foram fechadas; nome temporário removido; zoom retornou a 100%; tema voltou a System; servidor temporário em loopback foi encerrado; DevTools foi fechado. A cópia auditada permanece instalada, **desativada**, para evitar duas Command Menus ativas. A instalação anterior foi mantida e o BrowserOS voltou à aba inicial.
+Limpeza confirmada: seis abas criadas para o teste foram fechadas; nome temporário removido; zoom retornou a 100%; tema voltou a System; servidor temporário em loopback foi encerrado; DevTools foi fechado. A cópia auditada permanece instalada, **desativada**, para evitar duas cópias do Keybar ativas. A instalação anterior foi mantida e o BrowserOS voltou à aba inicial.
 
 ## Pendências em ordem de prioridade e procedimento final
 

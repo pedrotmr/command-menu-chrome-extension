@@ -33,10 +33,10 @@ export function PermissionRequest({ permissions }: PermissionRequestProps) {
       const granted = await request;
 
       if (granted) {
-        setStatus('Access granted. Return to the Command Menu to continue.');
+        setStatus('Access granted. Return to Keybar to continue.');
         window.setTimeout(() => window.close(), 700);
       } else {
-        setStatus('Access was not granted. You can close this window and keep using the Command Menu.');
+        setStatus('Access was not granted. You can close this window and keep using Keybar.');
       }
     } catch {
       setStatus('Chrome could not grant access. Close this window and try again.');
@@ -47,7 +47,7 @@ export function PermissionRequest({ permissions }: PermissionRequestProps) {
 
   return (
     <main className="cc-permission-request">
-      <p className="cc-permission-eyebrow">Command Menu access</p>
+      <p className="cc-permission-eyebrow">Keybar access</p>
       <h1>Allow {requestedLabels.join(' and ')}?</h1>
       <p className="cc-permission-copy">
         Chrome will ask for this access so the selected command can use it. You can change extension permissions in
