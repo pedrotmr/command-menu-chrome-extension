@@ -117,11 +117,28 @@ export const attachOverlayListeners = (controller: SurfaceController, mountPoint
     }, 0);
   };
 
+  const isolateOverlayTyping = (event: globalThis.KeyboardEvent) => {
+    if (
+      event.key.length !== 1 ||
+      event.altKey ||
+      event.ctrlKey ||
+      event.metaKey ||
+      bridge.surfaceOpenHandler?.() !== true ||
+      !event.composedPath().includes(host)
+    ) {
+      return;
+    }
+
+    event.stopPropagation();
+  };
+
+  window.addEventListener('keydown', isolateOverlayTyping, true);
   window.addEventListener('keydown', closeOnEscape, true);
   chrome.runtime.onMessage.addListener(onMessage);
 
   return () => {
     chrome.runtime.onMessage.removeListener(onMessage);
+    window.removeEventListener('keydown', isolateOverlayTyping, true);
     window.removeEventListener('keydown', closeOnEscape, true);
   };
 };
