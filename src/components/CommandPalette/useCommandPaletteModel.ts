@@ -289,6 +289,7 @@ export const useCommandPaletteModel = ({
 
   useEffect(() => {
     const dialogElement = dialogRef.current;
+    let effectCancelled = false;
 
     if (dialog && dialogElement) {
       if (!dialogElement.open) {
@@ -296,6 +297,10 @@ export const useCommandPaletteModel = ({
       }
 
       requestAnimationFrame(() => {
+        if (effectCancelled || !dialogRef.current?.open) {
+          return;
+        }
+
         if (dialog.kind === 'move') {
           moveWindowSelectRef.current?.focus();
         } else if (dialog.kind === 'assign-group') {
@@ -309,7 +314,9 @@ export const useCommandPaletteModel = ({
         }
       });
 
-      return;
+      return () => {
+        effectCancelled = true;
+      };
     }
 
     if (dialogElement?.open) {
@@ -317,7 +324,19 @@ export const useCommandPaletteModel = ({
     }
 
     requestAnimationFrame(() => {
-      if (dialogRef.current?.open) {
+      if (effectCancelled || dialogRef.current?.open || actionDock) {
+        return;
+      }
+
+      const commandCenter = commandCenterRef.current;
+      const root = commandCenter?.getRootNode();
+      const activeElement = (root as Document | ShadowRoot | undefined)?.activeElement ?? document.activeElement;
+
+      if (
+        activeElement instanceof HTMLElement &&
+        commandCenter?.contains(activeElement) &&
+        !dialogElement?.contains(activeElement)
+      ) {
         return;
       }
 
@@ -327,7 +346,11 @@ export const useCommandPaletteModel = ({
         focusTarget.focus({ preventScroll: true });
       }
     });
-  }, [dialog, mode]);
+
+    return () => {
+      effectCancelled = true;
+    };
+  }, [actionDock, dialog, mode]);
 
   useEffect(
     () => () => {
@@ -604,7 +627,7 @@ export const useCommandPaletteModel = ({
     try {
       if (surface === 'overlay') {
         await sendBackground<boolean>('permissions:open-request', { permissions: missing });
-        notify('Approve access in the Command Menu window, then choose this command again.', 'success');
+        notify('Approve access in the Keybar window, then choose this command again.', 'success');
         return false;
       }
 

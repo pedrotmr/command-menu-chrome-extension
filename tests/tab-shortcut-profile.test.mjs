@@ -223,10 +223,10 @@ test('changes by another writer are preserved and a concurrent helper is rejecte
     /Preferences changed/,
   );
   assert.equal(await readFile(f.file, 'utf8'), changed);
-  await writeFile(`${f.file}.command-menu.lock`, 'another helper');
+  await writeFile(`${f.file}.keybar.lock`, 'another helper');
   await assert.rejects(configureProfile({ ...f, apply: true }), /EEXIST/);
   assert.equal(await readFile(f.file, 'utf8'), changed);
-  assert.equal(await readFile(`${f.file}.command-menu.lock`, 'utf8'), 'another helper');
+  assert.equal(await readFile(`${f.file}.keybar.lock`, 'utf8'), 'another helper');
 });
 
 test('exit detection succeeds immediately when closed and fails when its deadline expires', async () => {

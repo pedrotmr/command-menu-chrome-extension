@@ -1,10 +1,10 @@
-# Command Menu (working name)
+# Keybar
 
-A keyboard-first command surface for Chrome, built with React, TypeScript, and Manifest V3. The name is a working label; product branding is still open.
+Keybar is a keyboard-first command surface for Chrome, built with React, TypeScript, and Manifest V3.
 
 ## Open it
 
-- On a regular web page, click the extension action or press **Ctrl+T** (Windows/Linux) / **Cmd+T** (macOS) to open the compact, centered Command Bar overlay. Chrome may keep its native new-tab shortcut; check the assignment at `chrome://extensions/shortcuts`.
+- On a regular web page, click the Keybar action or press **Ctrl+T** (Windows/Linux) / **Cmd+T** (macOS) to open the compact, centered Command Bar overlay. Chrome may keep its native new-tab shortcut; check the assignment at `chrome://extensions/shortcuts`.
 - On Chrome and extension pages, the same action opens the extension popup because Chrome does not allow injected overlays on those pages.
 - Open the separate Tab Switcher with **Control+A** on regular web pages, including macOS. It has no button in the Command Bar, and its shortcut does nothing on Chrome or extension pages.
 - Use **↑ / ↓** and **Enter** in the Command Bar. In the Tab Switcher, use **← / →** or **↑ / ↓** to cycle, then **Enter** to switch. **Escape** closes either surface. Chrome lets users change both shortcuts at `chrome://extensions/shortcuts`.
@@ -33,7 +33,7 @@ Choose **System**, **Light**, or **Dark**, then select a palette. **Plain** is t
 
 To add a palette, add its light/dark source colors and lightweight swatch colors to the theme definitions in `src/themes/index.ts`. Settings discovers palettes from the registry; full contrast-adjusted token maps are memoized on first use, and components do not need palette-specific styles.
 
-Suggested defaults are **Control+A** for the Tab Switcher and **Cmd+T** on Mac / **Ctrl+T** on Windows/Linux for the Command Menu. Existing installations can retain their previous assignments. Check or change them at `chrome://extensions/shortcuts`; Chrome may reserve the new-tab shortcut. For optional **Ctrl+Tab**, see [setup steps](docs/ctrl-tab-setup.md). The [store listing draft](docs/store-listing.md) contains the short user-facing instructions.
+Suggested defaults are **Control+A** for the Tab Switcher and **Cmd+T** on Mac / **Ctrl+T** on Windows/Linux for Keybar. Existing installations can retain their previous assignments. Check or change them at `chrome://extensions/shortcuts`; Chrome may reserve the new-tab shortcut. For optional **Ctrl+Tab**, see [setup steps](docs/ctrl-tab-setup.md). The [Chrome Web Store listing draft](docs/store-listing.md) contains the product copy.
 
 The Command Bar and Tab Switcher use the same tokens and typography, with separate layouts. Web-page overlays render in a closed Shadow DOM inside a browser top-layer popover so site CSS does not style the extension UI. Native Chrome pages use the extension popup.
 
@@ -64,7 +64,7 @@ Install the isolated test browser with `npx playwright install chromium`, then r
 
 The browser suite also checks fresh-install shortcut registration, allowing the deliberately reserved Cmd/Ctrl+T suggestion to remain unassigned. A focused macOS CI job checks the registered Control+A shortcut and stored `mac:Ctrl+A` notation; it does not verify activation by a physical keypress.
 
-To prepare a distributable ZIP, run `npm run package:extension`. This requires the `zip` command and runs lint, formatting, type checks, unit/integration tests, the production build, and browser tests before creating `release/command-menu-<version>.zip`. Third-party notices and font licenses ship inside the package. The command prints its SHA-256 checksum. CI runs the browser suite after building as well. Publishing to the Chrome Web Store remains a separate account and listing operation.
+To prepare a distributable ZIP, run `npm run package:extension`. This requires the `zip` command and runs lint, formatting, type checks, unit/integration tests, the production build, and browser tests before creating `release/keybar-<version>.zip`. Third-party notices and font licenses ship inside the package. The command prints its SHA-256 checksum. CI runs the browser suite after building as well. Publishing to the Chrome Web Store remains a separate account and listing operation.
 
 `npm test` also checks registered commands against the background listener and runs React lifecycle regressions with jsdom: stale replies, duplicate Enter, retry after API failure, permission revocation, IME/dialog keys, and subscription cleanup. jsdom is a development-only dependency; rendering and Chrome integration still require the browser procedure linked above.
 

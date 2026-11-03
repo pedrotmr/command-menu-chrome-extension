@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 test('names and preferences survive a complete browser restart and restored tab IDs', async () => {
-  const profile = await mkdtemp(path.join(os.tmpdir(), 'command-menu-session-'));
+  const profile = await mkdtemp(path.join(os.tmpdir(), 'keybar-session-'));
   const extensionPath = path.resolve(process.env.EXTENSION_PATH ?? 'dist');
   const options = {
     channel: 'chromium',

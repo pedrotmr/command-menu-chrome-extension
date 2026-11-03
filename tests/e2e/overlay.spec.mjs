@@ -21,6 +21,8 @@ test('real action injects isolated overlay, restores focus, reopens and executes
   const open = () => browserCdp.send('Extensions.triggerAction', { id, targetId: targetInfo.targetId });
   const host = page.locator(`[id="${id}-command-center-surface"]`);
   const axNodes = async () => (await cdp.send('Accessibility.getFullAXTree')).nodes;
+  const hasActionMenu = async () =>
+    (await axNodes()).some((node) => node.role?.value === 'menu' && node.name?.value === 'Actions for Release target');
   await open();
   await expect(host).toBeVisible();
   await expect.poll(() => page.evaluate(() => document.body.inert)).toBe(true);
@@ -45,6 +47,7 @@ test('real action injects isolated overlay, restores focus, reopens and executes
     )
     .toBe(true);
   await page.keyboard.press('Shift+F10');
+  await expect.poll(hasActionMenu).toBe(true);
   await page.evaluate((hostId) => {
     document
       .getElementById(hostId)
@@ -52,8 +55,12 @@ test('real action injects isolated overlay, restores focus, reopens and executes
   }, `${id}-command-center-surface`);
   await page.keyboard.press('Enter');
   await expect.poll(async () => (await axNodes()).some((node) => node.name?.value === 'Destination')).toBe(true);
+  await expect.poll(hasActionMenu).toBe(false);
   await page.keyboard.press('Escape');
+  await expect.poll(async () => (await axNodes()).some((node) => node.name?.value === 'Destination')).toBe(false);
+  await expect.poll(hasActionMenu).toBe(false);
   await page.keyboard.press('Shift+F10');
+  await expect.poll(hasActionMenu).toBe(true);
   await page.keyboard.type('r');
   await page.keyboard.press('Enter');
   await expect.poll(async () => (await axNodes()).some((node) => node.name?.value === 'Custom tab name')).toBe(true);

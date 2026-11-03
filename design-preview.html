@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
-    <title>Command Menu — Interface preview</title>
+    <title>Keybar — Interface preview</title>
     <style>
       @font-face {
         font-family: 'Open Sans';
@@ -1331,7 +1331,7 @@
               <span class="thumbnail-mark">⌘</span><span class="thumbnail-host">github.com</span>
             </div>
             <div class="tab-label">
-              <span class="favicon">⌘</span><span class="tab-title">GitHub · Command Menu</span
+              <span class="favicon">⌘</span><span class="tab-title">GitHub · Keybar</span
               ><span class="tab-status" title="Pinned"
                 ><svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
                   <path
@@ -1594,11 +1594,11 @@
         mark.textContent = provider.id === 'chatgpt' ? 'AI' : provider.name.slice(0, 1);
         return mark;
       }
-      let appearance = localStorage.getItem('command-menu-preview-theme') || 'light';
-      let palette = localStorage.getItem('command-menu-preview-palette') || 'plain';
-      let pageContext = localStorage.getItem('command-menu-preview-location') || 'overlay';
-      let size = localStorage.getItem('command-menu-preview-size') || 'compact';
-      let windowMode = localStorage.getItem('command-menu-preview-window-mode') || 'expanded';
+      let appearance = localStorage.getItem('keybar-preview-theme') || 'light';
+      let palette = localStorage.getItem('keybar-preview-palette') || 'plain';
+      let pageContext = localStorage.getItem('keybar-preview-location') || 'overlay';
+      let size = localStorage.getItem('keybar-preview-size') || 'compact';
+      let windowMode = localStorage.getItem('keybar-preview-window-mode') || 'expanded';
       if (!['plain', 'tobacco', 't3-code', 't3-ocean'].includes(palette)) palette = 'plain';
       let selected = 2;
       let commandSelected = 0;
@@ -1766,7 +1766,7 @@
         appearanceButtons.forEach((button) =>
           button.setAttribute('aria-pressed', String(button.dataset.theme === next)),
         );
-        localStorage.setItem('command-menu-preview-theme', next);
+        localStorage.setItem('keybar-preview-theme', next);
       }
 
       function applyPalette(next) {
@@ -1775,7 +1775,7 @@
         paletteButtons.forEach((button) =>
           button.setAttribute('aria-pressed', String(button.dataset.palette === next)),
         );
-        localStorage.setItem('command-menu-preview-palette', next);
+        localStorage.setItem('keybar-preview-palette', next);
       }
 
       function applyLocation(next) {
@@ -1784,14 +1784,14 @@
         locationButtons.forEach((button) =>
           button.setAttribute('aria-pressed', String(button.dataset.location === next)),
         );
-        localStorage.setItem('command-menu-preview-location', next);
+        localStorage.setItem('keybar-preview-location', next);
       }
 
       function applySize(next) {
         size = next;
         root.dataset.size = next;
         sizeButtons.forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.size === next)));
-        localStorage.setItem('command-menu-preview-size', next);
+        localStorage.setItem('keybar-preview-size', next);
       }
 
       function applyWindowMode(next) {
@@ -1800,7 +1800,7 @@
         windowModeButtons.forEach((button) =>
           button.setAttribute('aria-pressed', String(button.dataset.windowMode === next)),
         );
-        localStorage.setItem('command-menu-preview-window-mode', next);
+        localStorage.setItem('keybar-preview-window-mode', next);
         updateCommandResults();
       }
 

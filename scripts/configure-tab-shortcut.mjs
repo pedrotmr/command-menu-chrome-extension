@@ -117,8 +117,8 @@ export async function configureProfile({ profile, extensionId, apply = false, is
   const summary = { profile: directory, extensionId: id, apply, changes: plan.changes };
   if (!apply || !plan.changes.length) return summary;
 
-  const lock = await open(`${file}.command-menu.lock`, 'wx', 0o600);
-  const temporary = `${file}.command-menu-${randomUUID()}.tmp`;
+  const lock = await open(`${file}.keybar.lock`, 'wx', 0o600);
+  const temporary = `${file}.keybar-${randomUUID()}.tmp`;
   const backup = `${file}.before-ctrl-tab-${randomUUID()}.bak`;
   try {
     assert.ok(!(await isRunning()), 'Browser restarted; no preferences changed');
@@ -150,7 +150,7 @@ export async function configureProfile({ profile, extensionId, apply = false, is
       try {
         await lock.close();
       } finally {
-        await rm(`${file}.command-menu.lock`, { force: true });
+        await rm(`${file}.keybar.lock`, { force: true });
       }
     }
   }

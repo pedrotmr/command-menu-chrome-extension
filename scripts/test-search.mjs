@@ -244,7 +244,7 @@ try {
   assert.match(
     commandPaletteSource,
     /await writeClipboardText\(value\)/,
-    'all command-menu copy actions use the shared clipboard helper',
+    'all Keybar copy actions use the shared clipboard helper',
   );
   assert.match(
     commandPaletteSource,
@@ -623,7 +623,7 @@ try {
     addEventListener: (type, listener) => {
       if (type === 'keyup') releaseListener = listener;
     },
-    __commandMenuKeyReleaseState: undefined,
+    __keybarKeyReleaseState: undefined,
   };
   Object.defineProperty(globalThis, 'window', { configurable: true, value: fakeWindow });
   try {

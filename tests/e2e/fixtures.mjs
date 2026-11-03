@@ -5,7 +5,7 @@ import path from 'node:path';
 
 export const test = base.extend({
   extension: async ({ playwright }, use) => {
-    const profile = await mkdtemp(path.join(os.tmpdir(), 'command-menu-release-'));
+    const profile = await mkdtemp(path.join(os.tmpdir(), 'keybar-release-'));
     const extensionPath = path.resolve(process.env.EXTENSION_PATH ?? 'dist');
     const context = await playwright.chromium.launchPersistentContext(profile, {
       channel: 'chromium',
