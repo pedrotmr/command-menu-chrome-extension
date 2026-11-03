@@ -89,6 +89,8 @@ export const createHost = (hostId: string, styles: string): CreatedOverlayHost =
 
   const shadowRoot = host.attachShadow({ mode: 'closed' });
   shadowRoot.addEventListener('keydown', (event) => event.stopPropagation());
+  shadowRoot.addEventListener('keypress', (event) => event.stopPropagation());
+  shadowRoot.addEventListener('keyup', (event) => event.stopPropagation());
 
   const style = document.createElement('style');
   style.textContent = styles;

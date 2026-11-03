@@ -132,7 +132,7 @@ export const attachOverlayListeners = (controller: SurfaceController, mountPoint
     const shadowRoot = mountPoint.getRootNode();
     const activeElement = shadowRoot instanceof ShadowRoot ? shadowRoot.activeElement : null;
 
-    if (activeElement instanceof HTMLElement && mountPoint.contains(activeElement)) {
+    if (activeElement instanceof Element && mountPoint.contains(activeElement)) {
       const isolatedEvent = new KeyboardEvent('keydown', {
         key: event.key,
         code: event.code,
