@@ -88,9 +88,17 @@ export const createHost = (hostId: string, styles: string): CreatedOverlayHost =
   document.documentElement.appendChild(host);
 
   const shadowRoot = host.attachShadow({ mode: 'closed' });
-  shadowRoot.addEventListener('keydown', (event) => event.stopPropagation());
-  shadowRoot.addEventListener('keypress', (event) => event.stopPropagation());
-  shadowRoot.addEventListener('keyup', (event) => event.stopPropagation());
+  const stopUnmodifiedPrintableKeyboardPropagation = (event: Event): void => {
+    const keyboardEvent = event as KeyboardEvent;
+
+    if (keyboardEvent.key.length !== 1 || keyboardEvent.altKey || keyboardEvent.ctrlKey || keyboardEvent.metaKey) {
+      return;
+    }
+
+    event.stopPropagation();
+  };
+  shadowRoot.addEventListener('keypress', stopUnmodifiedPrintableKeyboardPropagation);
+  shadowRoot.addEventListener('keyup', stopUnmodifiedPrintableKeyboardPropagation);
 
   const style = document.createElement('style');
   style.textContent = styles;

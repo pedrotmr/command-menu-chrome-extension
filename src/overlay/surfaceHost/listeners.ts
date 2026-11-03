@@ -119,6 +119,7 @@ export const attachOverlayListeners = (controller: SurfaceController, mountPoint
 
   const isolateOverlayTyping = (event: globalThis.KeyboardEvent) => {
     if (
+      !event.isTrusted ||
       event.key.length !== 1 ||
       event.altKey ||
       event.ctrlKey ||
