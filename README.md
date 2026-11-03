@@ -48,6 +48,8 @@ The Command Bar and Tab Switcher use the same tokens and typography, with separa
 
 For browser connection checks, build-directory verification, and the reusable CSS/focus fixture, see [Extension validation](docs/extension-validation.md).
 
+For the macOS Chrome/Helium Control+Tab helper, see [Profile shortcut helper](docs/profile-shortcut-helper.md). It previews changes by default; its tests use temporary profiles.
+
 Requires Node.js 20.19+ or 22.12+ and npm.
 
 ```bash
@@ -59,6 +61,8 @@ npm test
 `npm test` exercises background message contracts, concurrent mutations, failed storage writes, safe bulk-close confirmations, search ranking, tab-name recovery, provider URLs, navigation parsing, theme completeness, and WCAG AA contrast for built-in light/dark palettes. It also reports p50/p95 local-search timings for synthetic sets of 2,300 and 10,000 tabs. These algorithm timings do not replace profiling the extension in Chrome. Hard performance budgets run separately with `npm run test:benchmark`.
 
 Install the isolated test browser with `npx playwright install chromium`, then run `npm run test:e2e`. Browser tests load the production extension and cover the overlay, keyboard activation, focus restoration, saved-page failure/retry/revocation, stale responses, bulk-close recovery, worker restart, and a complete browser restart with restored tab names. Permission/data failures and response ordering use controlled boundary simulations; real toolbar action and ordinary Chrome APIs run unchanged. No personal browser profile is used.
+
+The browser suite also checks fresh-install shortcut registration, allowing the deliberately reserved Cmd/Ctrl+T suggestion to remain unassigned. A focused macOS CI job checks the registered Control+A shortcut and stored `mac:Ctrl+A` notation; it does not verify activation by a physical keypress.
 
 To prepare a distributable ZIP, run `npm run package:extension`. This requires the `zip` command and runs lint, formatting, type checks, unit/integration tests, the production build, and browser tests before creating `release/command-menu-<version>.zip`. Third-party notices and font licenses ship inside the package. The command prints its SHA-256 checksum. CI runs the browser suite after building as well. Publishing to the Chrome Web Store remains a separate account and listing operation.
 

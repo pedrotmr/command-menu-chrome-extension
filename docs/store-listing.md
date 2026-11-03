@@ -1,13 +1,29 @@
 # Shortcuts
 
-Suggested shortcuts: **Control+A** for the tab switcher and **Cmd+T** for the command menu (**Ctrl+T** on Windows/Linux). Control+A replaces Select All on Windows/Linux when assigned. Chrome may reserve the new-tab shortcut; check assignments at `chrome://extensions/shortcuts` and choose another if needed.
+Suggested shortcuts: **Control+A** for tabs; **Cmd+T** for commands (**Ctrl+T** on Windows/Linux). Customize at `chrome://extensions/shortcuts`. Chrome may reserve Cmd/Ctrl+T. On Windows/Linux, Control+A replaces Select All when assigned.
 
-Want **Control+Tab** instead?
+## Want Ctrl+Tab?
 
-1. At `chrome://extensions/shortcuts`, assign **Control+A** to **Open the tab switcher**.
-2. Open `chrome://version` and copy **Profile Path**.
-3. Quit the browser. Back up the `Preferences` file in that folder, then open it in a text editor.
-4. In `extensions.commands`, find Command Menu's `open-tab-switcher` entry. Rename `mac:Ctrl+A` → `mac:Ctrl+Tab`, `windows:Ctrl+A` → `windows:Ctrl+Tab`, or `linux:Ctrl+A` → `linux:Ctrl+Tab`. Repeat under `account_values` if present. Leave other shortcuts unchanged; stop if Ctrl+Tab is already assigned.
-5. Save and reopen the browser.
+Chrome doesn't let extensions set Ctrl+Tab by default. First, assign **Control+A** to **Open the tab switcher** at `chrome://extensions/shortcuts`.
 
-This optional workaround can reset after updates or sync. The switcher works on regular web pages. Restore a shortcut at `chrome://extensions/shortcuts` to undo it.
+### Mac
+
+1. Quit Chrome with **Cmd+Q**.
+2. Back up and open `~/Library/Application Support/Google/Chrome/Default/Preferences` in a plain-text editor.
+3. In Command Menu's `open-tab-switcher` entry, change `mac:Ctrl+A` to `mac:Ctrl+Tab`. Save and reopen Chrome.
+
+### Windows
+
+1. Quit Chrome completely.
+2. Back up and open `%LOCALAPPDATA%\Google\Chrome\User Data\Default\Preferences` in Notepad.
+3. In Command Menu's `open-tab-switcher` entry, change `windows:Ctrl+A` to `windows:Ctrl+Tab`. Save and reopen Chrome.
+
+### Linux
+
+1. Quit Chrome completely.
+2. Back up and open `~/.config/google-chrome/Default/Preferences` in a text editor.
+3. In Command Menu's `open-tab-switcher` entry, change `linux:Ctrl+A` to `linux:Ctrl+Tab`. Save and reopen Chrome.
+
+Different profile or browser? Use **Profile Path** from `chrome://version` before quitting.
+
+Change only this extension's binding, including a matching copy under `account_values`. If Ctrl+Tab is already assigned, stop. Updates or sync may reset this setup. Undo it at `chrome://extensions/shortcuts`.
