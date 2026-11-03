@@ -1,6 +1,6 @@
 # Shortcuts
 
-Suggested shortcuts: **Control+A** for tabs; **Cmd+T** for commands (**Ctrl+T** on Windows/Linux). Customize at `chrome://extensions/shortcuts`. Chrome may reserve Cmd/Ctrl+T. On Windows/Linux, Control+A replaces Select All.
+Suggested shortcuts: **Control+A** for tabs; **Cmd+T** for commands (**Ctrl+T** on Windows/Linux). Customize at `chrome://extensions/shortcuts`. Chrome may reserve Cmd/Ctrl+T. On Windows/Linux, Control+A replaces Select All when assigned.
 
 ## Want Ctrl+Tab?
 

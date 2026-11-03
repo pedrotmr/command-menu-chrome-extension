@@ -1,3 +1,3 @@
 # Use Control+Tab
 
-Follow the three steps for your operating system in the [store description](store-listing.md).
+See the [store description](store-listing.md) for the prerequisite, three steps for your operating system, and setup notes.
