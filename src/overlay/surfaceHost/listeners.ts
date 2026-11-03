@@ -80,6 +80,10 @@ export const attachOverlayListeners = (controller: SurfaceController, mountPoint
     return false;
   };
 
+  const isUnmodifiedPrintableKey = (event: globalThis.KeyboardEvent): boolean => {
+    return event.isTrusted && event.key.length === 1 && !event.altKey && !event.ctrlKey && !event.metaKey;
+  };
+
   const closeOnEscape = (event: globalThis.KeyboardEvent) => {
     if (!event.isTrusted) return;
     if (
@@ -117,13 +121,9 @@ export const attachOverlayListeners = (controller: SurfaceController, mountPoint
     }, 0);
   };
 
-  const isolateOverlayTyping = (event: globalThis.KeyboardEvent) => {
+  const isolateOverlayKeyboardEvent = (event: globalThis.KeyboardEvent) => {
     if (
-      !event.isTrusted ||
-      event.key.length !== 1 ||
-      event.altKey ||
-      event.ctrlKey ||
-      event.metaKey ||
+      !isUnmodifiedPrintableKey(event) ||
       bridge.surfaceOpenHandler?.() !== true ||
       !event.composedPath().includes(host)
     ) {
@@ -134,7 +134,7 @@ export const attachOverlayListeners = (controller: SurfaceController, mountPoint
     const activeElement = shadowRoot instanceof ShadowRoot ? shadowRoot.activeElement : null;
 
     if (activeElement instanceof Element && mountPoint.contains(activeElement)) {
-      const isolatedEvent = new KeyboardEvent('keydown', {
+      const isolatedEvent = new KeyboardEvent(event.type, {
         key: event.key,
         code: event.code,
         location: event.location,
@@ -148,7 +148,7 @@ export const attachOverlayListeners = (controller: SurfaceController, mountPoint
         keyCode: event.keyCode,
         which: event.which,
         bubbles: true,
-        cancelable: true,
+        cancelable: event.cancelable,
         composed: false,
       });
 
@@ -162,13 +162,17 @@ export const attachOverlayListeners = (controller: SurfaceController, mountPoint
     event.stopImmediatePropagation();
   };
 
-  window.addEventListener('keydown', isolateOverlayTyping, true);
+  window.addEventListener('keydown', isolateOverlayKeyboardEvent, true);
+  window.addEventListener('keypress', isolateOverlayKeyboardEvent, true);
+  window.addEventListener('keyup', isolateOverlayKeyboardEvent, true);
   window.addEventListener('keydown', closeOnEscape, true);
   chrome.runtime.onMessage.addListener(onMessage);
 
   return () => {
     chrome.runtime.onMessage.removeListener(onMessage);
-    window.removeEventListener('keydown', isolateOverlayTyping, true);
+    window.removeEventListener('keydown', isolateOverlayKeyboardEvent, true);
+    window.removeEventListener('keypress', isolateOverlayKeyboardEvent, true);
+    window.removeEventListener('keyup', isolateOverlayKeyboardEvent, true);
     window.removeEventListener('keydown', closeOnEscape, true);
   };
 };
