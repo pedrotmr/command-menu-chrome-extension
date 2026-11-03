@@ -25,4 +25,4 @@ If verification fails after replacement, the error identifies the backup. Restor
 
 If macOS reports `Operation not permitted`, grant the app running this command access to the browser's data and retry. If a previous interrupted run left `Preferences.keybar.lock`, confirm that helper and browser have exited before removing that lock.
 
-For manual steps and shortcut limitations, see the [store description](store-listing.md).
+For manual setup steps, see the [Control+Tab setup guide](ctrl-tab-setup.md). For shortcut limitations, see the [store description](store-listing.md).
