@@ -36,7 +36,7 @@ All three listings currently disclose no collection or use of user data. These a
 
 Keybar brings tab search and browser commands together in one keyboard-first Command Bar.
 
-Open the Command Bar from the Keybar extension button or its keyboard shortcut on a regular web page. On Chrome and extension pages, the button and Command Bar shortcut open the popup; the Tab Switcher shortcut does nothing on those pages. Chrome may reserve the suggested `Ctrl+T` / `Command+T` shortcut, so check or change it at `chrome://extensions/shortcuts`. The Tab Switcher opens on regular web pages with its separate `Control+A` shortcut.
+Open the Command Bar from the Keybar extension button or an assigned keyboard shortcut on a regular web page. On Chrome and extension pages, the button and Command Bar shortcut open the popup; the Tab Switcher shortcut does nothing on those pages. The manifest suggests `Ctrl+T` / `Command+T`, which Chrome also uses to open a new tab; Chrome shortcuts take priority over extension commands, so that suggestion may remain unassigned. Choose another shortcut at `chrome://extensions/shortcuts` if needed. The Tab Switcher opens on regular web pages with its separate `Control+A` shortcut. [Commands API](https://developer.chrome.com/docs/extensions/reference/api/commands) · [Chrome keyboard shortcuts](https://support.google.com/chrome/answer/157179?hl=en)
 
 Type to find open tabs, enter a web address, or search browser commands. Rename, pin, mute, move, group, duplicate, or close tabs; copy a page title or URL; navigate, adjust zoom, manage windows, or use Chrome's native Split View when that API is available.
 

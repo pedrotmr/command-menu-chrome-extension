@@ -4,7 +4,7 @@ Keybar is a keyboard-first command surface for Chrome, built with React, TypeScr
 
 ## Open it
 
-- On a regular web page, click the Keybar action or press **Ctrl+T** (Windows/Linux) / **Cmd+T** (macOS) to open the compact, centered Command Bar overlay. Chrome may keep its native new-tab shortcut; check the assignment at `chrome://extensions/shortcuts`.
+- On a regular web page, click the Keybar action or use an assigned shortcut to open the compact, centered Command Bar overlay. The manifest suggests **Ctrl+T** (Windows/Linux) / **Cmd+T** (macOS), which Chrome also uses to open a new tab; Chrome shortcuts take priority over extension commands, so that suggestion may remain unassigned. Choose another shortcut at `chrome://extensions/shortcuts`. See [Chrome's commands API](https://developer.chrome.com/docs/extensions/reference/api/commands) and [keyboard shortcuts](https://support.google.com/chrome/answer/157179?hl=en).
 - On Chrome and extension pages, the same action opens the extension popup because Chrome does not allow injected overlays on those pages.
 - Open the separate Tab Switcher with **Control+A** on regular web pages, including macOS. It has no button in the Command Bar, and its shortcut does nothing on Chrome or extension pages.
 - Use **↑ / ↓** and **Enter** in the Command Bar. In the Tab Switcher, use **← / →** or **↑ / ↓** to cycle, then **Enter** to switch. **Escape** closes either surface. Chrome lets users change both shortcuts at `chrome://extensions/shortcuts`.
@@ -33,7 +33,7 @@ Choose **System**, **Light**, or **Dark**, then select a palette. **Plain** is t
 
 To add a palette, add its light/dark source colors and lightweight swatch colors to the theme definitions in `src/themes/index.ts`. Settings discovers palettes from the registry; full contrast-adjusted token maps are memoized on first use, and components do not need palette-specific styles.
 
-Suggested defaults are **Control+A** for the Tab Switcher and **Cmd+T** on Mac / **Ctrl+T** on Windows/Linux for Keybar. Existing installations can retain their previous assignments. Check or change them at `chrome://extensions/shortcuts`; Chrome may reserve the new-tab shortcut. For optional **Ctrl+Tab**, see [setup steps](docs/ctrl-tab-setup.md). The [Chrome Web Store listing draft](docs/store-listing.md) contains the product copy.
+Suggested defaults are **Control+A** for the Tab Switcher and **Cmd+T** on Mac / **Ctrl+T** on Windows/Linux for Keybar. Existing installations can retain their previous assignments. Check or change them at `chrome://extensions/shortcuts`; Chrome may leave its new-tab shortcut unavailable to the extension. For optional **Ctrl+Tab**, see [setup steps](docs/ctrl-tab-setup.md). The [Chrome Web Store listing draft](docs/store-listing.md) contains the product copy.
 
 The Command Bar and Tab Switcher use the same tokens and typography, with separate layouts. Web-page overlays render in a closed Shadow DOM inside a browser top-layer popover so site CSS does not style the extension UI. Native Chrome pages use the extension popup.
 
