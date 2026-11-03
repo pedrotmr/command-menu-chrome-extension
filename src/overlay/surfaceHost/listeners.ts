@@ -129,7 +129,36 @@ export const attachOverlayListeners = (controller: SurfaceController, mountPoint
       return;
     }
 
-    event.stopPropagation();
+    const shadowRoot = mountPoint.getRootNode();
+    const activeElement = shadowRoot instanceof ShadowRoot ? shadowRoot.activeElement : null;
+
+    if (activeElement instanceof HTMLElement && mountPoint.contains(activeElement)) {
+      const isolatedEvent = new KeyboardEvent('keydown', {
+        key: event.key,
+        code: event.code,
+        location: event.location,
+        ctrlKey: event.ctrlKey,
+        shiftKey: event.shiftKey,
+        altKey: event.altKey,
+        metaKey: event.metaKey,
+        repeat: event.repeat,
+        isComposing: event.isComposing,
+        charCode: event.charCode,
+        keyCode: event.keyCode,
+        which: event.which,
+        bubbles: true,
+        cancelable: true,
+        composed: false,
+      });
+
+      activeElement.dispatchEvent(isolatedEvent);
+
+      if (isolatedEvent.defaultPrevented) {
+        event.preventDefault();
+      }
+    }
+
+    event.stopImmediatePropagation();
   };
 
   window.addEventListener('keydown', isolateOverlayTyping, true);
