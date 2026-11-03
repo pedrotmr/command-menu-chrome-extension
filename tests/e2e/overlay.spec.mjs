@@ -5,7 +5,7 @@ test('real action injects isolated overlay, restores focus, reopens and executes
   await context.route('https://release.test/**', (route) =>
     route.fulfill({
       contentType: 'text/html',
-      body: `<title>${route.request().url().endsWith('target') ? 'Release target' : 'Release source'}</title><input id="page-input" aria-label="Page input"><button>Page button</button>`,
+      body: `<title>${route.request().url().endsWith('target') ? 'Release target' : 'Release source'}</title><input id="page-input" aria-label="Page input"><button>Page button</button><script>window.pageKeyboardEvents = []; document.addEventListener('keydown', event => { if (event.isTrusted && event.key.length === 1 && !event.altKey && !event.ctrlKey && !event.metaKey) document.querySelector('#page-input').value += event.key }, true); document.addEventListener('keypress', event => { if (event.key.length === 1 && !event.altKey && !event.ctrlKey && !event.metaKey) window.pageKeyboardEvents.push('keypress') }, true); document.addEventListener('keyup', event => { if (event.key.length === 1 && !event.altKey && !event.ctrlKey && !event.metaKey) window.pageKeyboardEvents.push('keyup') }, true)</script>`,
     }),
   );
   const target = await context.newPage();
@@ -31,14 +31,35 @@ test('real action injects isolated overlay, restores focus, reopens and executes
   await expect(host).toBeHidden();
   await expect(page.getByRole('textbox', { name: 'Page input' })).toBeFocused();
   expect(await page.evaluate(() => document.body.inert)).toBe(false);
+  await page.evaluate(() => {
+    window.pageKeyboardEvents = [];
+  });
   await open();
   await expect(host).toBeVisible();
   await page.keyboard.type('Release target');
+  await expect(page.getByRole('textbox', { name: 'Page input' })).toHaveValue('');
+  await expect.poll(() => page.evaluate(() => window.pageKeyboardEvents)).toEqual([]);
   await expect
     .poll(async () =>
       (await axNodes()).some((node) => node.role?.value === 'option' && node.name?.value.includes('Release target')),
     )
     .toBe(true);
+  await page.keyboard.press('Shift+F10');
+  await page.evaluate((hostId) => {
+    document
+      .getElementById(hostId)
+      ?.dispatchEvent(new KeyboardEvent('keydown', { key: 'r', bubbles: true, composed: true }));
+  }, `${id}-command-center-surface`);
+  await page.keyboard.press('Enter');
+  await expect.poll(async () => (await axNodes()).some((node) => node.name?.value === 'Destination')).toBe(true);
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Shift+F10');
+  await page.keyboard.type('r');
+  await page.keyboard.press('Enter');
+  await expect.poll(async () => (await axNodes()).some((node) => node.name?.value === 'Custom tab name')).toBe(true);
+  await expect(page.getByRole('textbox', { name: 'Page input' })).toHaveValue('');
+  await expect.poll(() => page.evaluate(() => window.pageKeyboardEvents)).toEqual([]);
+  await page.keyboard.press('Escape');
   await page.keyboard.press('Enter');
   await expect(host).toBeHidden();
   await expect
