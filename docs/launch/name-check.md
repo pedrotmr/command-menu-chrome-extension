@@ -130,7 +130,7 @@ These are database screens. They do not cover phonetic or translated matches in 
 
 ## Adoption in this PR
 
-The repository now uses **Keybar** for product-facing names and internal product identifiers. The manifest, popup, permissions copy, README, product/design documents, store listing, font names, overlay attributes, test prefixes, and release ZIP name are updated together. The original 1024-pixel PNG and editable Icon Composer asset are preserved under `assets/branding/`; resized 16, 48, and 128 pixel icons are wired into the extension manifest. The Chrome Web Store listing title is **Keybar**.
+The repository now uses **Keybar** for product-facing names and internal product identifiers. The manifest, popup, [overlay permission notification](../../src/components/CommandPalette/useCommandPaletteModel.ts), README, product/design documents, store listing, font names, overlay attributes, test prefixes, and release ZIP name are updated together. The original 1024-pixel PNG and editable Icon Composer asset are preserved under `assets/branding/`; resized 16, 48, and 128 pixel icons are wired into the extension manifest. The Chrome Web Store draft listing title is **Keybar**.
 
 The GitHub repository and local clone folder use lowercase `keybar`. The product name remains **Keybar**. The former working label is retained above only to explain why the name changed and to distinguish it from the DevTools feature.
 
