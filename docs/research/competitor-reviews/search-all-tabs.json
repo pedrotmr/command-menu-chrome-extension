@@ -1,0 +1,65 @@
+{
+  "extension": "Search all Tabs",
+  "url": "https://chromewebstore.google.com/detail/ndfnfhnlgoocpbbjjjfmiojdfcgcfomn/reviews",
+  "collected_at": "2026-11-02",
+  "status": "ok",
+  "total_reviews_seen": 48,
+  "sort_runs": {"recent_load_more_clicks": 4, "helpful_load_more_clicks": 4, "cap_reached": false, "language": "English (CWS default)", "show_more_expanded": true},
+  "reviews": [
+    {
+      "stars": 3,
+      "date": "2025-09-25",
+      "text": "It searches all tabs quickly and yet fails to be usable ...\nI need a utility to bring me to the tab (or tabs) with a match for my search term, and when I get there, I expect to see the matches highlighted. This tool does NOT do that, although it seems a simple thing. It simply opens the tab and then I have to use ctrl-f in that tab and type my search all over again to locate the position in the tab where the matching text is.\nAlso, the tool fails to record history of previous searches. User experience would be much improved if the previous search remained available when re-opening the extension to iterate and perfect the search and get more targeted results.",
+      "dev_reply": "",
+      "fixed_per_dev": null,
+      "tags": ["no match highlight", "ctrl+f needed after jump", "no search history", "previous search not kept", "praise: search speed"],
+      "mentions_switching": false,
+      "switch_from": "",
+      "switch_to": ""
+    },
+    {
+      "stars": 4,
+      "date": "2025-07-19",
+      "text": "Love the extension! Would be helpful if the snippet showed 10–15 words before and after the keyword for better context.",
+      "dev_reply": "",
+      "fixed_per_dev": null,
+      "tags": ["snippet context", "wider snippet request", "praise: overall"],
+      "mentions_switching": false,
+      "switch_from": "",
+      "switch_to": ""
+    },
+    {
+      "stars": 5,
+      "date": "2025-07-10",
+      "text": "Perfect\nEven faster then Google :))",
+      "dev_reply": "",
+      "fixed_per_dev": null,
+      "tags": ["praise: speed", "compared to google search", "praise: overall"],
+      "mentions_switching": false,
+      "switch_from": "",
+      "switch_to": ""
+    },
+    {
+      "stars": 5,
+      "date": "2025-06-09",
+      "text": "works and I love the feature that takes all the tabs that match your query and pops out a duplicate window with all of them!",
+      "dev_reply": "",
+      "fixed_per_dev": null,
+      "tags": ["praise: pop out matches", "matches in new window", "bulk action on results"],
+      "mentions_switching": false,
+      "switch_from": "",
+      "switch_to": ""
+    },
+    {
+      "stars": 2,
+      "date": "2024-08-20",
+      "text": "Indexing all pages from start once the search page is closed and opened? Is that by design or am I missing something?",
+      "dev_reply": "",
+      "fixed_per_dev": null,
+      "tags": ["older-but-ongoing", "re-indexes on every open", "state not kept between opens", "design question"],
+      "mentions_switching": false,
+      "switch_from": "",
+      "switch_to": ""
+    }
+  ]
+}

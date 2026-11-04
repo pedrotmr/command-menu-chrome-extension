@@ -1,0 +1,16 @@
+{
+  "extension": "Surfingkeys",
+  "url": "https://chromewebstore.google.com/detail/gfbliohnnapiefjpjlpjnehglfpaknnc/reviews",
+  "collected_at": "2026-11-02",
+  "status": "ok",
+  "total_reviews_seen": 110,
+  "sort_runs": {"recent_load_more_clicks": 10, "helpful_load_more_clicks": 10, "cap_reached": false, "language": "English (CWS default)", "show_more_expanded": true},
+  "reviews": [
+    {"stars": 4, "date": "2026-04-01", "text": "great but some components (github video) this plugin still couldn't detect yet", "dev_reply": "", "fixed_per_dev": null, "tags": ["hint detection gap", "github video not detected", "praise: great overall"], "mentions_switching": false, "switch_from": "", "switch_to": ""},
+    {"stars": 5, "date": "2026-02-03", "text": "The best extension that I can't live without.\nI even purchased its Safari version to support the developer.\nGood for you!", "dev_reply": "", "fixed_per_dev": null, "tags": ["praise: cannot live without", "bought safari version", "supports developer", "paid safari app"], "mentions_switching": false, "switch_from": "", "switch_to": ""},
+    {"stars": 5, "date": "2025-12-31", "text": "This rules. An amazing way to up your Vim skills as a newcomer as well. I am having a blast and even learning a thing or to about writing extensions along the way.", "dev_reply": "", "fixed_per_dev": null, "tags": ["vim learning aid", "newcomer friendly", "learning to write extensions", "praise: fun"], "mentions_switching": false, "switch_from": "", "switch_to": ""},
+    {"stars": 5, "date": "2025-09-30", "text": "way better than any other similar extension, and it's open source.", "dev_reply": "", "fixed_per_dev": null, "tags": ["better than alternatives", "open source", "praise: overall"], "mentions_switching": false, "switch_from": "", "switch_to": ""},
+    {"stars": 5, "date": "2024-07-13", "text": "The visual mode and vim-text box is great. I was a vimium user and after using it for 5min I switched.", "dev_reply": "", "fixed_per_dev": null, "tags": ["switched from vimium", "visual mode", "vim text box in inputs", "quick conversion", "older-but-ongoing"], "mentions_switching": true, "switch_from": "vimium", "switch_to": "Surfingkeys"},
+    {"stars": 5, "date": "2023-12-19", "text": "The only extension you need to surf the web. \nPlus it also helped me to learn more JS and CSS.", "dev_reply": "", "fixed_per_dev": null, "tags": ["learned js and css", "all-in-one browsing", "scripting as learning", "older-but-ongoing"], "mentions_switching": false, "switch_from": "", "switch_to": ""}
+  ]
+}

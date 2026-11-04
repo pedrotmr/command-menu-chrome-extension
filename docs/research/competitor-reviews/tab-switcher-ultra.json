@@ -1,0 +1,131 @@
+{
+  "extension": "Tab Switcher Ultra",
+  "url": "https://chromewebstore.google.com/detail/egfpenlgkaahbopdghjbmkfbpkfogeje/reviews",
+  "collected_at": "2026-11-02",
+  "status": "ok",
+  "total_reviews_seen": 20,
+  "sort_runs": {"recent_load_more_clicks": 1, "helpful_load_more_clicks": 1, "cap_reached": false, "language": "English (CWS default)", "show_more_expanded": true},
+  "reviews": [
+    {
+      "stars": 5,
+      "date": "2026-10-13",
+      "text": "Quickey quit working and luckily I found this... I like this even more because it gives thumbnails of pages to switch to and it does not pop up unobtrusively... it's right in your face where you want it.",
+      "dev_reply": "",
+      "fixed_per_dev": null,
+      "tags": ["praise: thumbnail previews", "praise: prominent ui", "quickey stopped working", "switched from quickey"],
+      "mentions_switching": true,
+      "switch_from": "Quickey",
+      "switch_to": ""
+    },
+    {
+      "stars": 1,
+      "date": "2026-10-06",
+      "text": "Does not work on Helium browser which is chromium-based so it should work. The UI does not pop up. I hope the dev gets this working. It would be great and don't see another option in the available extensions.",
+      "dev_reply": "Leaving a 1 star review for a feature request is not the way to do it...",
+      "fixed_per_dev": null,
+      "tags": ["helium browser unsupported", "ui does not pop up", "chromium compatibility", "no alternative found"],
+      "mentions_switching": false,
+      "switch_from": "",
+      "switch_to": ""
+    },
+    {
+      "stars": 2,
+      "date": "2026-10-04",
+      "text": "- switching between two recent tabs only\n- no GUI appeared - the promised advanced functionality doesn't work",
+      "dev_reply": "Is this true on regular websites? Only on special pages where the UI cannot render does it automatically switch to the last one.",
+      "fixed_per_dev": null,
+      "tags": ["ui does not appear", "only last two tabs", "advanced switching broken", "special pages no ui"],
+      "mentions_switching": false,
+      "switch_from": "",
+      "switch_to": ""
+    },
+    {
+      "stars": 1,
+      "date": "2026-10-04",
+      "text": "How come it does not show preview thumbnail like the demo video?",
+      "dev_reply": "Are you saying it switches but doesn't display the UI? On a few special Chrome pages, like this one, Chrome does not allow the UI to display - but on all regular websites it should display.",
+      "fixed_per_dev": null,
+      "tags": ["no preview thumbnails", "ui missing vs demo video", "special pages no ui", "chrome blocks ui"],
+      "mentions_switching": false,
+      "switch_from": "",
+      "switch_to": ""
+    },
+    {
+      "stars": 1,
+      "date": "2026-07-13",
+      "text": "Did this thing stop working in latest chrome updates? It does nothing.",
+      "dev_reply": "No, it should still be working? Check to make sure your shortcuts are still properly set: chrome://extensions/shortcuts",
+      "fixed_per_dev": null,
+      "tags": ["stopped working", "chrome update", "does nothing", "shortcut setup"],
+      "mentions_switching": false,
+      "switch_from": "",
+      "switch_to": ""
+    },
+    {
+      "stars": 5,
+      "date": "2026-03-14",
+      "text": "option to select tabs with audio 👍👍\n\nIs there a way for alt+q to toggle the menu?  would like to be able to mouse over to the tab i want.",
+      "dev_reply": "",
+      "fixed_per_dev": null,
+      "tags": ["praise: audio tab option", "alt+q toggle request", "mouse selection", "menu toggle"],
+      "mentions_switching": false,
+      "switch_from": "",
+      "switch_to": ""
+    },
+    {
+      "stars": 4,
+      "date": "2025-09-15",
+      "text": "On Chrome 140 on my side, the Alt+Q (or any other shortcut) works only around half of the times. The other half it will switch only between the second-to-last and the last used tab.",
+      "dev_reply": "",
+      "fixed_per_dev": null,
+      "tags": ["shortcut unreliable", "alt+q fails half the time", "falls back to last two tabs", "chrome 140"],
+      "mentions_switching": false,
+      "switch_from": "",
+      "switch_to": ""
+    },
+    {
+      "stars": 4,
+      "date": "2025-07-28",
+      "text": "Works flawlessly on my Mac. However, I don’t see the Tab Window that’s shown on the extension page and available on Windows. Option + Q works fine, but that specific Tab Window seems to be missing.",
+      "dev_reply": "",
+      "fixed_per_dev": null,
+      "tags": ["mac tab window missing", "platform parity gap", "option+q works", "praise: works on mac"],
+      "mentions_switching": false,
+      "switch_from": "",
+      "switch_to": ""
+    },
+    {
+      "stars": 5,
+      "date": "2025-07-21",
+      "text": "It's awesome. \n\n[Feature request]: Allow the UI to scale vertically too, beyond 50-ish tabs I can barely see recent tabs",
+      "dev_reply": "",
+      "fixed_per_dev": null,
+      "tags": ["ui vertical scaling request", "50+ tabs hard to see", "recent tabs hidden", "praise: overall"],
+      "mentions_switching": false,
+      "switch_from": "",
+      "switch_to": ""
+    },
+    {
+      "stars": 5,
+      "date": "2025-05-23",
+      "text": "Works super well! Microsoft Edge has this behavior on Windows and I wish other browsers / operating systems had it. The only complaint is that I wish there was a way to limit the number of tabs visible like you can in Windows, but this still works really well.",
+      "dev_reply": "Thanks for the nice review 😊 Limiting visible tabs is actually something I'm working on! Just trying to figure out the UX for it.",
+      "fixed_per_dev": null,
+      "tags": ["limit visible tabs request", "edge windows alt+tab parity", "praise: works well", "dev working on it"],
+      "mentions_switching": false,
+      "switch_from": "",
+      "switch_to": ""
+    },
+    {
+      "stars": 5,
+      "date": "2025-05-21",
+      "text": "Useful extension! \n\nKey placement is perfect.\nMaybe you will be confused with Alt+Tab at first but in time you will get used to using Alt+Q. 10/10",
+      "dev_reply": "",
+      "fixed_per_dev": null,
+      "tags": ["praise: key placement", "alt+q shortcut", "alt+tab habit conflict", "learning curve"],
+      "mentions_switching": false,
+      "switch_from": "",
+      "switch_to": ""
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "extension": "TabStacks: tab and history search",
+  "url": "https://chromewebstore.google.com/detail/dlnnmaeafoliffblhenabcijmogfefha/reviews",
+  "collected_at": "2026-11-02",
+  "status": "ok",
+  "total_reviews_seen": 16,
+  "sort_runs": {"recent_load_more_clicks": 1, "helpful_load_more_clicks": 1, "cap_reached": false, "language": "English (CWS default)", "show_more_expanded": true},
+  "reviews": [
+    {
+      "stars": 3,
+      "date": "2026-05-29",
+      "text": "The \"Close popup on tab change\" setting doesn't seem to work for me. Even when set to \"Hold open the Tab Stacks popup on change\", the popup closes whenever I select a tab from the search results.\n\nIs this a bug? I'd like the popup to stay open so I can quickly switch between matching tabs while searching for the right one.",
+      "dev_reply": "",
+      "fixed_per_dev": null,
+      "tags": ["close popup setting ignored", "popup closes on tab select", "hold open option broken", "quick switch between matches", "possible bug"],
+      "mentions_switching": false,
+      "switch_from": "",
+      "switch_to": ""
+    },
+    {
+      "stars": 2,
+      "date": "2026-03-31",
+      "text": "Very strict search, no advantage over the default search, if I type \"gthub\" it won't find \"github\".",
+      "dev_reply": "",
+      "fixed_per_dev": null,
+      "tags": ["strict search", "no typo tolerance", "no fuzzy matching", "no advantage over default search"],
+      "mentions_switching": false,
+      "switch_from": "",
+      "switch_to": ""
+    },
+    {
+      "stars": 5,
+      "date": "2025-11-17",
+      "text": "Fantastic. Everything that I need.  The shortcut keys are especially handy",
+      "dev_reply": "",
+      "fixed_per_dev": null,
+      "tags": ["praise: shortcut keys", "keyboard workflow", "praise: covers needs"],
+      "mentions_switching": false,
+      "switch_from": "",
+      "switch_to": ""
+    },
+    {
+      "stars": 5,
+      "date": "2025-08-25",
+      "text": "Add bookmarks too!\nCool extension",
+      "dev_reply": "",
+      "fixed_per_dev": null,
+      "tags": ["bookmark search request", "feature request", "praise: overall"],
+      "mentions_switching": false,
+      "switch_from": "",
+      "switch_to": ""
+    }
+  ]
+}

@@ -1,0 +1,87 @@
+{
+  "extension": "Tab Flick Lite",
+  "url": "https://chromewebstore.google.com/detail/kdddoanokjocdkbkmgnkkcemjepknlgm/reviews",
+  "collected_at": "2026-11-02",
+  "status": "ok",
+  "total_reviews_seen": 9,
+  "sort_runs": {"recent_load_more_clicks": 0, "helpful_load_more_clicks": 0, "cap_reached": false, "language": "English (CWS default)", "show_more_expanded": true},
+  "reviews": [
+    {
+      "stars": 5,
+      "date": "2026-08-30",
+      "text": "Tab previews don't work for me in helium, but this is a fantastic extension and it works so much better than anything else I've tested.",
+      "dev_reply": "",
+      "fixed_per_dev": null,
+      "tags": ["tab previews fail in helium", "helium browser", "praise: better than alternatives", "browser compatibility"],
+      "mentions_switching": false,
+      "switch_from": "",
+      "switch_to": ""
+    },
+    {
+      "stars": 5,
+      "date": "2026-05-21",
+      "text": "Finally a mru tab switcher with thumbnail preview. Great! This one was hard to find.",
+      "dev_reply": "",
+      "fixed_per_dev": null,
+      "tags": ["praise: mru tab switching", "praise: thumbnail preview", "hard to find alternatives"],
+      "mentions_switching": false,
+      "switch_from": "",
+      "switch_to": ""
+    },
+    {
+      "stars": 5,
+      "date": "2026-04-02",
+      "text": "The closest you can get to ARC quick tab switcher. Should be built in if you ask me. Very good work!",
+      "dev_reply": "",
+      "fixed_per_dev": null,
+      "tags": ["arc quick switcher parity", "should be built into chrome", "praise: arc-like switching"],
+      "mentions_switching": false,
+      "switch_from": "",
+      "switch_to": ""
+    },
+    {
+      "stars": 5,
+      "date": "2026-02-18",
+      "text": "Works fine even on linux(fedora). I've been looking for this functionality for a long time.",
+      "dev_reply": "",
+      "fixed_per_dev": null,
+      "tags": ["works on linux", "fedora", "long-sought functionality"],
+      "mentions_switching": false,
+      "switch_from": "",
+      "switch_to": ""
+    },
+    {
+      "stars": 5,
+      "date": "2026-01-30",
+      "text": "Could you please support a new shortcut key like Ctrl + Alt + Q for keeping the tab switcher stay on the screen until you click on a tab just like the equivalent of Ctrl + Alt + Tab  and Alt + Tab of Windows. This will be very useful to assign hotkey to other programs like hotcorner.",
+      "dev_reply": "",
+      "fixed_per_dev": null,
+      "tags": ["sticky switcher request", "ctrl+alt+q shortcut request", "windows alt+tab parity", "hotkey for hot corner"],
+      "mentions_switching": false,
+      "switch_from": "",
+      "switch_to": ""
+    },
+    {
+      "stars": 5,
+      "date": "2026-01-12",
+      "text": "What was missing for me to have an Arc experience",
+      "dev_reply": "",
+      "fixed_per_dev": null,
+      "tags": ["arc experience in chrome", "fills missing feature", "arc comparison"],
+      "mentions_switching": false,
+      "switch_from": "",
+      "switch_to": ""
+    },
+    {
+      "stars": 5,
+      "date": "2025-10-21",
+      "text": "can you make it working with the latest ChatGPT Atlas browser?",
+      "dev_reply": "Thanks for you review! Unfortunately Chrome extension API does not work properly right now in the Atlas. But I will keep an eye on the updates in this browser and will fix when it will be possible.",
+      "fixed_per_dev": null,
+      "tags": ["atlas browser unsupported", "browser compatibility request", "chrome extension api limit", "dev: fix when possible"],
+      "mentions_switching": false,
+      "switch_from": "",
+      "switch_to": ""
+    }
+  ]
+}

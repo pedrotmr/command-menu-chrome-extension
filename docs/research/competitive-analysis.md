@@ -1,0 +1,81 @@
+# Competitive analysis: command menus and tab switching
+
+**Updated:** 3 November 2026 · **Research sample collected:** 2 November 2026 · **Product reviewed:** Command Menu (working name in the repo)
+
+## Read this first
+
+People value tools that get them to the right tab with almost no friction: strong fuzzy search, keyboard-first navigation, and a useful most-recently-used (MRU) switch. The Tab Switcher already has the basic quick-toggle behavior, and the Command Bar searches open tabs alongside browser commands. The gap is depth and proof: the switcher shows only five recent tabs from the current window, shortcut setup is left to Chrome, and the repo's synthetic search timings do not prove a fast on-screen response in everyday use.
+
+The clearest opportunity is to make the common path reliable and obvious: smooth shortcut setup, fast activation, understandable tab scope, and a larger or configurable MRU list if user testing supports it. Keep session saving and workspaces separate for now. Their reviews matter, but they describe a different job and carry data-loss and sync expectations that this product does not currently meet.
+
+## Competitive set
+
+| Product | Why it matters | What it offers | Observed size / feedback |
+|---|---|---|---|
+| [Quick Tabs](https://chromewebstore.google.com/detail/quick-tabs/jnjfeinjfmenlddahdjdmgpbokiacbbb) | Closest search-and-switch peer | Fuzzy tab search, MRU across windows, bookmarks/history, audio-tab search | 30K users; 8 kept reviews (thin) |
+| [QuicKey](https://chromewebstore.google.com/detail/quickey-%E2%80%93-the-quick-tab-s/ldlghkoiihaelfnggonhjnfiabmaficg) | Strongest MRU reference | Searchable recent list, quick last-two toggle, closed-tab/bookmark/history search | 10K users; 20 kept reviews |
+| [CLUT](https://chromewebstore.google.com/detail/clut-cycle-last-used-tabs/cobieddmkhhnbeldhncnfcgcaccmehgn) and [Switch Last Tabs](https://chromewebstore.google.com/detail/switch-last-tabs/odhjcgnlbagjllfbilicalpigimhdcll) | Single-purpose recent-tab toggles | Fast cycling between last-used tabs | 20K and 4K users; 24 and 33 kept reviews |
+| [Tab Manager Plus](https://chromewebstore.google.com/detail/tab-manager-plus-for-chro/cnkdjjdmfiffagllbiiilooaoofcoeff) | Visual, many-tabs alternative | Window overview, search, bulk tab actions | 200K users; 34 kept reviews |
+| [Vimium](https://chromewebstore.google.com/detail/vimium/dbepggeogbaibhgnhhndojpepiihcmeb) and [Shortkeys](https://chromewebstore.google.com/detail/shortkeys-custom-keyboard/logpjaacgmcbpdkdchjiaagddngobkck) | Keyboard-workflow alternatives | Page-level keyboard navigation, custom shortcuts, tab/search commands | 500K and 100K users; 30 and 37 kept reviews |
+| [Quick Command](https://chromewebstore.google.com/detail/quick-command-keyboard-la/kjmlobgnbaphcijfhdljpamkbnfahenh), [Command Palette (Arc-style)](https://chromewebstore.google.com/detail/kfjmdhmfemlhdgilboknjknpfnhnlodp), and [TabCmdr](https://tabcmdr.com/) | Direct command-palette references | Search and launch commands, tabs, or destinations | Quick Command: 6 users/2 ratings; Arc-style: 104/6; no comparable review sample |
+| [Chrome Tab Search](https://support.google.com/chrome/answer/2391819?hl=en-GB) | Free built-in substitute | Search tabs, jump to a result, manage tab groups | Native feature; no extension review sample |
+
+The review study is much stronger for tab switchers and tab managers than for Arc-style command menus. Quick Command and TabCmdr establish direct product comparisons, but the collected review sample cannot tell us what their users praise or request. Don't read the broad review counts below as a command-palette-only survey.
+
+## What users praise, and whether we have it
+
+These themes recur across the kept English review sample. Counts are reviews tagged with a theme in this sample, not estimates of how common an opinion is among all users.
+
+| What people value | Evidence from reviews | Keybar today | What to protect or improve |
+|---|---|---|---|
+| Fast keyboard-first switching | Praise in 24 extensions (89 reviews). A QuicKey reviewer: “Switch instantly between the two most recent tabs.” | **Partial.** The switcher returns to the previous tab on a quick press; longer navigation is limited to five tabs in the current window. | Keep the instant-toggle path; investigate configurable list size and cross-window scope. See [QuicKey](competitor-reviews/quickey.json) and [Quick Tabs](competitor-reviews/quick-tabs.json). |
+| Good fuzzy search over a large tab set | Praise in 15 extensions (43 reviews). A Quick Tabs reviewer says its search is “far superior” to Chrome's built-in tab switcher. | **Yes for open tabs.** The Command Bar fuzzy-searches tabs; recent-switcher results are a separate, smaller surface. | Make search quality and the difference between search and MRU obvious. Keep URL/title/custom-name matching useful. See [Quick Tabs](competitor-reviews/quick-tabs.json). |
+| Keyboard-first workflow that feels natural | Praise in 24 extensions (89 reviews); reviewers value familiar Alt-Tab-like switching and low learning effort. | **Yes in principle.** Both surfaces are keyboard-operated, but setup and discoverability still need work. | Show the assigned shortcut and a 1-step “try it” cue where users first open the extension. See [QuicKey](competitor-reviews/quickey.json). |
+| Straightforward, dependable behavior | Praise in 20 extensions (60 reviews). | **Partly evidenced.** The code has stale-result, repeat-action, storage, and tab-name recovery protections. Those safeguards do not establish reliability in users' browsers. | Protect the common flows and measure real extension/browser failures before making reliability claims. |
+| Lightweight, focused switching | Reviewers like tools that solve tab navigation without turning into a workspace system. | **A good fit.** The product is local-first and does not save or sync sessions. | Keep the command/switching path focused; treat full session management as a separate product decision. |
+
+The “free/no ads” praise appears in 12 extensions (18 reviews), but Keybar's price is not established in the repo. Treat it as **unknown**, not a current product advantage.
+
+## What people complain about or request
+
+| Complaint or request | Evidence in sample | Keybar status | Product implication |
+|---|---|---|---|
+| Shortcut conflicts, missing bindings, or shortcuts that stop working | Complaints in 12 extensions (17 reviews); also appears in recent QuicKey feedback. | **Known friction.** Chrome owns shortcut assignment; the suggested Ctrl/Cmd+T conflicts with new-tab behavior, and the app does not show the actual current binding. | Put shortcut setup and conflict guidance in onboarding/help. Display the assigned key and link to Chrome's shortcuts page. Avoid promising Ctrl+Tab. |
+| Slow, laggy, or stuck interactions | Complaints in 13 extensions (29 reviews). QuicKey reviewers report both instant switching and intermittent delays. | **Unproven risk.** Search is local and synthetic search benchmarks exist, but they do not measure open-to-focus or keystroke-to-paint. | Measure cold activation and query-to-visible-result with realistic tabs/windows before optimizing. |
+| Breakage after updates or stale results | Complaints in 16 extensions (45 reviews). | **Risk to manage.** Reliability guards exist in code; competitor failures don't prove our implementation has the same bugs. | Keep browser-version and service-worker restart coverage; surface recoverable errors clearly. Do not claim “never breaks.” |
+| Setup and learning curve | Complaints in 15 extensions (21 reviews). Some reviewers cannot tell which shortcut or popup mode they configured. | **Partly present.** The UI has several capabilities and shortcut setup goes through Chrome settings. | Explain the two surfaces and their shortcuts in plain language; show a first-use example. |
+| Window/profile confusion | Complaints in 10 extensions (17 reviews). Reviews mention mixed windows, popup windows, and profiles. | **Partial.** The dedicated switcher is current-window-only; Command Bar tab search is broader. Profiles remain isolated by Chrome. | State scope in the UI and test users who keep work split across windows. Consider cross-window MRU only if it helps without slowing the common case. |
+| Searchable recently closed tabs | Requested across several switchers; QuicKey includes closed-tab search. | **Missing.** There is one-command restore of the last closed tab, not a searchable list. | A bounded recent-closed search is a plausible small extension of the current navigation job. Validate demand before adding it. |
+| Saved sessions, export, and sync | Requests in tab/session managers: session saving/restoration (11 extensions, 38 reviews); export/backup (7, 27); sync (6, 10). | **Missing by design.** Keybar does not archive or sync tab sets. | Do not pitch this as a pain we solve. These users may want a session manager; full support creates durability, backup, and sync expectations. |
+| Permission/privacy concern | Complaints in 9 extensions (11 reviews). | **Relative strength in implementation.** No host permissions or background network; bookmarks/history/session access is optional and requested for those workflows. | Explain local search and just-in-time permissions in store/onboarding copy, and keep claims aligned with the manifest. |
+| Paywalls, pricing, or refunds | Complaints in 7 extensions (44 reviews), concentrated in specific products. | **Unknown.** No payment implementation is present, but that alone does not establish a pricing commitment. | Decide pricing before using “free” as a differentiator. |
+
+### Review examples
+
+- **Good:** Quick Tabs users praise keyboard navigation through recent tabs and fuzzy search over Chrome's native tab search. A reviewer with many tabs describes it as a long-term, keyboard-first tool. [Review sample](competitor-reviews/quick-tabs.json)
+- **Good:** QuicKey users value an instant last-two-tab toggle, an Alt-Tab-like interaction, and switching among hundreds of tabs. [Review sample](competitor-reviews/quickey.json)
+- **Bad:** QuicKey users report configured shortcuts no longer working and intermittent delays. Another reviewer needed to configure a shortcut manually on Mac. [Review sample](competitor-reviews/quickey.json)
+- **Bad:** Quick Tabs users report settings reverting and bulk-close actions affecting pinned tabs; another reviewer sees the native Chrome search as enough. [Review sample](competitor-reviews/quick-tabs.json)
+
+These are individual reports, not verified defect rates. Review text and method live in the per-extension JSON files.
+
+## Recommended order
+
+1. **Remove shortcut setup ambiguity.** Show the actual assigned shortcut, explain Chrome's shortcut settings, and provide the appropriate link from first use.
+2. **Measure the product's speed promise.** Track open-to-focus and keystroke-to-visible-result with 100, 1,000, and 10,000 tabs across windows; synthetic algorithm time alone is insufficient.
+3. **Test a richer MRU switcher.** Compare the current five-item, current-window list with a larger configurable list and cross-window option. Keep the instant last-two switch available.
+4. **Validate discoverability and accessibility.** Test keyboard, screen-reader, zoom, narrow viewport, reduced motion, and visible tab actions; the project audit identifies outstanding validation work.
+5. **Consider searchable recently closed tabs.** It extends navigation and is narrower than adding session snapshots or sync.
+
+Defer session backup, sync, and workspace features until interviews establish that Keybar should take on that separate job. Do not assume a competitor's feature or a keyword count proves demand for it.
+
+## Data quality and limits
+
+- **Coverage:** 92 listings screened; 26 extensions deep-reviewed; 602 kept English-language reviews. Kept comments are specific review samples gathered from Recent and Helpful sorts; they are not all reviews or a representative survey.
+- **Thin samples:** Quick Tabs (8), Surfingkeys (6), Search all Tabs (5), TabStacks (4), Tab Flick Lite (7), Too Many Tabs (1). Interpret those products directionally.
+- **Counts:** Theme totals use keyword rules and reviewer tags, spot-checked with an estimated ~10% noise. A review may match more than one theme. Counts are not unique users or prevalence.
+- **Scope:** Most deep-reviewed products are adjacent tab switchers, managers, and session tools. There is not enough direct command-palette review evidence to generalize praise/complaints to Arc-style menus.
+- **Freshness:** Store user counts, ratings, and update dates are snapshots from 2 November 2026. Issues and reviews can describe bugs that have since been fixed.
+- **Our feature mapping:** Checked against the repo's implementation and [PRODUCT.md](../../PRODUCT.md). “Implemented” means code is present; it does not imply user validation or a guarantee.
+
+The individual review files that support these findings are under [`competitor-reviews/`](competitor-reviews/), one JSON file per extension.

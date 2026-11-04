@@ -1,0 +1,11 @@
+{
+  "extension": "TooManyTabs for Chrome",
+  "url": "https://chromewebstore.google.com/detail/amigcgbheognjmfkaieeeadojiibgbdp/reviews",
+  "collected_at": "2026-11-02",
+  "status": "ok",
+  "total_reviews_seen": 266,
+  "sort_runs": {"recent_load_more_clicks": 26, "helpful_load_more_clicks": 15, "cap_reached": false, "language": "English (CWS default)", "show_more_expanded": true},
+  "reviews": [
+    {"stars": 3, "date": "2025-07-07", "text": "It's convenient to manage the sites, but sometimes re-opening the stocked pages are banned by the browser.", "dev_reply": "", "fixed_per_dev": null, "tags": ["reopen saved pages blocked by browser", "praise: convenient site management", "restore reliability"], "mentions_switching": false, "switch_from": "", "switch_to": ""}
+  ]
+}
