@@ -6,6 +6,8 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { createChatGPT } from '../vendor/sign-in-with-chatgpt-devkit/packages/local/dist/index.js';
+import { filterGroupTabIds } from './proposal-members.mjs';
+import { buildStreamRequest } from './stream-request.mjs';
 
 const execFileAsync = promisify(execFile);
 const MAX_FRAME_BYTES = 2 * 1024 * 1024;
@@ -138,8 +140,7 @@ async function analyze(tabs) {
   activeController = new AbortController();
   const started = performance.now();
   try {
-    const response = await chatgpt.streamResponse({
-      model: model.slug,
+    const { requestOptions, reasoningEffort } = buildStreamRequest(model, {
       signal: activeController.signal,
       instructions: [
         'Organize browser tabs from metadata only. Return one JSON object with exactly these keys: summary, groups, closeCandidates.',
@@ -153,6 +154,7 @@ async function analyze(tabs) {
       // The pinned SDK sets store: false in the Responses API request.
       input: `Analyze only this JSON tab metadata array. Return JSON and nothing else.\n<tab_metadata_json>\n${serializedTabs}\n</tab_metadata_json>`,
     });
+    const response = await chatgpt.streamResponse(requestOptions);
     let responseValue;
     try {
       responseValue = JSON.parse(response.text);
@@ -165,7 +167,7 @@ async function analyze(tabs) {
     return {
       ...plan,
       modelName: model.displayName,
-      ...(model.slug.toLowerCase() === 'gpt-6-luna' ? { reasoningEffort: 'none' } : {}),
+      ...(reasoningEffort ? { reasoningEffort } : {}),
       tabsAnalyzed: snapshot.length,
       latencyMs: performance.now() - started,
     };
@@ -222,9 +224,7 @@ function validateProposal(value, tabByModelId) {
       continue;
     const name = group.name.trim().slice(0, 60);
     const key = name.toLocaleLowerCase();
-    const members = [...new Set(group.tabIds)].filter(
-      (id) => Number.isSafeInteger(id) && tabByModelId.has(id) && !assigned.has(id),
-    );
+    const members = filterGroupTabIds(group.tabIds, tabByModelId, assigned);
     if (!name || names.has(key) || members.length < 2) continue;
     names.add(key);
     members.forEach((id) => assigned.add(id));

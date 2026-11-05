@@ -8,7 +8,7 @@
 
 Evaluate OpenAI's **Sign in with ChatGPT** open-source-app route first. It has a current, provider-authored local Node SDK that performs browser sign-in, encrypted credential storage, model discovery, and streaming Responses API calls. The official flow gives eligible users an explicit permission screen for plan usage; OAuth credentials stay in the local companion. Keybar's Chrome extension cannot run that Node SDK or safely manage its credentials itself, so the prototype uses Chrome Native Messaging to call a local Node host.
 
-This is a research choice, not a production approval. The official DevKit is explicitly noncommercial; the open-source plan-usage route is intended for open-source/local apps and selected private apps. Do not ship this implementation in a commercial Keybar product without written rights and policy confirmation. The prototype therefore includes the DevKit as a pinned, unmodified Git submodule and is kept out of the production extension build.
+This is a research choice, not a production approval. The official DevKit is explicitly noncommercial; the open-source plan-usage route is intended for open-source/local apps and selected private apps. Do not ship this implementation in a commercial Keybar product without written rights and policy confirmation. The prototype pins the DevKit Git submodule commit and applies an idempotent local patch at setup to pass the reasoning-effort option; it remains out of the production extension build.
 
 ## Provider options
 
@@ -36,10 +36,10 @@ Chrome Native Messaging uses a length-prefixed JSON stdio protocol. The host's m
 
 ## Data, safety, and recovery
 
-- Default analysis sends each tab's title, up to 2,048 URL characters, pinned state, and existing group name to ChatGPT, plus a temporary request-local numeric handle to match the response. The handle is not the Chrome tab ID and is discarded after the response. Full URLs remain in the extension for stale-tab checks. Page contents, cookies, browsing history, and saved credentials are not collected.
+- Default analysis sends each tab's title, up to 2,048 URL characters, pinned state, and existing group name to ChatGPT, plus a temporary request-local numeric handle to match the response. The handle is not the Chrome tab ID and is discarded after the response. Full URLs remain in the extension for stale-tab checks. The browser password store, page contents, cookies, and browsing history are not read. URL query strings can themselves contain sensitive data such as access tokens, and that text may be sent.
 - The pinned official SDK sets `store: false` in its Responses API request; model output is parsed and checked against the current snapshot. A title or URL is treated as untrusted text.
 - The review screen selects groups by default, but close candidates remain unchecked. Pinned tabs are skipped during grouping and excluded from closure. Application rechecks that Chrome tab IDs and URLs still match. A changed or closed tab is skipped, and partial failures are reported.
-- The extension stores the title, URL, and window ID for recently closed tabs in session storage, allowing tabs to be reopened. It cannot recover unsaved form state or other page memory.
+- The extension stores the title, URL, and window ID for recently closed tabs in session storage, allowing tabs to be reopened. Each closing batch replaces the saved list, so earlier batches cannot be reopened. Chrome clears `storage.session` when the browser restarts or the extension is disabled, reloaded, or updated. The extension cannot recover unsaved form state or other page memory.
 - A cancelled, failed, or malformed response makes no browser changes. Missing sign-in and missing plan-use consent are separate states; network and plan-limit errors allow retry after recovery.
 
 ## Prototype and observed evaluation
@@ -50,13 +50,13 @@ The native host prefers GPT-6 Luna when available in the signed-in account's mod
 
 Installing the full DevKit workspace reported 7 advisories (3 moderate, 4 high). The targeted `@siwc/local` runtime audit reported a high-severity advisory in its optional `undici` peer dependency. The SDK request path uses Node 22's built-in `fetch`, but the optional package is installed by the workspace and the advisory remains in the pinned upstream dependency tree. Review and resolve the dependency finding before any broader distribution.
 
-| Evidence                        | Result                                                                                                                                                                                                                            |
-| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Mixed-topic / duplicate fixture | 7 synthetic local-only pages across 3 topics; 1 exact duplicate. The UI reports group names, close reasons, and measured request latency when a live signed-in run completes.                                                     |
-| Live provider grouping quality  | Not measured in this PR: the prototype's first-run OAuth consent and native host installation were not completed in the maintainer's isolated Chrome profile. Do not treat the fixture or code path as evidence of model quality. |
-| Latency                         | The prototype measures end-to-end model request time in the UI. No live measurement recorded.                                                                                                                                     |
-| Cost / usage                    | The current SDK returns text, not per-request token or monetary usage. Plan allowance, model eligibility, and limits are managed by ChatGPT; no numeric cost estimate is available from this prototype.                           |
-| Failure / recovery              | Code handles missing host, sign-in, missing plan consent, no model, network/limit errors, cancellation, malformed JSON, and stale tabs. These paths have not been exercised against a live account in this PR.                    |
+| Evidence                        | Result                                                                                                                                                                                                                 |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Mixed-topic / duplicate fixture | 7 synthetic local-only pages across 3 topics; 1 exact duplicate. The UI reports group names, close reasons, and measured request latency when a live signed-in run completes.                                          |
+| Live provider grouping quality  | No quality score or fixture details were captured for the user-shared proposal observation. The GPT-6 Luna non-reasoning configuration has not completed a live run because the local ChatGPT session is disconnected. |
+| Latency                         | The user-shared proposal UI showed 7,496 ms with GPT-6.1-Sol; its tab count and fixture were not recorded. GPT-6 Luna with `reasoning.effort: "none"` remains unmeasured.                                              |
+| Cost / usage                    | The current SDK returns text, not per-request token or monetary usage. Plan allowance, model eligibility, and limits are managed by ChatGPT; no numeric cost estimate is available from this prototype.                |
+| Failure / recovery              | Code handles missing host, sign-in, missing plan consent, no model, network/limit errors, cancellation, malformed JSON, and stale tabs. These paths have not been exercised against a live account in this PR.         |
 
 ### Setup and follow-up decisions
 
@@ -75,3 +75,4 @@ Run instructions and the noncommercial restriction are in the prototype README. 
 - Anthropic, [Claude usage and limits](https://support.claude.com/en/articles/11647753-how-do-usage-and-length-limits-work)
 - Cursor, [CLI authentication](https://cursor.com/docs/cli/reference/authentication), [CLI headless mode](https://cursor.com/docs/cli/headless), and [subscription-backed CLI announcement](https://cursor.com/blog/cli)
 - Chrome, [Native Messaging](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging) and [extension distribution](https://developer.chrome.com/docs/extensions/how-to/distribute)
+- Chrome, [Extension storage API](https://developer.chrome.com/docs/extensions/reference/api/storage)
