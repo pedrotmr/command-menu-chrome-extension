@@ -38,7 +38,25 @@ async function harness(t) {
   const listeners = [];
   const analyses = [];
   const messages = [];
-  const settings = {
+  const state = {
+    deferredCatalogProviders: new Set(),
+    catalogRequests: [],
+    deferredSessionProviders: new Set(),
+    sessionRequests: [],
+    pauseSaveOnce: false,
+    pendingSaves: [],
+  };
+  const catalogFor = (provider) => ({
+    models: [
+      {
+        id: provider === 'codex' ? 'gpt-6-luna' : 'haiku',
+        displayName: provider === 'codex' ? 'Luna' : 'Haiku',
+        defaultReasoningEffort: 'low',
+        reasoningEfforts: [{ value: 'low', label: 'Low' }],
+      },
+    ],
+  });
+  let settings = {
     provider: 'codex',
     selections: {
       codex: { modelId: 'gpt-6-luna', reasoningEffort: 'low' },
@@ -51,21 +69,30 @@ async function harness(t) {
       sendMessage: (message) => {
         messages.push(message);
         if (message.type === 'analyze') return new Promise((resolve) => analyses.push({ message, resolve }));
+        if (message.type === 'catalog') {
+          if (state.deferredCatalogProviders.has(message.provider)) {
+            return new Promise((resolve) => state.catalogRequests.push({ message, resolve }));
+          }
+          return Promise.resolve({ ok: true, result: catalogFor(message.provider) });
+        }
+        if (message.type === 'session' && state.deferredSessionProviders.has(message.provider)) {
+          return new Promise((resolve) => state.sessionRequests.push({ message, resolve }));
+        }
+        if (message.type === 'save-settings') {
+          const save = () => {
+            settings = structuredClone(message.settings);
+            return { ok: true, result: structuredClone(settings) };
+          };
+          if (state.pauseSaveOnce) {
+            state.pauseSaveOnce = false;
+            return new Promise((resolve) => state.pendingSaves.push({ resolve, save }));
+          }
+          return Promise.resolve(save());
+        }
         const result = {
-          'get-settings': settings,
-          'save-settings': settings,
+          'get-settings': structuredClone(settings),
           session: { status: 'connected', sharing: true },
           'has-reopenable-tabs': false,
-          catalog: {
-            models: [
-              {
-                id: 'gpt-6-luna',
-                displayName: 'Luna',
-                defaultReasoningEffort: 'low',
-                reasoningEfforts: [{ value: 'low', label: 'Low' }],
-              },
-            ],
-          },
         }[message.type];
         return Promise.resolve({ ok: true, result });
       },
@@ -85,7 +112,12 @@ async function harness(t) {
     listeners.forEach((fn) => fn({ type: 'analysis-progress', runId, groups: value }));
   };
   assert.equal($('#organize').disabled, false);
-  return { $, preview, analyses, messages };
+  const changeProvider = async (provider) => {
+    $('#provider').value = provider;
+    $('#provider').dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+    await flush();
+  };
+  return { $, preview, analyses, messages, state, catalogFor, changeProvider, savedSettings: () => settings };
 }
 
 test('popup shows read-only groups before completion and enables review only after the final response', async (t) => {
@@ -165,3 +197,78 @@ test('cached proposals remain immediate complete results without a fabricated st
   assert.doesNotMatch($('#timing-details').textContent, /First group shown|Host:|NaN/);
   assert.equal($('#apply').disabled, false);
 });
+
+test('stale catalog success cannot replace the model list after a provider switch', async (t) => {
+  const { $, state, catalogFor, changeProvider } = await harness(t);
+  state.deferredCatalogProviders.add('codex');
+  $('#refresh-models').click();
+  assert.equal(state.catalogRequests.length, 1);
+  await changeProvider('anthropic');
+  assert.equal($('#model').value, 'haiku');
+  state.catalogRequests[0].resolve({ ok: true, result: catalogFor('codex') });
+  await flush();
+  assert.equal($('#provider').value, 'anthropic');
+  assert.equal($('#model').value, 'haiku');
+  assert.deepEqual(
+    [...$('#model').options].map((option) => option.value),
+    ['haiku'],
+  );
+});
+
+test('stale catalog errors cannot clear the active provider or display an unrelated failure', async (t) => {
+  const { $, state, changeProvider } = await harness(t);
+  state.deferredCatalogProviders.add('codex');
+  $('#refresh-models').click();
+  await changeProvider('anthropic');
+  state.catalogRequests[0].resolve({ ok: false, error: 'obsolete Codex request failed' });
+  await flush();
+  assert.equal($('#model').value, 'haiku');
+  assert.doesNotMatch($('#message').textContent, /obsolete/);
+});
+
+test('stale catalog responses are ignored even after switching back to their original provider', async (t) => {
+  const { $, state, catalogFor, changeProvider } = await harness(t);
+  state.deferredCatalogProviders.add('codex');
+  $('#refresh-models').click();
+  await changeProvider('anthropic');
+  state.deferredCatalogProviders.clear();
+  await changeProvider('codex');
+  const obsolete = catalogFor('codex');
+  obsolete.models[0].id = 'obsolete-model';
+  state.catalogRequests[0].resolve({ ok: true, result: obsolete });
+  await flush();
+  assert.equal($('#model').value, 'gpt-6-luna');
+});
+
+test('stale session responses cannot disconnect the selected provider', async (t) => {
+  const { $, state, changeProvider } = await harness(t);
+  await changeProvider('anthropic');
+  state.deferredSessionProviders.add('codex');
+  await changeProvider('codex');
+  assert.equal(state.sessionRequests.length, 1);
+  await changeProvider('anthropic');
+  state.sessionRequests[0].resolve({ ok: true, result: { status: 'disconnected', sharing: false } });
+  await flush();
+  assert.equal($('#model').value, 'haiku');
+  assert.equal($('#organize').disabled, false);
+  assert.match($('#connection').textContent, /Claude Code is signed in/);
+});
+
+for (const failSave of [false, true]) {
+  test(`pending catalog settings cannot overwrite a provider switch (save fails: ${failSave})`, async (t) => {
+    const { $, state, changeProvider, savedSettings } = await harness(t);
+    state.pauseSaveOnce = true;
+    $('#refresh-models').click();
+    await flush();
+    assert.equal(state.pendingSaves.length, 1);
+    await changeProvider('anthropic');
+    const pending = state.pendingSaves[0];
+    pending.resolve(failSave ? { ok: false, error: 'obsolete save failed' } : pending.save());
+    await flush();
+    assert.equal(savedSettings().provider, 'anthropic');
+    assert.equal(savedSettings().selections.anthropic.modelId, 'haiku');
+    assert.equal($('#model').value, 'haiku');
+    assert.equal($('#organize').disabled, false);
+    assert.doesNotMatch($('#message').textContent, /obsolete/);
+  });
+}

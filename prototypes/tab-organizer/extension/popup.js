@@ -20,6 +20,10 @@ let settings;
 let models = [];
 let session;
 let currentRun;
+let providerGeneration = 0;
+let catalogGeneration = 0;
+let settingsSaveGeneration = 0;
+let settingsSaveQueue = Promise.resolve();
 
 chrome.runtime.onMessage.addListener((message) => {
   if (
@@ -44,8 +48,10 @@ chrome.runtime.onMessage.addListener((message) => {
 
 connectButton.addEventListener('click', () =>
   run(connectButton, async () => {
+    const generation = providerGeneration;
     connectionLabel.textContent = 'Complete the sign-in and permission flow in your browser…';
     const session = await send({ type: 'connect', provider: 'codex' });
+    if (generation !== providerGeneration || settings.provider !== 'codex') return;
     renderSession(session);
     await loadCatalog();
   }),
@@ -53,7 +59,9 @@ connectButton.addEventListener('click', () =>
 
 disconnectButton.addEventListener('click', () =>
   run(disconnectButton, async () => {
+    const generation = providerGeneration;
     const session = await send({ type: 'disconnect', provider: 'codex' });
+    if (generation !== providerGeneration || settings.provider !== 'codex') return;
     renderSession(session);
     clearCatalog();
   }),
@@ -61,7 +69,9 @@ disconnectButton.addEventListener('click', () =>
 
 connectClaudeButton.addEventListener('click', () =>
   run(connectClaudeButton, async () => {
+    const generation = providerGeneration;
     const result = await send({ type: 'connect-claude', provider: 'anthropic' });
+    if (generation !== providerGeneration || settings.provider !== 'anthropic') return;
     if (result.status === 'login_started') {
       connectionLabel.textContent =
         'Claude Code opened in Terminal. Finish sign-in there, then reopen this popup to check the connection.';
@@ -72,8 +82,7 @@ connectClaudeButton.addEventListener('click', () =>
 providerSelect.addEventListener('change', () =>
   run(providerSelect, async () => {
     settings.provider = providerSelect.value;
-    await saveSettings();
-    await loadProvider();
+    await Promise.all([saveSettings(), loadProvider()]);
   }),
 );
 
@@ -214,6 +223,8 @@ async function run(button, callback) {
 
 async function loadProvider() {
   const provider = settings.provider;
+  const generation = ++providerGeneration;
+  session = undefined;
   const isCodex = provider === 'codex';
   $('#codex-connection').classList.toggle('hidden', !isCodex);
   $('#claude-connection').classList.toggle('hidden', isCodex);
@@ -225,10 +236,15 @@ async function loadProvider() {
     : 'When you analyze tabs, titles, up to 2,048 URL characters, pinned state, current group names, and a temporary matching number go to Claude Code through its local CLI and then to Anthropic. The number is not a Chrome tab ID. Claude Code credentials stay under the CLI’s control. The request disables built-in and MCP tools and does not save a session. Page contents and the browser password store are not read. URLs may contain sensitive data.';
 
   clearCatalog();
-  session = await send({ type: 'session', provider });
-  renderSession(session);
-  if (isConnected(session, provider)) await loadCatalog();
-  else updateOrganizeAvailability();
+  try {
+    const value = await send({ type: 'session', provider });
+    if (generation !== providerGeneration || provider !== settings.provider) return;
+    renderSession(value);
+    if (isConnected(value, provider)) await loadCatalog();
+    else updateOrganizeAvailability();
+  } catch (error) {
+    if (generation === providerGeneration && provider === settings.provider) throw error;
+  }
 }
 
 function isConnected(value, provider = settings?.provider) {
@@ -271,28 +287,32 @@ function renderSession(value) {
 
 async function loadCatalog() {
   const provider = settings.provider;
+  const generation = ++catalogGeneration;
+  const isCurrent = () => generation === catalogGeneration && provider === settings.provider;
   if (!isConnected(session, provider)) return;
   modelSelect.disabled = true;
   reasoningSelect.disabled = true;
   modelSelect.replaceChildren(new Option('Loading models…', ''));
-  let catalog;
   try {
-    catalog = await send({ type: 'catalog', provider });
+    const catalog = await send({ type: 'catalog', provider });
+    if (!isCurrent()) return;
+    models = Array.isArray(catalog.models) ? catalog.models : [];
+    const selection = settings.selections[provider];
+    if (!models.some((model) => model.id === selection.modelId)) {
+      selection.modelId = chooseDefaultModel(models, provider)?.id || '';
+      const selectedModel = models.find((model) => model.id === selection.modelId);
+      selection.reasoningEffort = selectedModel?.defaultReasoningEffort || 'default';
+    }
+    renderModelSettings();
+    await saveSettings();
+    if (!isCurrent()) return;
+    if (!models.length) showMessage('No models are available for this provider connection.', true);
+    else clearMessage();
   } catch (error) {
+    if (!isCurrent()) return;
     clearCatalog();
     throw error;
   }
-  models = Array.isArray(catalog.models) ? catalog.models : [];
-  const selection = settings.selections[provider];
-  if (!models.some((model) => model.id === selection.modelId)) {
-    selection.modelId = chooseDefaultModel(models, provider)?.id || '';
-    const selectedModel = models.find((model) => model.id === selection.modelId);
-    selection.reasoningEffort = selectedModel?.defaultReasoningEffort || 'default';
-  }
-  renderModelSettings();
-  await saveSettings();
-  if (!models.length) showMessage('No models are available for this provider connection.', true);
-  else clearMessage();
 }
 
 function chooseDefaultModel(availableModels, provider) {
@@ -338,12 +358,18 @@ function renderModelSettings() {
 }
 
 function clearCatalog() {
+  catalogGeneration++;
   models = [];
   renderModelSettings();
 }
 
 async function saveSettings() {
-  settings = await send({ type: 'save-settings', settings });
+  const generation = ++settingsSaveGeneration;
+  const snapshot = structuredClone(settings);
+  const saved = settingsSaveQueue.then(() => send({ type: 'save-settings', settings: snapshot }));
+  settingsSaveQueue = saved.catch(() => {});
+  const value = await saved;
+  if (generation === settingsSaveGeneration) settings = value;
   updateOrganizeAvailability();
 }
 
