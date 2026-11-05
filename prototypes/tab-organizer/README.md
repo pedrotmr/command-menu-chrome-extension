@@ -75,6 +75,8 @@ Performance changes are being evaluated one at a time:
 
 The extension keeps one successful proposal in worker memory for at most five minutes, until it is replaced or the worker stops. The cache key includes provider, model, effort, actual tab IDs, complete URLs, titles, pinned state, window IDs, and group IDs/names. Changing that snapshot or the model settings misses the cache. Sign-in/out attempts, disconnected status, apply, reopen, and sample-tab actions clear it; invalidation during inference prevents that result from repopulating the cache. Failed and cancelled requests are not cached. No credentials or new browser-storage records are cached. **Run fresh analysis** clears and bypasses the cache; duplicate preprocessing still runs.
 
+For step 4, the user reported **First group shown** at **5,704 ms** for Haiku low and **3,791 ms** for Luna low. Total completion times from those runs were not supplied. These measure first preview display from the popup click and cannot establish a completion-time improvement over the earlier Host measurements.
+
 After reloading the unpacked extension, keep the same tabs, model, and effort and leave proposals unapplied:
 
 - Run **Organize tabs** once and record **Fresh AI** Host/Total times, plus **Sent to AI** and exact-duplicate counts under **Timing details · step 4**.
