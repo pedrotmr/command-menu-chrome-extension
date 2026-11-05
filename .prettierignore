@@ -4,6 +4,7 @@ build/
 coverage/
 package-lock.json
 public/**/*.svg
+docs/research/
 .ralph/
 release/
 test-results/
