@@ -1,14 +1,13 @@
 const HOST = 'com.keybar.tab_organizer';
 const CLOSED_KEY = 'recentClosedTabs';
 const MAX_TABS = 100;
-let activeHostPort;
+let activeAnalysisPort;
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (!message || typeof message.type !== 'string') return false;
 
   if (message.type === 'cancel-analysis') {
-    activeHostPort?.disconnect();
-    activeHostPort = undefined;
+    activeAnalysisPort?.disconnect();
     sendResponse({ ok: true });
     return false;
   }
@@ -32,7 +31,11 @@ async function handleMessage(message) {
       const tabs = await getEligibleTabs();
       if (tabs.length < 2) throw new Error('Open at least two web tabs, or load the sample tabs first.');
       if (tabs.length > MAX_TABS) throw new Error(`This prototype analyzes up to ${MAX_TABS} tabs at a time.`);
-      return requestHost({ action: 'analyze', tabs });
+      return requestHost({ action: 'analyze', tabs }, { analysis: true });
+    }
+    case 'has-reopenable-tabs': {
+      const stored = await chrome.storage.session.get(CLOSED_KEY);
+      return Array.isArray(stored[CLOSED_KEY]) && stored[CLOSED_KEY].length > 0;
     }
     case 'apply':
       return applyProposal(message.selection);
@@ -62,7 +65,7 @@ async function getEligibleTabs() {
     }));
 }
 
-function requestHost(payload) {
+function requestHost(payload, { analysis = false } = {}) {
   return new Promise((resolve, reject) => {
     let settled = false;
     let port;
@@ -72,17 +75,17 @@ function requestHost(payload) {
       reject(new Error('Local AI host is unavailable. Follow the setup steps in the prototype README.'));
       return;
     }
-    activeHostPort = port;
+    if (analysis) activeAnalysisPort = port;
     port.onMessage.addListener((reply) => {
       if (settled) return;
       settled = true;
-      activeHostPort = undefined;
+      if (analysis && activeAnalysisPort === port) activeAnalysisPort = undefined;
       port.disconnect();
       if (reply?.ok) resolve(reply.data);
       else reject(new Error(reply?.error || 'The local AI host could not complete the request.'));
     });
     port.onDisconnect.addListener(() => {
-      if (activeHostPort === port) activeHostPort = undefined;
+      if (analysis && activeAnalysisPort === port) activeAnalysisPort = undefined;
       if (!settled) {
         const detail = chrome.runtime.lastError?.message;
         reject(
@@ -135,21 +138,27 @@ async function applyProposal(selection) {
     }
   }
 
-  const toClose = [];
   for (const original of selection.closeIds) {
-    const current = liveById.get(original.id);
-    if (!current || current.url !== original.url || current.pinned || original.pinned) {
-      skipped.push(original.title);
+    if (!original || !Number.isSafeInteger(original.id) || typeof original.url !== 'string' || original.pinned) {
+      skipped.push(original?.title || 'Unknown tab');
       continue;
     }
-    toClose.push(current);
-  }
-  for (const tab of toClose) {
+    let current;
     try {
-      await chrome.tabs.remove(tab.id);
-      closed.push({ title: tab.title || 'Untitled tab', url: tab.url, windowId: tab.windowId });
+      current = await chrome.tabs.get(original.id);
     } catch {
-      skipped.push(tab.title || 'Untitled tab');
+      skipped.push(original.title || 'Untitled tab');
+      continue;
+    }
+    if (current.url !== original.url || current.pinned) {
+      skipped.push(original.title || 'Untitled tab');
+      continue;
+    }
+    try {
+      await chrome.tabs.remove(current.id);
+      closed.push({ title: current.title || 'Untitled tab', url: current.url, windowId: current.windowId });
+    } catch {
+      skipped.push(current.title || 'Untitled tab');
     }
   }
 

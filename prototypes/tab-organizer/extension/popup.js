@@ -48,7 +48,9 @@ organizeButton.addEventListener('click', async () => {
   cancelButton.classList.remove('hidden');
   results.classList.add('hidden');
   try {
-    proposal = await send({ type: 'analyze' });
+    const result = await send({ type: 'analyze' });
+    if (analysisCancelled) return;
+    proposal = result;
     renderProposal(proposal);
   } catch (error) {
     showMessage(analysisCancelled ? 'Analysis cancelled. No tabs were changed.' : error.message, !analysisCancelled);
@@ -219,4 +221,8 @@ function clearMessage() {
 void send({ type: 'session' }).then(renderSession, (error) => {
   connectionLabel.textContent = error.message;
   connectionLabel.dataset.error = 'true';
+});
+
+void send({ type: 'has-reopenable-tabs' }).then((hasTabs) => {
+  $('#reopen').classList.toggle('hidden', !hasTabs);
 });
