@@ -8,3 +8,4 @@ public/**/*.svg
 release/
 test-results/
 playwright-report/
+prototypes/tab-organizer/vendor/

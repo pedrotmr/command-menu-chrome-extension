@@ -149,7 +149,7 @@ async function analyze(tabs) {
       latencyMs: performance.now() - started,
     };
   } catch (error) {
-    if (activeController.signal.aborted) throw new Error('Analysis cancelled. No tabs were changed.');
+    if (activeController.signal.aborted) throw new Error('Analysis cancelled. No tabs were changed.', { cause: error });
     throw error;
   } finally {
     activeController = undefined;
@@ -262,7 +262,10 @@ async function getEncryptionKey() {
     throw new Error('Invalid prototype Keychain key.');
   } catch (error) {
     if (error.message === 'Invalid prototype Keychain key.') throw error;
-    if (error.status !== 44) throw new Error('Could not read the macOS Keychain. Unlock it and try connecting again.');
+    if (error.status !== 44)
+      throw new Error('Could not read the macOS Keychain. Unlock it and try connecting again.', {
+        cause: error,
+      });
     const key = randomBytes(32);
     const encoded = key.toString('base64url');
     execFileSync(
