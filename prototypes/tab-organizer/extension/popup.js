@@ -86,7 +86,10 @@ sampleButton.addEventListener('click', () =>
   }),
 );
 
-organizeButton.addEventListener('click', async () => {
+organizeButton.addEventListener('click', () => void organizeTabs());
+$('#reanalyze').addEventListener('click', () => void organizeTabs(true));
+
+async function organizeTabs(forceRefresh = false) {
   const clickedAt = performance.now();
   analysisCancelled = false;
   clearMessage();
@@ -95,7 +98,7 @@ organizeButton.addEventListener('click', async () => {
   cancelButton.classList.remove('hidden');
   results.classList.add('hidden');
   try {
-    const result = await send({ type: 'analyze' });
+    const result = await send({ type: 'analyze', forceRefresh });
     if (analysisCancelled) return;
     result.totalLatencyMs = performance.now() - clickedAt;
     proposal = result;
@@ -107,7 +110,7 @@ organizeButton.addEventListener('click', async () => {
     organizeButton.textContent = 'Organize tabs';
     cancelButton.classList.add('hidden');
   }
-});
+}
 
 cancelButton.addEventListener('click', () => {
   analysisCancelled = true;
@@ -314,13 +317,20 @@ function renderProposal(value) {
   const effort = value.reasoningEffort ? ` · ${reasoningLabel(value.reasoningEffort)}` : '';
   const providerName = value.provider === 'anthropic' ? 'Claude Code' : 'Codex';
   const displayName = models.find((model) => model.id === value.modelName)?.displayName || value.modelName || providerName;
-  $('#latency').textContent = `${providerName} · ${Math.round(value.latencyMs)} ms · ${displayName}${effort}`;
+  const fresh = value.resultSource === 'fresh';
+  const sourceLabel = fresh ? 'Fresh AI' : value.resultSource === 'cached' ? 'Cached proposal' : 'Local result';
+  $('#latency').textContent = `${sourceLabel} · ${Math.round(fresh ? value.latencyMs : value.totalLatencyMs)} ms` +
+    (value.resultSource === 'local' ? '' : ` · ${providerName} · ${displayName}${effort}`);
   $('#timing-label').textContent = `Timing details · step ${value.optimizationStep}`;
   const timings = value.timings;
   const requestLabel = value.provider === 'anthropic' ? 'CLI + request' : 'Request';
   $('#timing-details').textContent = [
     `Total: ${Math.round(value.totalLatencyMs)} ms`,
-    `Host: ${Math.round(value.latencyMs)} ms`,
+    `Source: ${sourceLabel}`,
+    `Sent to AI: ${value.tabsSentToModel} of ${value.tabsAnalyzed} tabs`,
+    `Exact duplicate copies found: ${value.exactDuplicateCount}`,
+    ...(Number.isFinite(value.cacheAgeMs) ? [`Cache age: ${Math.round(value.cacheAgeMs / 1000)} s`] : []),
+    ...(fresh ? [`Host: ${Math.round(value.latencyMs)} ms`] : []),
     ...(typeof value.hostReused === 'boolean' ? [`Companion: ${value.hostReused ? 'reused' : 'new'}`] : []),
     ...(timings ? [
       `Auth check: ${Math.round(timings.authMs)} ms`,
@@ -330,7 +340,7 @@ function renderProposal(value) {
         : []),
       `Validation: ${Math.round(timings.validationMs)} ms`,
     ] : []),
-    `Output: ${value.outputCharacters} characters`,
+    ...(Number.isFinite(value.outputCharacters) ? [`Output: ${value.outputCharacters} characters`] : []),
   ].join(' · ');
   $('#notice').textContent =
     `${value.tabsAnalyzed} tabs analyzed. ${value.groups.length} groups and ${value.closeCandidates.length} possible duplicates. Grouping is selected; closures need your explicit selection.`;

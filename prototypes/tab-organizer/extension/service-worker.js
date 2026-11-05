@@ -1,4 +1,5 @@
 import { createNativeHostClient } from './native-host-client.mjs';
+import { createProposalCache, keeperMatches, mergeLocalAnalysis, prepareAnalysis, proposalCacheKey } from './local-analysis.mjs';
 
 const HOST = 'com.keybar.tab_organizer';
 const hostClient = createNativeHostClient({
@@ -13,6 +14,12 @@ const SIGN_IN_TIMEOUT_MS = 5 * 60 * 1000;
 const CLI_LAUNCH_TIMEOUT_MS = 30 * 1000;
 const PROVIDERS = new Set(['codex', 'anthropic']);
 let activeAnalysis;
+const proposalCache = createProposalCache();
+
+function invalidateProposalCache() {
+  proposalCache.clear();
+  if (activeAnalysis) activeAnalysis.cacheInvalidated = true;
+}
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (!message || typeof message.type !== 'string') return false;
@@ -32,15 +39,22 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
 async function handleMessage(message) {
   switch (message.type) {
-    case 'session':
-      return requestHost({ action: 'session', provider: requireProvider(message.provider) });
+    case 'session': {
+      const provider = requireProvider(message.provider);
+      const session = await requestHost({ action: 'session', provider });
+      if (provider === 'codex' ? !session.sharing : session.status !== 'connected') invalidateProposalCache();
+      return session;
+    }
     case 'connect':
       if (requireProvider(message.provider) !== 'codex') throw new Error('Choose Codex in provider settings to connect it.');
+      invalidateProposalCache();
       return requestHost({ action: 'sign-in', provider: 'codex' }, { timeoutMs: SIGN_IN_TIMEOUT_MS });
     case 'connect-claude':
       if (requireProvider(message.provider) !== 'anthropic') throw new Error('Choose Claude Code in provider settings to connect it.');
+      invalidateProposalCache();
       return requestHost({ action: 'claude-login', provider: 'anthropic' }, { timeoutMs: CLI_LAUNCH_TIMEOUT_MS });
     case 'disconnect':
+      invalidateProposalCache();
       return requestHost({ action: 'disconnect', provider: requireProvider(message.provider) });
     case 'catalog':
       return requestHost({ action: 'catalog', provider: requireProvider(message.provider) });
@@ -49,25 +63,29 @@ async function handleMessage(message) {
     case 'save-settings':
       return saveSettings(message.settings);
     case 'analyze':
-      return analyzeTabs();
+      return analyzeTabs(message.forceRefresh === true);
     case 'has-reopenable-tabs': {
       const stored = await chrome.storage.session.get(CLOSED_KEY);
       return Array.isArray(stored[CLOSED_KEY]) && stored[CLOSED_KEY].length > 0;
     }
     case 'apply':
+      invalidateProposalCache();
       return applyProposal(message.selection);
     case 'load-sample':
+      invalidateProposalCache();
       return loadSampleTabs();
     case 'reopen':
+      invalidateProposalCache();
       return reopenLastClosedTabs();
     default:
       throw new Error('Unknown prototype action.');
   }
 }
 
-async function analyzeTabs() {
+async function analyzeTabs(forceRefresh = false) {
   if (activeAnalysis) throw new Error('An analysis is already running.');
-  const analysis = { cancelled: false, controller: new AbortController() };
+  if (forceRefresh) proposalCache.clear();
+  const analysis = { cancelled: false, cacheInvalidated: false, controller: new AbortController() };
   activeAnalysis = analysis;
   try {
     const settings = await readSettings();
@@ -77,15 +95,21 @@ async function analyzeTabs() {
     if (analysis.cancelled) throw new Error('Analysis cancelled. No tabs were changed.');
     if (tabs.length < 2) throw new Error('Open at least two web tabs, or load the sample tabs first.');
     if (tabs.length > MAX_TABS) throw new Error(`This prototype analyzes up to ${MAX_TABS} tabs at a time.`);
-    const tabsByRequestId = new Map(tabs.map((tab, index) => [index + 1, tab]));
-    const hostTabs = tabs.map((tab, index) => ({
+    const cacheKey = proposalCacheKey(tabs, settings.provider, selection);
+    const cached = forceRefresh ? undefined : proposalCache.get(cacheKey);
+    if (cached) {
+      return { ...cached.proposal, optimizationStep: 3, resultSource: 'cached', cacheAgeMs: cached.ageMs, tabsSentToModel: 0 };
+    }
+    const prepared = prepareAnalysis(tabs);
+    const tabsByRequestId = new Map(prepared.modelTabs.map((tab, index) => [index + 1, tab]));
+    const hostTabs = prepared.modelTabs.map((tab, index) => ({
       id: index + 1,
       title: tab.title,
       url: tab.url.slice(0, 2048),
       pinned: tab.pinned,
       group: tab.group,
     }));
-    const result = await requestHost(
+    const result = hostTabs.length < 2 ? { groups: [], closeCandidates: [] } : await requestHost(
       {
         action: 'analyze',
         provider: settings.provider,
@@ -96,7 +120,22 @@ async function analyzeTabs() {
       { analysis, timeoutMs: HOST_REQUEST_TIMEOUT_MS },
     );
     if (analysis.cancelled) throw new Error('Analysis cancelled. No tabs were changed.');
-    return restoreTabReferences(result, tabsByRequestId);
+    const proposal = mergeLocalAnalysis(restoreTabReferences(result, tabsByRequestId), prepared);
+    const reusable = {
+      groups: proposal.groups,
+      closeCandidates: proposal.closeCandidates,
+      provider: settings.provider,
+      modelName: selection.modelId,
+      ...(selection.reasoningEffort !== 'default' ? { reasoningEffort: selection.reasoningEffort } : {}),
+      tabsAnalyzed: tabs.length,
+      exactDuplicateCount: prepared.localCloseCandidates.length,
+    };
+    if (!analysis.cacheInvalidated) proposalCache.set(cacheKey, reusable);
+    return {
+      ...proposal, ...reusable, optimizationStep: 3,
+      resultSource: hostTabs.length < 2 ? 'local' : 'fresh',
+      tabsSentToModel: hostTabs.length < 2 ? 0 : hostTabs.length,
+    };
   } finally {
     if (activeAnalysis === analysis) activeAnalysis = undefined;
   }
@@ -169,6 +208,8 @@ async function getEligibleTabs() {
       title: String(tab.title || 'Untitled tab').slice(0, 300),
       url: String(tab.url),
       pinned: Boolean(tab.pinned),
+      windowId: tab.windowId,
+      groupId: tab.groupId,
       group: (tab.groupId >= 0 ? groupById.get(tab.groupId) || 'Existing group' : '').slice(0, 80),
     }));
 }
@@ -265,6 +306,18 @@ async function applyProposal(selection) {
     if (current.url !== original.url || current.pinned) {
       skipped.push(original.title || 'Untitled tab');
       continue;
+    }
+    if (original.keepTabId !== undefined) {
+      let keeper;
+      try {
+        keeper = await chrome.tabs.get(original.keepTabId);
+      } catch {
+        // The remaining copy must still be open before closing an exact duplicate.
+      }
+      if (!keeperMatches(original, keeper)) {
+        skipped.push(original.title || 'Untitled tab');
+        continue;
+      }
     }
     try {
       await chrome.tabs.remove(current.id);
