@@ -66,6 +66,17 @@ security delete-generic-password -a anthropic-console-api-key -s com.keybar.tab-
 
 ## Evaluation notes
 
+Performance changes are being evaluated one at a time:
+
+1. **Shorter output (current):** models return group names and tab IDs without a summary or group explanations. Duplicate reasons are limited to eight words in the prompt. Both providers use the same response contract.
+2. Authentication and startup overhead (pending measurement of step 1).
+3. Local exact-duplicate handling and reuse of unchanged proposals (pending).
+4. Progressive display of streamed groups (pending).
+
+After reloading the unpacked extension, repeat analysis 3–5 times for the same tabs, model, and effort before applying any proposed changes. Record the tab count, model, effort, and each run's **Host** and **Total** times under **Timing details · step 1**. Compare the median Host time with the previous 7–8 second display; the old display did not include native-host startup.
+
+**Total** measures the popup click through receipt of the proposal, including collecting tabs and starting the native host. **Host** retains the previous analysis timer. Its breakdown separates the initial **Auth check**, **Request** (or **CLI + request** for Claude), and response validation. Request time includes SDK credential access or refresh for Codex, and CLI startup for Claude; it is not a pure model-inference measurement. Codex also reports the first nonempty text delta relative to the start of the request. Claude's buffered JSON output cannot yet expose that timing. Output size is counted in characters, not tokens. No tab metadata or credentials are added to logs.
+
 `docs/research/ai-tab-organizer.md` records the dated provider comparison, official references, permissions, setup and distribution implications, the sample-tab evaluation, and what still needs a live account run. The UI reports request latency. It does not expose per-request cost or token counts; plan limits and usage are managed by ChatGPT or Claude and can vary by plan, model, and activity.
 
 Provider references: [Codex app-server model catalog and ChatGPT-plan authentication](https://developers.openai.com/siwc/token-sharing-open-source/codex-app-server), [OpenAI reasoning effort](https://developers.openai.com/api/docs/guides/reasoning), [Claude Code CLI reference](https://code.claude.com/docs/en/cli-usage), and [Claude Code authentication and credential use](https://code.claude.com/docs/en/legal-and-compliance#authentication-and-credential-use).

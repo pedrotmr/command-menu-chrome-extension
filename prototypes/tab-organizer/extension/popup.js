@@ -87,6 +87,7 @@ sampleButton.addEventListener('click', () =>
 );
 
 organizeButton.addEventListener('click', async () => {
+  const clickedAt = performance.now();
   analysisCancelled = false;
   clearMessage();
   organizeButton.disabled = true;
@@ -96,6 +97,7 @@ organizeButton.addEventListener('click', async () => {
   try {
     const result = await send({ type: 'analyze' });
     if (analysisCancelled) return;
+    result.totalLatencyMs = performance.now() - clickedAt;
     proposal = result;
     renderProposal(proposal);
   } catch (error) {
@@ -313,12 +315,25 @@ function renderProposal(value) {
   const providerName = value.provider === 'anthropic' ? 'Claude Code' : 'Codex';
   const displayName = models.find((model) => model.id === value.modelName)?.displayName || value.modelName || providerName;
   $('#latency').textContent = `${providerName} · ${Math.round(value.latencyMs)} ms · ${displayName}${effort}`;
+  $('#timing-label').textContent = `Timing details · step ${value.optimizationStep}`;
+  const timings = value.timings;
+  const requestLabel = value.provider === 'anthropic' ? 'CLI + request' : 'Request';
+  $('#timing-details').textContent = [
+    `Total: ${Math.round(value.totalLatencyMs)} ms`,
+    `Host: ${Math.round(value.latencyMs)} ms`,
+    ...(timings ? [
+      `Auth check: ${Math.round(timings.authMs)} ms`,
+      `${requestLabel}: ${Math.round(timings.requestMs)} ms`,
+      ...(Number.isFinite(timings.firstTextMs)
+        ? [`First text within request: ${Math.round(timings.firstTextMs)} ms`]
+        : []),
+      `Validation: ${Math.round(timings.validationMs)} ms`,
+    ] : []),
+    `Output: ${value.outputCharacters} characters`,
+  ].join(' · ');
   $('#notice').textContent =
-    `${value.tabsAnalyzed} tabs analyzed. Grouping is selected; closures need your explicit selection.`;
-  const summary = document.createElement('p');
-  summary.className = 'notice';
-  summary.textContent = value.summary;
-  groupsRoot.replaceChildren(summary);
+    `${value.tabsAnalyzed} tabs analyzed. ${value.groups.length} groups and ${value.closeCandidates.length} possible duplicates. Grouping is selected; closures need your explicit selection.`;
+  groupsRoot.replaceChildren();
   duplicatesRoot.replaceChildren();
 
   for (const [index, group] of value.groups.entries()) {
@@ -327,10 +342,6 @@ function renderProposal(value) {
     const heading = document.createElement('h3');
     heading.textContent = group.name;
     card.append(heading);
-    const reason = document.createElement('p');
-    reason.className = 'notice';
-    reason.textContent = group.reason;
-    card.append(reason);
     for (const tab of group.tabs) {
       const input = checkbox(`group-${index}-${tab.id}`, tab.title, `group ${index}`);
       input.checked = true;
