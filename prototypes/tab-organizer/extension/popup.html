@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI tab organizer prototype</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">KEYBAR PROTOTYPE</p>
+        <h1>Organize tabs</h1>
+        <p class="lede">Review topic groups and duplicate cleanup before changing this Chrome profile.</p>
+      </header>
+
+      <section class="privacy" aria-label="Data sent for analysis">
+        <strong>What leaves this device</strong>
+        <p>
+          When you analyze tabs, titles, URLs, pinned state, and current group names go to ChatGPT. Page contents are
+          not read.
+        </p>
+      </section>
+
+      <div class="toolbar">
+        <button id="connect" class="secondary" type="button">Continue with ChatGPT</button>
+        <button id="disconnect" class="secondary hidden" type="button">Disconnect</button>
+        <button id="sample" class="secondary" type="button">Load sample tabs</button>
+      </div>
+      <p id="connection" class="status" role="status">Checking connection…</p>
+      <a id="usage" class="usage hidden" href="https://chatgpt.com/settings/usage" target="_blank" rel="noreferrer"
+        >Manage ChatGPT usage</a
+      >
+      <button id="organize" class="primary" type="button">Organize tabs</button>
+      <button id="cancel" class="secondary hidden" type="button">Cancel analysis</button>
+
+      <section id="results" class="hidden" aria-live="polite">
+        <div class="result-heading">
+          <h2>Review proposal</h2>
+          <span id="latency" class="latency"></span>
+        </div>
+        <p id="notice" class="notice"></p>
+        <div id="groups"></div>
+        <div id="duplicates"></div>
+        <button id="apply" class="primary" type="button">Apply selected changes</button>
+      </section>
+
+      <button id="reopen" class="secondary hidden" type="button">Reopen last closed tabs</button>
+      <p id="message" class="message" role="status"></p>
+    </main>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

@@ -1,0 +1,74 @@
+# AI tab organizer: research and prototype notes
+
+**Updated:** 2026-11-05
+
+**Scope:** personal, local prototype only. This does not select a production provider or authorize a Keybar rollout.
+
+## Recommendation
+
+Evaluate OpenAI's **Sign in with ChatGPT** open-source-app route first. It has a current, provider-authored local Node SDK that performs browser sign-in, encrypted credential storage, model discovery, and streaming Responses API calls. The official flow gives eligible users an explicit permission screen for plan usage; OAuth credentials stay in the local companion. Keybar's Chrome extension cannot run that Node SDK or safely manage its credentials itself, so the prototype uses Chrome Native Messaging to call a local Node host.
+
+This is a research choice, not a production approval. The official DevKit is explicitly noncommercial; the open-source plan-usage route is intended for open-source/local apps and selected private apps. Do not ship this implementation in a commercial Keybar product without written rights and policy confirmation. The prototype therefore includes the DevKit as a pinned, unmodified Git submodule and is kept out of the production extension build.
+
+## Provider options
+
+| Route                          | Documented facts                                                                                                                                                                                                                                                                                                                                                                                                    | Assessment for Keybar                                                                                                                                                                                                                                                                           |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OpenAI Sign in with ChatGPT    | The open-source app flow registers a local app on the user's machine, requests the plan-use permission, and calls the public Responses API. The official DevKit provides a Node runtime and a desktop example. Eligible ChatGPT Plus and Pro users are described in the official cookbook; availability and usage limits are account-dependent.                                                                     | Best route to prototype because it provides supported sign-in, explicit plan-use consent, account-specific model discovery, and an SDK without copying tokens into the extension. Requires a local companion. DevKit license makes it research-only for this project until rights are resolved. |
+| Codex app-server               | Official docs describe ChatGPT-managed OAuth and the app-server protocol for local/open-source apps. Existing local apps can continue using its authentication, though OpenAI recommends Sign in with ChatGPT for user control and usage visibility. WebSocket mode is experimental; local stdio is supported.                                                                                                      | Possible alternative, but protocol and agent-oriented surface are broader than a one-request tab organizer. It remains a valid fallback to compare in a later prototype.                                                                                                                        |
+| Claude Agent SDK / `claude -p` | Anthropic currently documents third-party Agent SDK and CLI use drawing from the signed-in Claude plan, subject to five-hour and weekly limits. As of Oct. 7, 2026, some Max, Ultra, and Team plans also include monthly API credits for API/SDK use with a linked Console API key; those credits are separate from plan usage.                                                                                     | Documented local companion route, but separate provider implementation and UX. The reviewed article does not settle all distribution terms for a specific third-party product. Worth a later comparative run if OpenAI licensing or quality is a blocker.                                       |
+| Cursor CLI                     | Cursor documents browser sign-in, subscription-backed models in the CLI, and headless scripting. Its docs do not clearly establish that an unrelated extension may reuse the CLI login as a general third-party app integration.                                                                                                                                                                                    | Technically possible from a local process, but the subscription integration terms for a third-party Keybar feature remain unverified. Do not treat CLI support alone as authorization.                                                                                                          |
+| Provider API key               | OpenAI Platform API use is separate from ChatGPT plan allowance. Anthropic Console API use is separately metered, though eligible plans may include monthly API credits. Cursor's reviewed CLI pages document API-key authentication but do not make its cost treatment clear enough to summarize here. A developer-funded shared account would charge the app operator according to the selected provider's terms. | Avoids subscription reuse for OpenAI, but may still draw on provider-specific credits or billing for other providers. User-provided keys need separate UX and secure storage.                                                                                                                   |
+
+## Subscription, billing, and policy distinctions
+
+- A local open-source app uses the account's eligible subscription allowance after the user signs in and grants plan-usage permission. It does not gain access to the user's ChatGPT conversations.
+- OpenAI Platform API keys use API billing and are different from ChatGPT plan usage. Anthropic monthly API credits, where available, are different from Claude plan allowance; Cursor API-key cost rules need further verification.
+- A remotely hosted service cannot silently reuse a user's local CLI or subscription credentials. OpenAI's app-server documentation says app-server authentication has not been permitted for commercial or hosted services and points commercial routes to Sign in with ChatGPT; the current OSS DevKit license also restricts its code to noncommercial use.
+- Anthropic's current help article says third-party SDK/CLI usage draws from the signed-in Claude plan, but plan-specific five-hour/weekly limits apply and that policy has changed before.
+- Cursor's supported CLI login and headless command mode are documented. That alone does not answer whether another product can redistribute or automate the CLI as a subscription feature.
+
+## Extension and companion boundary
+
+An extension can request tabs, groups, and native messaging, but it cannot run Node.js or provide a trustworthy OAuth token vault. The prototype keeps OAuth, credential refresh, and inference in a native host, and returns only a validated proposal. The extension receives tab IDs/names/URLs to display and uses current Chrome APIs only after the user chooses changes.
+
+Chrome Native Messaging uses a length-prefixed JSON stdio protocol. The host's manifest must list the exact extension origin; wildcards are not allowed. Chrome locates host registrations by operating system. Chrome Web Store delivery covers the extension but does not install a general native helper for every user, so a production release would need separately maintained, signed installers and update/uninstall paths for macOS, Windows, and Linux, along with disclosure and support. This prototype only implements macOS registration and Keychain-backed encryption.
+
+## Data, safety, and recovery
+
+- Default analysis sends only title, URL, pinned state, and existing group name. Page contents, cookies, browsing history, and saved credentials are not collected.
+- The request uses the official SDK and `store: false`; model output is parsed and checked against the current snapshot. A title or URL is treated as untrusted text.
+- The review screen selects groups by default, but close candidates remain unchecked. Pinned tabs are excluded by the host and rejected again by the extension. Application rechecks that tab IDs and URLs still match. A changed or closed tab is skipped, and partial failures are reported.
+- The extension stores only URLs and window IDs for recently closed tabs in session storage, allowing tabs to be reopened. It cannot recover unsaved form state or other page memory.
+- A cancelled, failed, or malformed response makes no browser changes. Missing sign-in and missing plan-use consent are separate states; network and plan-limit errors allow retry after recovery.
+
+## Prototype and observed evaluation
+
+The implementation is in [`prototypes/tab-organizer`](../../prototypes/tab-organizer/README.md). It creates seven local synthetic tabs across product docs, browser research, and trip planning, including an exact duplicate. The popup requests an AI proposal and exposes group and close selections before application.
+
+Installing the full DevKit workspace reported 7 advisories (3 moderate, 4 high). The targeted `@siwc/local` runtime audit reported a high-severity advisory in its optional `undici` peer dependency. The SDK request path uses Node 22's built-in `fetch`, but the optional package is installed by the workspace and the advisory remains in the pinned upstream dependency tree. Review and resolve the dependency finding before any broader distribution.
+
+| Evidence                        | Result                                                                                                                                                                                                                            |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Mixed-topic / duplicate fixture | 7 synthetic local-only pages across 3 topics; 1 exact duplicate. The UI reports group names, close reasons, and measured request latency when a live signed-in run completes.                                                     |
+| Live provider grouping quality  | Not measured in this PR: the prototype's first-run OAuth consent and native host installation were not completed in the maintainer's isolated Chrome profile. Do not treat the fixture or code path as evidence of model quality. |
+| Latency                         | The prototype measures end-to-end model request time in the UI. No live measurement recorded.                                                                                                                                     |
+| Cost / usage                    | The current SDK returns text, not per-request token or monetary usage. Plan allowance, model eligibility, and limits are managed by ChatGPT; no numeric cost estimate is available from this prototype.                           |
+| Failure / recovery              | Code handles missing host, sign-in, missing plan consent, no model, network/limit errors, cancellation, malformed JSON, and stale tabs. These paths have not been exercised against a live account in this PR.                    |
+
+### Setup and follow-up decisions
+
+Run instructions and the noncommercial restriction are in the prototype README. Production work is not recommended until Pedro decides whether Keybar is strictly a personal/noncommercial tool or needs commercial distribution, whether a separately installed companion is acceptable, and whether extension metadata may leave the device for inference. If those conditions are acceptable, the candidate first-release issue is: **Add reviewed AI tab grouping through a separately installed macOS companion**. Keep page content out, require confirmation for closures, and limit the first release to Chrome on macOS. Before creating it, run a live synthetic-fixture session and record group precision, duplicate false positives, latency at 7/25/50 tabs, and rate-limit behavior; then compare OpenAI plan use with Claude Agent SDK and an API-key route.
+
+## Official sources
+
+- OpenAI, [Sign in with ChatGPT: open-source app overview](https://developers.openai.com/siwc/token-sharing-open-source)
+- OpenAI, [Registration and sign-in](https://developers.openai.com/siwc/token-sharing-open-source/sign-in)
+- OpenAI, [Models and inference](https://developers.openai.com/siwc/token-sharing-open-source/models-and-inference)
+- OpenAI, [Open-source Sign in with ChatGPT cookbook](https://developers.openai.com/cookbook/articles/sign-in-with-chatgpt)
+- OpenAI, [Codex app-server and authentication](https://learn.chatgpt.com/docs/app-server)
+- OpenAI, [Sign in with ChatGPT DevKit and license](https://github.com/openai/sign-in-with-chatgpt-devkit)
+- Anthropic, [Use the Claude Agent SDK with your Claude plan](https://support.claude.com/en/articles/15036540-use-the-claude-agent-sdk-with-your-claude-plan)
+- Anthropic, [Claude usage and limits](https://support.claude.com/en/articles/11647753-how-do-usage-and-length-limits-work)
+- Cursor, [CLI authentication](https://cursor.com/docs/cli/reference/authentication), [CLI headless mode](https://cursor.com/docs/cli/headless), and [subscription-backed CLI announcement](https://cursor.com/blog/cli)
+- Chrome, [Native Messaging](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging) and [extension distribution](https://developer.chrome.com/docs/extensions/how-to/distribute)
