@@ -1,13 +1,15 @@
 const HOST = 'com.keybar.tab_organizer';
 const CLOSED_KEY = 'recentClosedTabs';
 const MAX_TABS = 100;
-let activeAnalysisPort;
+const HOST_REQUEST_TIMEOUT_MS = 2 * 60 * 1000;
+const SIGN_IN_TIMEOUT_MS = 5 * 60 * 1000;
+let activeAnalysis;
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (!message || typeof message.type !== 'string') return false;
 
   if (message.type === 'cancel-analysis') {
-    activeAnalysisPort?.disconnect();
+    cancelActiveAnalysis();
     sendResponse({ ok: true });
     return false;
   }
@@ -24,15 +26,11 @@ async function handleMessage(message) {
     case 'session':
       return requestHost({ action: 'session' });
     case 'connect':
-      return requestHost({ action: 'sign-in' });
+      return requestHost({ action: 'sign-in' }, { timeoutMs: SIGN_IN_TIMEOUT_MS });
     case 'disconnect':
       return requestHost({ action: 'disconnect' });
-    case 'analyze': {
-      const tabs = await getEligibleTabs();
-      if (tabs.length < 2) throw new Error('Open at least two web tabs, or load the sample tabs first.');
-      if (tabs.length > MAX_TABS) throw new Error(`This prototype analyzes up to ${MAX_TABS} tabs at a time.`);
-      return requestHost({ action: 'analyze', tabs }, { analysis: true });
-    }
+    case 'analyze':
+      return analyzeTabs();
     case 'has-reopenable-tabs': {
       const stored = await chrome.storage.session.get(CLOSED_KEY);
       return Array.isArray(stored[CLOSED_KEY]) && stored[CLOSED_KEY].length > 0;
@@ -48,6 +46,29 @@ async function handleMessage(message) {
   }
 }
 
+async function analyzeTabs() {
+  if (activeAnalysis) throw new Error('An analysis is already running.');
+  const analysis = { cancelled: false, cancelHostRequest: undefined };
+  activeAnalysis = analysis;
+  try {
+    const tabs = await getEligibleTabs();
+    if (analysis.cancelled) throw new Error('Analysis cancelled. No tabs were changed.');
+    if (tabs.length < 2) throw new Error('Open at least two web tabs, or load the sample tabs first.');
+    if (tabs.length > MAX_TABS) throw new Error(`This prototype analyzes up to ${MAX_TABS} tabs at a time.`);
+    const result = await requestHost({ action: 'analyze', tabs }, { analysis, timeoutMs: HOST_REQUEST_TIMEOUT_MS });
+    if (analysis.cancelled) throw new Error('Analysis cancelled. No tabs were changed.');
+    return result;
+  } finally {
+    if (activeAnalysis === analysis) activeAnalysis = undefined;
+  }
+}
+
+function cancelActiveAnalysis() {
+  if (!activeAnalysis) return;
+  activeAnalysis.cancelled = true;
+  activeAnalysis.cancelHostRequest?.();
+}
+
 async function getEligibleTabs() {
   const [tabs, groups] = await Promise.all([chrome.tabs.query({}), chrome.tabGroups.query({})]);
   const groupById = new Map(groups.map((group) => [group.id, group.title || 'Untitled group']));
@@ -59,45 +80,80 @@ async function getEligibleTabs() {
     .map((tab) => ({
       id: tab.id,
       title: String(tab.title || 'Untitled tab').slice(0, 300),
-      url: String(tab.url).slice(0, 2048),
+      url: String(tab.url),
       pinned: Boolean(tab.pinned),
       group: tab.groupId >= 0 ? groupById.get(tab.groupId) || 'Existing group' : '',
     }));
 }
 
-function requestHost(payload, { analysis = false } = {}) {
+function requestHost(payload, { analysis, timeoutMs = HOST_REQUEST_TIMEOUT_MS } = {}) {
   return new Promise((resolve, reject) => {
     let settled = false;
+    let timeout;
     let port;
+
+    const settle = (callback, value) => {
+      if (settled) return false;
+      settled = true;
+      clearTimeout(timeout);
+      if (analysis?.cancelHostRequest === cancel) analysis.cancelHostRequest = undefined;
+      callback(value);
+      return true;
+    };
+
+    const cancel = () => {
+      if (!settle(reject, new Error('Analysis cancelled. No tabs were changed.'))) return;
+      port.disconnect();
+    };
+
     try {
       port = chrome.runtime.connectNative(HOST);
     } catch {
       reject(new Error('Local AI host is unavailable. Follow the setup steps in the prototype README.'));
       return;
     }
-    if (analysis) activeAnalysisPort = port;
+
     port.onMessage.addListener((reply) => {
       if (settled) return;
-      settled = true;
-      if (analysis && activeAnalysisPort === port) activeAnalysisPort = undefined;
+      if (reply?.ok) settle(resolve, reply.data);
+      else settle(reject, new Error(reply?.error || 'The local AI host could not complete the request.'));
       port.disconnect();
-      if (reply?.ok) resolve(reply.data);
-      else reject(new Error(reply?.error || 'The local AI host could not complete the request.'));
     });
     port.onDisconnect.addListener(() => {
-      if (analysis && activeAnalysisPort === port) activeAnalysisPort = undefined;
-      if (!settled) {
-        const detail = chrome.runtime.lastError?.message;
-        reject(
-          new Error(
-            detail
-              ? `Local AI host failed to start (${detail}). Follow the prototype README setup steps.`
-              : 'The local AI host disconnected before replying. No tabs were changed; try again.',
-          ),
-        );
-      }
+      if (settled) return;
+      const detail = chrome.runtime.lastError?.message;
+      settle(
+        reject,
+        new Error(
+          detail
+            ? `Local AI host failed to start (${detail}). Follow the prototype README setup steps.`
+            : 'The local AI host disconnected before replying. No tabs were changed; try again.',
+        ),
+      );
     });
-    port.postMessage(payload);
+
+    timeout = setTimeout(() => {
+      const didTimeout = settle(
+        reject,
+        new Error('The local AI host did not reply in time. No tabs were changed; try again.'),
+      );
+      if (didTimeout) port.disconnect();
+    }, timeoutMs);
+
+    if (analysis) {
+      analysis.cancelHostRequest = cancel;
+      if (analysis.cancelled) {
+        cancel();
+        return;
+      }
+    }
+
+    try {
+      port.postMessage(payload);
+    } catch {
+      const didFail = settle(reject, new Error('The local AI host could not receive the request. Try again.'));
+      if (didFail) port.disconnect();
+    }
   });
 }
 
@@ -195,17 +251,23 @@ async function reopenLastClosedTabs() {
   const stored = await chrome.storage.session.get(CLOSED_KEY);
   const tabs = Array.isArray(stored[CLOSED_KEY]) ? stored[CLOSED_KEY] : [];
   const reopened = [];
+  const failed = [];
   for (const tab of tabs) {
     try {
       await chrome.tabs.create({ url: tab.url, windowId: tab.windowId, active: false });
       reopened.push(tab.title);
     } catch {
-      reopened.push(`${tab.title} (opened in the current window)`);
-      await chrome.tabs.create({ url: tab.url, active: false });
+      try {
+        await chrome.tabs.create({ url: tab.url, active: false });
+        reopened.push(`${tab.title} (opened in the current window)`);
+      } catch {
+        failed.push(tab);
+      }
     }
   }
-  await chrome.storage.session.remove(CLOSED_KEY);
-  return { reopened };
+  if (failed.length) await chrome.storage.session.set({ [CLOSED_KEY]: failed });
+  else await chrome.storage.session.remove(CLOSED_KEY);
+  return { reopened, failed: failed.map((tab) => tab.title), hasMore: failed.length > 0 };
 }
 
 function safeError(error) {

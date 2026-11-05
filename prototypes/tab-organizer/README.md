@@ -35,11 +35,17 @@ npm run build -w @siwc/local --prefix prototypes/tab-organizer/vendor/sign-in-wi
    node prototypes/tab-organizer/install-host.mjs EXTENSION_ID
    ```
 
-3. Open the prototype extension popup. Use **Connect ChatGPT** and approve the requested access in the browser. The connection is local to this prototype and can be disconnected from the popup.
+3. Open the prototype extension popup. Use **Continue with ChatGPT** and approve the requested access in the browser. The connection is local to this prototype and can be disconnected from the popup.
 4. Use a dedicated Chrome profile. Click **Load sample tabs** to create a representative set of local-only product, research, travel, and duplicate tabs. Then select **Organize tabs**.
 5. Review each suggested group and any close candidates. Grouping is selected by default; closing is never selected by default. Click **Apply selected changes** to make browser changes.
 
-The native host requires Chrome's exact extension ID in its `allowed_origins` list. Re-run the installer if the extension ID changes. To remove it, delete `com.keybar.tab_organizer.json` from `~/Library/Application Support/Google/Chrome/NativeMessagingHosts/` and remove the unpacked extension.
+The native host requires Chrome's exact extension ID in its `allowed_origins` list. Re-run the installer if the extension ID changes. To remove the prototype, first choose **Disconnect** in the popup if connected, then remove the extension, native host registration, launcher, stored credentials, and Keychain encryption key:
+
+```sh
+rm -f "$HOME/Library/Application Support/Google/Chrome/NativeMessagingHosts/com.keybar.tab_organizer.json"
+rm -rf "$HOME/Library/Application Support/Keybar Tab Organizer Prototype"
+security delete-generic-password -a credential-encryption-key -s com.keybar.tab-organizer
+```
 
 ## Evaluation notes
 
@@ -48,10 +54,10 @@ The native host requires Chrome's exact extension ID in its `allowed_origins` li
 ## Failure behavior
 
 - Missing DevKit build, native host registration, or Node.js: show a setup error with the failed local-host action.
-- Disconnected, ineligible, or sharing-disabled account: offer **Connect ChatGPT** and explain that an eligible account and explicit plan-usage permission are required.
-- Network, timeout, limit, or malformed response: keep the tab set untouched and allow retry.
+- Disconnected, ineligible, or sharing-disabled account: offer **Continue with ChatGPT** and explain that an eligible account and explicit plan-usage permission are required.
+- Network, timeout, limit, or malformed response: keep the tab set untouched and allow retry. Analysis and sign-in requests time out after two and five minutes respectively.
 - Tabs that closed, changed URL, or became pinned since analysis are skipped. Other groups and closes continue, with a partial-result summary.
-- Closing stores the URL and original window in `chrome.storage.session`; **Reopen last closed tabs** creates new tabs at those URLs. Unsaved page state is not recoverable.
+- Closing stores the title, URL, and original window in `chrome.storage.session`; **Reopen last closed tabs** creates new tabs at those URLs. Failed reopen attempts remain available to retry. Unsaved page state is not recoverable.
 
 ## Scope and limitations
 

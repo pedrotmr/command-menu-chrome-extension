@@ -161,6 +161,7 @@ button:disabled {
     color: #f1f0eb;
   }
   .lede,
+  .eyebrow,
   .privacy p,
   .status,
   .message,
@@ -168,6 +169,10 @@ button:disabled {
   .latency,
   .option small {
     color: #b9b6ad;
+  }
+  .status[data-error='true'],
+  .message[data-error='true'] {
+    color: #ffaaa0;
   }
   .usage {
     color: #cedcbe;

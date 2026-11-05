@@ -37,14 +37,14 @@ Chrome Native Messaging uses a length-prefixed JSON stdio protocol. The host's m
 ## Data, safety, and recovery
 
 - Default analysis sends only title, URL, pinned state, and existing group name. Page contents, cookies, browsing history, and saved credentials are not collected.
-- The request uses the official SDK and `store: false`; model output is parsed and checked against the current snapshot. A title or URL is treated as untrusted text.
+- The pinned official SDK sets `store: false` in its Responses API request; model output is parsed and checked against the current snapshot. A title or URL is treated as untrusted text.
 - The review screen selects groups by default, but close candidates remain unchecked. Pinned tabs are excluded by the host and rejected again by the extension. Application rechecks that tab IDs and URLs still match. A changed or closed tab is skipped, and partial failures are reported.
-- The extension stores only URLs and window IDs for recently closed tabs in session storage, allowing tabs to be reopened. It cannot recover unsaved form state or other page memory.
+- The extension stores the title, URL, and window ID for recently closed tabs in session storage, allowing tabs to be reopened. It cannot recover unsaved form state or other page memory.
 - A cancelled, failed, or malformed response makes no browser changes. Missing sign-in and missing plan-use consent are separate states; network and plan-limit errors allow retry after recovery.
 
 ## Prototype and observed evaluation
 
-The implementation is in [`prototypes/tab-organizer`](../../prototypes/tab-organizer/README.md). It creates seven local synthetic tabs across product docs, browser research, and trip planning, including an exact duplicate. The popup requests an AI proposal and exposes group and close selections before application.
+The implementation is in [`prototypes/tab-organizer`](../../prototypes/tab-organizer/README.md). It creates seven local synthetic tabs across product docs, research notes, and trip planning, including an exact duplicate. The popup requests an AI proposal and exposes group and close selections before application.
 
 Installing the full DevKit workspace reported 7 advisories (3 moderate, 4 high). The targeted `@siwc/local` runtime audit reported a high-severity advisory in its optional `undici` peer dependency. The SDK request path uses Node 22's built-in `fetch`, but the optional package is installed by the workspace and the advisory remains in the pinned upstream dependency tree. Review and resolve the dependency finding before any broader distribution.
 

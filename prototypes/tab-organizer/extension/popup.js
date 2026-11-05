@@ -97,8 +97,9 @@ applyButton.addEventListener('click', () =>
 $('#reopen').addEventListener('click', () =>
   run($('#reopen'), async () => {
     const result = await send({ type: 'reopen' });
-    $('#reopen').classList.add('hidden');
-    showMessage(`Reopened ${result.reopened.length} tab URL(s). Unsaved page state is not restored.`, false);
+    $('#reopen').classList.toggle('hidden', !result.hasMore);
+    const failed = result.failed.length ? ` Could not reopen ${result.failed.length} tab(s); try again.` : '';
+    showMessage(`Reopened ${result.reopened.length} tab URL(s). Unsaved page state is not restored.${failed}`, false);
   }),
 );
 
