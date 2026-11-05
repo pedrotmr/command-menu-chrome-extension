@@ -321,6 +321,7 @@ function renderProposal(value) {
   $('#timing-details').textContent = [
     `Total: ${Math.round(value.totalLatencyMs)} ms`,
     `Host: ${Math.round(value.latencyMs)} ms`,
+    ...(typeof value.hostReused === 'boolean' ? [`Companion: ${value.hostReused ? 'reused' : 'new'}`] : []),
     ...(timings ? [
       `Auth check: ${Math.round(timings.authMs)} ms`,
       `${requestLabel}: ${Math.round(timings.requestMs)} ms`,

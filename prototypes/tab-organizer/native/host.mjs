@@ -21,6 +21,7 @@ const PROVIDER_RUNTIME_PATH = join(APP_SUPPORT_DIRECTORY, 'codex-runtime.json');
 const PROVIDERS = new Set(['codex', 'anthropic']);
 const OPENAI_EFFORTS = new Set(['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']);
 const CLAUDE_EFFORTS = new Set(['default', 'low', 'medium', 'high', 'xhigh', 'max']);
+let encryptionKey;
 const CLAUDE_MODELS = [
   { id: 'haiku', displayName: 'Claude Haiku' },
   { id: 'sonnet', displayName: 'Claude Sonnet' },
@@ -52,10 +53,18 @@ const credentialEncryption = {
   async decrypt(value) {
     const data = Buffer.from(value);
     if (data.length < 29) throw new Error('The saved ChatGPT connection could not be decrypted. Connect again.');
+    const decrypt = (key) => {
+      const decipher = createDecipheriv('aes-256-gcm', key, data.subarray(0, 12));
+      decipher.setAuthTag(data.subarray(12, 28));
+      return Buffer.concat([decipher.update(data.subarray(28)), decipher.final()]).toString('utf8');
+    };
     const key = await getEncryptionKey();
-    const decipher = createDecipheriv('aes-256-gcm', key, data.subarray(0, 12));
-    decipher.setAuthTag(data.subarray(12, 28));
-    return Buffer.concat([decipher.update(data.subarray(28)), decipher.final()]).toString('utf8');
+    try {
+      return decrypt(key);
+    } catch {
+      encryptionKey = undefined;
+      return decrypt(await getEncryptionKey());
+    }
   },
 };
 
@@ -75,7 +84,9 @@ const chatgpt = createChatGPT({
 
 let input = Buffer.alloc(0);
 let activeController;
+let activeAnalysisId;
 let signInPending = false;
+let completedRequests = 0;
 
 process.stdin.on('data', (chunk) => {
   input = Buffer.concat([input, chunk]);
@@ -87,7 +98,7 @@ process.stdin.on('data', (chunk) => {
     }
     if (input.length < length + 4) return;
     const frame = input.subarray(4, length + 4);
-    input = input.subarray(length + 4);
+    input = input.length === length + 4 ? Buffer.alloc(0) : input.subarray(length + 4);
     void handleFrame(frame);
   }
 });
@@ -104,10 +115,15 @@ async function handleFrame(frame) {
   let request;
   try {
     request = JSON.parse(frame.toString('utf8'));
+    if (request?.action === 'cancel-analysis') {
+      if (request.targetId === activeAnalysisId) activeController?.abort();
+      return;
+    }
     const data = await dispatch(request);
-    send({ ok: true, data });
+    completedRequests++;
+    send({ id: request.id, ok: true, data });
   } catch (error) {
-    send({ ok: false, error: safeMessage(error) });
+    send({ id: request?.id, ok: false, error: safeMessage(error) });
   }
 }
 
@@ -191,8 +207,6 @@ async function loadModelCatalog(provider) {
     return { provider, models };
   }
 
-  const session = await claudeSession();
-  if (session.status !== 'connected') throw claudeConnectionError(session.status);
   return { provider, models: CLAUDE_MODELS };
 }
 
@@ -239,8 +253,8 @@ async function getProviderRuntime() {
   }
 }
 
-async function claudeSession() {
-  const runtime = await getClaudeRuntime();
+async function claudeSession(runtime, signal) {
+  runtime ??= await getClaudeRuntime();
   if (!runtime) return { status: 'not_installed', sharing: false };
 
   let output;
@@ -249,6 +263,7 @@ async function claudeSession() {
       encoding: 'utf8',
       timeout: 15_000,
       maxBuffer: 64 * 1024,
+      signal,
     }));
   } catch (error) {
     if (error.code === 1 && typeof error.stdout === 'string') output = error.stdout;
@@ -302,6 +317,7 @@ function requireProvider(provider, expected) {
 }
 
 async function analyze(request) {
+  if (activeController) throw new Error('An analysis is already running.');
   const { tabs, provider, modelId, reasoningEffort = 'default' } = request || {};
   if (!Array.isArray(tabs) || tabs.length < 2 || tabs.length > MAX_TABS) {
     throw new Error(`Analyze between 2 and ${MAX_TABS} tabs at a time.`);
@@ -332,11 +348,13 @@ async function analyze(request) {
     group: tab.group,
   }));
   const serializedTabs = JSON.stringify(modelTabs).replaceAll('<', '\\u003c');
-  activeController = new AbortController();
+  const controller = new AbortController();
+  activeController = controller;
+  activeAnalysisId = request.id;
   const started = performance.now();
   try {
-    const claudePath = provider === 'anthropic' ? await ensureClaudeConnection() : undefined;
-    if (provider === 'codex') await ensureCodexConnection();
+    const claudePath = provider === 'anthropic' ? await ensureClaudeConnection(controller.signal) : undefined;
+    controller.signal.throwIfAborted();
     const authMs = performance.now() - started;
     const input = `Analyze only this JSON tab metadata array. Return JSON and nothing else.\n<tab_metadata_json>\n${serializedTabs}\n</tab_metadata_json>`;
     const requestStarted = performance.now();
@@ -344,7 +362,7 @@ async function analyze(request) {
     let responseText;
     if (provider === 'codex') {
       const { requestOptions } = buildStreamRequest({ slug: modelId }, {
-        signal: activeController.signal,
+        signal: controller.signal,
         reasoningEffort: reasoningEffort === 'default' ? undefined : reasoningEffort,
         instructions: PROPOSAL_INSTRUCTIONS,
         onDelta: (delta) => {
@@ -361,7 +379,7 @@ async function analyze(request) {
         modelId,
         reasoningEffort,
         input,
-        signal: activeController.signal,
+        signal: controller.signal,
       });
     }
     const requestMs = performance.now() - requestStarted;
@@ -382,7 +400,8 @@ async function analyze(request) {
       ...(reasoningEffort !== 'default' ? { reasoningEffort } : {}),
       tabsAnalyzed: snapshot.length,
       latencyMs: performance.now() - started,
-      optimizationStep: 1,
+      optimizationStep: 2,
+      hostReused: completedRequests > 0,
       timings: {
         authMs,
         requestMs,
@@ -392,27 +411,19 @@ async function analyze(request) {
       outputCharacters: responseText.length,
     };
   } catch (error) {
-    if (activeController.signal.aborted) throw new Error('Analysis cancelled. No tabs were changed.', { cause: error });
+    if (controller.signal.aborted) throw new Error('Analysis cancelled. No tabs were changed.', { cause: error });
     throw error;
   } finally {
     activeController = undefined;
+    activeAnalysisId = undefined;
   }
 }
 
-async function ensureCodexConnection() {
-  const session = await chatgpt.getSession();
-  if (!session.sharing) {
-    if (session.status === 'connected')
-      throw new Error('ChatGPT is signed in, but plan usage is not enabled. Reconnect and approve plan usage.');
-    throw new Error('Connect ChatGPT before using Codex models.');
-  }
-}
-
-async function ensureClaudeConnection() {
-  const session = await claudeSession();
-  if (session.status !== 'connected') throw claudeConnectionError(session.status);
+async function ensureClaudeConnection(signal) {
   const runtime = await getClaudeRuntime();
   if (!runtime) throw claudeConnectionError('not_installed');
+  const session = await claudeSession(runtime, signal);
+  if (session.status !== 'connected') throw claudeConnectionError(session.status);
   return runtime.claudePath;
 }
 
@@ -584,6 +595,7 @@ function send(value) {
 }
 
 async function getEncryptionKey() {
+  if (encryptionKey) return encryptionKey;
   const security = '/usr/bin/security';
   try {
     const stored = execFileSync(
@@ -592,7 +604,7 @@ async function getEncryptionKey() {
       { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] },
     ).trim();
     const key = Buffer.from(stored, 'base64url');
-    if (key.length === 32) return key;
+    if (key.length === 32) return (encryptionKey = key);
     throw new Error('Invalid prototype Keychain key.');
   } catch (error) {
     if (error.message === 'Invalid prototype Keychain key.') throw error;
@@ -612,6 +624,6 @@ async function getEncryptionKey() {
         cause: error,
       });
     }
-    return key;
+    return (encryptionKey = key);
   }
 }

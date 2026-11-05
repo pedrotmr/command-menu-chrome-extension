@@ -1,4 +1,10 @@
+import { createNativeHostClient } from './native-host-client.mjs';
+
 const HOST = 'com.keybar.tab_organizer';
+const hostClient = createNativeHostClient({
+  connect: () => chrome.runtime.connectNative(HOST),
+  lastError: () => chrome.runtime.lastError?.message,
+});
 const CLOSED_KEY = 'recentClosedTabs';
 const SETTINGS_KEY = 'tabOrganizerProviderSettings';
 const MAX_TABS = 100;
@@ -61,7 +67,7 @@ async function handleMessage(message) {
 
 async function analyzeTabs() {
   if (activeAnalysis) throw new Error('An analysis is already running.');
-  const analysis = { cancelled: false, cancelHostRequest: undefined };
+  const analysis = { cancelled: false, controller: new AbortController() };
   activeAnalysis = analysis;
   try {
     const settings = await readSettings();
@@ -147,7 +153,7 @@ function restoreTabReferences(proposal, tabsByRequestId) {
 function cancelActiveAnalysis() {
   if (!activeAnalysis) return;
   activeAnalysis.cancelled = true;
-  activeAnalysis.cancelHostRequest?.();
+  activeAnalysis.controller.abort();
 }
 
 async function getEligibleTabs() {
@@ -168,74 +174,7 @@ async function getEligibleTabs() {
 }
 
 function requestHost(payload, { analysis, timeoutMs = HOST_REQUEST_TIMEOUT_MS } = {}) {
-  return new Promise((resolve, reject) => {
-    let settled = false;
-    let timeout;
-    let port;
-
-    const settle = (callback, value) => {
-      if (settled) return false;
-      settled = true;
-      clearTimeout(timeout);
-      if (analysis?.cancelHostRequest === cancel) analysis.cancelHostRequest = undefined;
-      callback(value);
-      return true;
-    };
-
-    const cancel = () => {
-      if (!settle(reject, new Error('Analysis cancelled. No tabs were changed.'))) return;
-      port.disconnect();
-    };
-
-    try {
-      port = chrome.runtime.connectNative(HOST);
-    } catch {
-      reject(new Error('Local AI host is unavailable. Follow the setup steps in the prototype README.'));
-      return;
-    }
-
-    port.onMessage.addListener((reply) => {
-      if (settled) return;
-      if (reply?.ok) settle(resolve, reply.data);
-      else settle(reject, new Error(reply?.error || 'The local AI host could not complete the request.'));
-      port.disconnect();
-    });
-    port.onDisconnect.addListener(() => {
-      if (settled) return;
-      const detail = chrome.runtime.lastError?.message;
-      settle(
-        reject,
-        new Error(
-          detail
-            ? `Local AI host failed to start (${detail}). Follow the prototype README setup steps.`
-            : 'The local AI host disconnected before replying. No tabs were changed; try again.',
-        ),
-      );
-    });
-
-    timeout = setTimeout(() => {
-      const didTimeout = settle(
-        reject,
-        new Error('The local AI host did not reply in time. No tabs were changed; try again.'),
-      );
-      if (didTimeout) port.disconnect();
-    }, timeoutMs);
-
-    if (analysis) {
-      analysis.cancelHostRequest = cancel;
-      if (analysis.cancelled) {
-        cancel();
-        return;
-      }
-    }
-
-    try {
-      port.postMessage(payload);
-    } catch {
-      const didFail = settle(reject, new Error('The local AI host could not receive the request. Try again.'));
-      if (didFail) port.disconnect();
-    }
-  });
+  return hostClient.request(payload, { signal: analysis?.controller.signal, timeoutMs });
 }
 
 async function applyProposal(selection) {
