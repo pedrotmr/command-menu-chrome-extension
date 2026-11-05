@@ -45,6 +45,8 @@ async function harness(t) {
     sessionRequests: [],
     pauseSaveOnce: false,
     pendingSaves: [],
+    providerActions: [],
+    sessions: {},
   };
   const catalogFor = (provider) => ({
     models: [
@@ -69,6 +71,9 @@ async function harness(t) {
       sendMessage: (message) => {
         messages.push(message);
         if (message.type === 'analyze') return new Promise((resolve) => analyses.push({ message, resolve }));
+        if (['connect', 'disconnect', 'connect-claude'].includes(message.type)) {
+          return new Promise((resolve) => state.providerActions.push({ message, resolve }));
+        }
         if (message.type === 'catalog') {
           if (state.deferredCatalogProviders.has(message.provider)) {
             return new Promise((resolve) => state.catalogRequests.push({ message, resolve }));
@@ -91,7 +96,7 @@ async function harness(t) {
         }
         const result = {
           'get-settings': structuredClone(settings),
-          session: { status: 'connected', sharing: true },
+          session: state.sessions[message.provider] || { status: 'connected', sharing: true },
           'has-reopenable-tabs': false,
         }[message.type];
         return Promise.resolve({ ok: true, result });
@@ -271,4 +276,43 @@ for (const failSave of [false, true]) {
     assert.equal($('#organize').disabled, false);
     assert.doesNotMatch($('#message').textContent, /obsolete/);
   });
+}
+
+test('a settings save failure preserves the successfully loaded catalog and displays the error', async (t) => {
+  const { $, state } = await harness(t);
+  state.pauseSaveOnce = true;
+  $('#refresh-models').click();
+  await flush();
+  state.pendingSaves[0].resolve({ ok: false, error: 'settings storage unavailable' });
+  await flush();
+  assert.equal($('#model').value, 'gpt-6-luna');
+  assert.equal($('#model').disabled, false);
+  assert.match($('#message').textContent, /settings storage unavailable/);
+});
+
+for (const action of [
+  { type: 'connect', button: '#connect', provider: 'codex', signedOut: true },
+  { type: 'disconnect', button: '#disconnect', provider: 'codex' },
+  { type: 'connect-claude', button: '#connect-claude', provider: 'anthropic', signedOut: true },
+]) {
+  for (const switchProvider of [false, true]) {
+    test(`${action.type} failures are shown only for the current provider (switched: ${switchProvider})`, async (t) => {
+      const { $, state, changeProvider } = await harness(t);
+      if (action.signedOut) state.sessions[action.provider] = { status: 'disconnected', sharing: false };
+      if (action.provider === 'codex' && action.signedOut) await changeProvider('anthropic');
+      await changeProvider(action.provider);
+      assert.equal($(action.button).classList.contains('hidden'), false);
+      $(action.button).click();
+      assert.equal(state.providerActions[0].message.type, action.type);
+      if (switchProvider) await changeProvider(action.provider === 'codex' ? 'anthropic' : 'codex');
+      state.providerActions[0].resolve({ ok: false, error: 'authentication action failed' });
+      await flush();
+      if (switchProvider) {
+        assert.doesNotMatch($('#message').textContent, /authentication action failed/);
+        assert.equal($('#model').disabled, false);
+      } else {
+        assert.match($('#message').textContent, /authentication action failed/);
+      }
+    });
+  }
 }

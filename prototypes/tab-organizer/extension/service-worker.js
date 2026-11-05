@@ -81,23 +81,24 @@ async function handleMessage(message) {
       if (activeAnalysis) throw new Error('Wait for the full proposal before applying changes.');
       return serializeRecovery(() => {
         if (activeAnalysis) throw new Error('Wait for the full proposal before applying changes.');
+        invalidateProposalCache();
         return applyProposal(message.selection);
       });
     case 'load-sample':
       invalidateProposalCache();
       return loadSampleTabs();
     case 'reopen':
-      return serializeRecovery(reopenLastClosedTabs);
+      return serializeRecovery(() => {
+        invalidateProposalCache();
+        return reopenLastClosedTabs();
+      });
     default:
       throw new Error('Unknown prototype action.');
   }
 }
 
 function serializeRecovery(operation) {
-  const result = recoveryQueue.then(() => {
-    invalidateProposalCache();
-    return operation();
-  });
+  const result = recoveryQueue.then(operation);
   recoveryQueue = result.catch(() => {});
   return result;
 }

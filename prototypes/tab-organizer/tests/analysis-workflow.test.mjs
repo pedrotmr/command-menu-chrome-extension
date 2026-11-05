@@ -302,3 +302,27 @@ test('failed recovery operations do not prevent later closing batches from being
   assert.equal(result.closedCount, 1);
   assert.equal(state.recovery.length, 1);
 });
+
+test('a queued apply rejected by a newer analysis leaves that analysis cacheable', async (t) => {
+  const { state, send } = await harness(t);
+  state.recovery = [{ title: 'Old closed tab', url: 'https://old.example/', windowId: 1 }];
+  state.pauseCreateOnce = true;
+  const reopening = send({ type: 'reopen' });
+  await new Promise((resolve) => setImmediate(resolve));
+  const rejectedApply = assert.rejects(
+    send({ type: 'apply', selection: { groups: [], closeIds: [] } }),
+    /full proposal/,
+  );
+  state.pause = true;
+  const analyzing = send({ type: 'analyze' });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(state.deferred.length, 1);
+  state.pendingCreates.shift()();
+  await reopening;
+  await rejectedApply;
+  state.deferred.shift()();
+  await analyzing;
+  state.pause = false;
+  assert.equal((await send({ type: 'analyze' })).resultSource, 'cached');
+  assert.equal(state.calls.length, 1);
+});

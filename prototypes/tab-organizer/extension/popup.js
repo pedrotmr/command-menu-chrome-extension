@@ -48,10 +48,9 @@ chrome.runtime.onMessage.addListener((message) => {
 
 connectButton.addEventListener('click', () =>
   run(connectButton, async () => {
-    const generation = providerGeneration;
     connectionLabel.textContent = 'Complete the sign-in and permission flow in your browser…';
-    const session = await send({ type: 'connect', provider: 'codex' });
-    if (generation !== providerGeneration || settings.provider !== 'codex') return;
+    const session = await sendProviderAction({ type: 'connect', provider: 'codex' });
+    if (!session) return;
     renderSession(session);
     await loadCatalog();
   }),
@@ -59,9 +58,8 @@ connectButton.addEventListener('click', () =>
 
 disconnectButton.addEventListener('click', () =>
   run(disconnectButton, async () => {
-    const generation = providerGeneration;
-    const session = await send({ type: 'disconnect', provider: 'codex' });
-    if (generation !== providerGeneration || settings.provider !== 'codex') return;
+    const session = await sendProviderAction({ type: 'disconnect', provider: 'codex' });
+    if (!session) return;
     renderSession(session);
     clearCatalog();
   }),
@@ -69,10 +67,8 @@ disconnectButton.addEventListener('click', () =>
 
 connectClaudeButton.addEventListener('click', () =>
   run(connectClaudeButton, async () => {
-    const generation = providerGeneration;
-    const result = await send({ type: 'connect-claude', provider: 'anthropic' });
-    if (generation !== providerGeneration || settings.provider !== 'anthropic') return;
-    if (result.status === 'login_started') {
+    const result = await sendProviderAction({ type: 'connect-claude', provider: 'anthropic' });
+    if (result?.status === 'login_started') {
       connectionLabel.textContent =
         'Claude Code opened in Terminal. Finish sign-in there, then reopen this popup to check the connection.';
     }
@@ -209,6 +205,17 @@ async function send(payload) {
   return response.result;
 }
 
+async function sendProviderAction(payload) {
+  const generation = providerGeneration;
+  const isCurrent = () => generation === providerGeneration && settings.provider === payload.provider;
+  try {
+    const result = await send(payload);
+    if (isCurrent()) return result;
+  } catch (error) {
+    if (isCurrent()) throw error;
+  }
+}
+
 async function run(button, callback) {
   button.disabled = true;
   clearMessage();
@@ -293,26 +300,32 @@ async function loadCatalog() {
   modelSelect.disabled = true;
   reasoningSelect.disabled = true;
   modelSelect.replaceChildren(new Option('Loading models…', ''));
+  let catalog;
   try {
-    const catalog = await send({ type: 'catalog', provider });
-    if (!isCurrent()) return;
-    models = Array.isArray(catalog.models) ? catalog.models : [];
-    const selection = settings.selections[provider];
-    if (!models.some((model) => model.id === selection.modelId)) {
-      selection.modelId = chooseDefaultModel(models, provider)?.id || '';
-      const selectedModel = models.find((model) => model.id === selection.modelId);
-      selection.reasoningEffort = selectedModel?.defaultReasoningEffort || 'default';
-    }
-    renderModelSettings();
-    await saveSettings();
-    if (!isCurrent()) return;
-    if (!models.length) showMessage('No models are available for this provider connection.', true);
-    else clearMessage();
+    catalog = await send({ type: 'catalog', provider });
   } catch (error) {
     if (!isCurrent()) return;
     clearCatalog();
     throw error;
   }
+  if (!isCurrent()) return;
+  models = Array.isArray(catalog.models) ? catalog.models : [];
+  const selection = settings.selections[provider];
+  if (!models.some((model) => model.id === selection.modelId)) {
+    selection.modelId = chooseDefaultModel(models, provider)?.id || '';
+    const selectedModel = models.find((model) => model.id === selection.modelId);
+    selection.reasoningEffort = selectedModel?.defaultReasoningEffort || 'default';
+  }
+  renderModelSettings();
+  try {
+    await saveSettings();
+  } catch (error) {
+    if (isCurrent()) throw error;
+    return;
+  }
+  if (!isCurrent()) return;
+  if (!models.length) showMessage('No models are available for this provider connection.', true);
+  else clearMessage();
 }
 
 function chooseDefaultModel(availableModels, provider) {
