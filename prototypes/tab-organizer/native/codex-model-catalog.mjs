@@ -157,6 +157,7 @@ function createAppServerClient(child) {
 
   child.on('error', () => failPending(new Error('Codex CLI could not start. Check its installation and try again.')));
   child.on('exit', () => failPending(new Error('Codex app-server exited before returning its model catalog.')));
+  child.stdin.on('error', () => failPending(new Error('Codex app-server could not receive the request.')));
 
   return {
     request(method, params) {
