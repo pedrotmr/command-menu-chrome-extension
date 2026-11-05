@@ -10,6 +10,8 @@ import { createChatGPT } from '../vendor/sign-in-with-chatgpt-devkit/packages/lo
 import { listCodexModels } from './codex-model-catalog.mjs';
 import { PROPOSAL_INSTRUCTIONS, validateProposal } from './proposal.mjs';
 import { buildStreamRequest } from './stream-request.mjs';
+import { createGroupStream } from './group-stream.mjs';
+import { createClaudeStream } from './claude-stream.mjs';
 
 const execFileAsync = promisify(execFile);
 const MAX_FRAME_BYTES = 2 * 1024 * 1024;
@@ -359,15 +361,29 @@ async function analyze(request) {
     const input = `Analyze only this JSON tab metadata array. Return JSON and nothing else.\n<tab_metadata_json>\n${serializedTabs}\n</tab_metadata_json>`;
     const requestStarted = performance.now();
     let firstTextMs;
+    let firstGroupMs;
+    const groupStream = createGroupStream();
+    const partialGroups = [];
+    let shownGroups = 0;
+    const onText = (delta) => {
+      if (controller.signal.aborted) return;
+      if (delta.length && firstTextMs === undefined) firstTextMs = performance.now() - requestStarted;
+      const completed = groupStream.push(delta);
+      if (!completed.length || partialGroups.length >= 20) return;
+      partialGroups.push(...completed.slice(0, 20 - partialGroups.length));
+      const preview = validateProposal({ groups: partialGroups, closeCandidates: [] }, tabByModelId);
+      if (preview.groups.length <= shownGroups) return;
+      shownGroups = preview.groups.length;
+      firstGroupMs ??= performance.now() - started;
+      send({ id: request.id, event: 'progress', data: { groups: preview.groups } });
+    };
     let responseText;
     if (provider === 'codex') {
       const { requestOptions } = buildStreamRequest({ slug: modelId }, {
         signal: controller.signal,
         reasoningEffort: reasoningEffort === 'default' ? undefined : reasoningEffort,
         instructions: PROPOSAL_INSTRUCTIONS,
-        onDelta: (delta) => {
-          if (delta.length && firstTextMs === undefined) firstTextMs = performance.now() - requestStarted;
-        },
+        onDelta: onText,
         // The pinned SDK sets store: false in the Responses API request.
         input,
       });
@@ -380,6 +396,7 @@ async function analyze(request) {
         reasoningEffort,
         input,
         signal: controller.signal,
+        onText,
       });
     }
     const requestMs = performance.now() - requestStarted;
@@ -400,13 +417,14 @@ async function analyze(request) {
       ...(reasoningEffort !== 'default' ? { reasoningEffort } : {}),
       tabsAnalyzed: snapshot.length,
       latencyMs: performance.now() - started,
-      optimizationStep: 2,
+      optimizationStep: 4,
       hostReused: completedRequests > 0,
       timings: {
         authMs,
         requestMs,
         validationMs: performance.now() - validationStarted,
         ...(firstTextMs !== undefined ? { firstTextMs } : {}),
+        ...(firstGroupMs !== undefined ? { firstGroupMs } : {}),
       },
       outputCharacters: responseText.length,
     };
@@ -427,10 +445,12 @@ async function ensureClaudeConnection(signal) {
   return runtime.claudePath;
 }
 
-function requestClaudeCodeAnalysis({ claudePath, modelId, reasoningEffort, input, signal }) {
+function requestClaudeCodeAnalysis({ claudePath, modelId, reasoningEffort, input, signal, onText }) {
   const args = [
     '--print',
-    '--output-format', 'json',
+    '--output-format', 'stream-json',
+    '--verbose',
+    '--include-partial-messages',
     '--no-session-persistence',
     '--max-turns', '1',
     '--safe-mode',
@@ -455,7 +475,8 @@ function requestClaudeCodeAnalysis({ claudePath, modelId, reasoningEffort, input
       },
       stdio: ['pipe', 'pipe', 'ignore'],
     });
-    const output = [];
+    const stream = createClaudeStream(onText);
+    child.stdout.setEncoding('utf8');
     let outputBytes = 0;
     let settled = false;
     let timedOut = false;
@@ -491,13 +512,19 @@ function requestClaudeCodeAnalysis({ claudePath, modelId, reasoningEffort, input
     }
     signal.addEventListener('abort', abort, { once: true });
     child.stdout.on('data', (chunk) => {
-      outputBytes += chunk.length;
-      if (outputBytes > 1024 * 1024) {
+      if (settled) return;
+      outputBytes += Buffer.byteLength(chunk, 'utf8');
+      if (outputBytes > 8 * 1024 * 1024) {
         terminate();
         finish(new Error('Claude Code returned too much output. Retry the tab analysis.'));
         return;
       }
-      output.push(chunk);
+      try {
+        stream.push(chunk);
+      } catch (error) {
+        terminate();
+        finish(error);
+      }
     });
     child.stdin.on('error', () => {});
     child.on('error', (error) => {
@@ -515,20 +542,11 @@ function requestClaudeCodeAnalysis({ claudePath, modelId, reasoningEffort, input
         finish(new Error('Claude Code could not complete the request. Check sign-in, model access, and subscription usage, then retry.'));
         return;
       }
-      let response;
       try {
-        response = JSON.parse(Buffer.concat(output).toString('utf8'));
+        finish(undefined, stream.finish());
       } catch (error) {
-        finish(new Error('Claude Code returned an incomplete proposal. Retry analysis; no browser changes were made.', {
-          cause: error,
-        }));
-        return;
+        finish(error);
       }
-      if (response?.is_error || typeof response?.result !== 'string' || !response.result.trim()) {
-        finish(new Error('Claude Code returned an incomplete proposal. Retry analysis; no browser changes were made.'));
-        return;
-      }
-      finish(undefined, response.result);
     });
     child.stdin.end(input);
   });

@@ -37,6 +37,13 @@ export function createNativeHostClient({ connect, lastError, idleMs = 60_000 }) 
         close(new Error('The local AI host returned an incompatible reply. Reload the prototype extension.'));
         return;
       }
+      if (reply.event === 'progress') {
+        const request = pending.get(reply.id);
+        if (request && !request.signal?.aborted) {
+          try { request.onProgress?.(reply.data); } catch { /* A preview cannot replace the final reply. */ }
+        }
+        return;
+      }
       finish(reply.id, reply.ok ? undefined : new Error(reply.error || 'The local AI request failed.'), reply.data);
     });
     opened.onDisconnect.addListener(() => {
@@ -49,7 +56,7 @@ export function createNativeHostClient({ connect, lastError, idleMs = 60_000 }) 
     return opened;
   }
 
-  function request(payload, { signal, timeoutMs = 120_000 } = {}) {
+  function request(payload, { signal, onProgress, timeoutMs = 120_000 } = {}) {
     if (signal?.aborted) return Promise.reject(new Error('Analysis cancelled. No tabs were changed.'));
     clearTimeout(idleTimer);
     let activePort;
@@ -70,7 +77,7 @@ export function createNativeHostClient({ connect, lastError, idleMs = 60_000 }) 
       const timeout = setTimeout(() => {
         close(new Error('The local AI host did not reply in time. No tabs were changed; try again.'));
       }, timeoutMs);
-      pending.set(id, { resolve, reject, timeout, signal, abort });
+      pending.set(id, { resolve, reject, timeout, signal, abort, onProgress });
       signal?.addEventListener('abort', abort, { once: true });
       try {
         activePort.postMessage({ ...payload, id });

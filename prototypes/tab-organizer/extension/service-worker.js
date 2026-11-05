@@ -63,12 +63,13 @@ async function handleMessage(message) {
     case 'save-settings':
       return saveSettings(message.settings);
     case 'analyze':
-      return analyzeTabs(message.forceRefresh === true);
+      return analyzeTabs(message.forceRefresh === true, message.runId);
     case 'has-reopenable-tabs': {
       const stored = await chrome.storage.session.get(CLOSED_KEY);
       return Array.isArray(stored[CLOSED_KEY]) && stored[CLOSED_KEY].length > 0;
     }
     case 'apply':
+      if (activeAnalysis) throw new Error('Wait for the full proposal before applying changes.');
       invalidateProposalCache();
       return applyProposal(message.selection);
     case 'load-sample':
@@ -82,7 +83,7 @@ async function handleMessage(message) {
   }
 }
 
-async function analyzeTabs(forceRefresh = false) {
+async function analyzeTabs(forceRefresh = false, runId) {
   if (activeAnalysis) throw new Error('An analysis is already running.');
   if (forceRefresh) proposalCache.clear();
   const analysis = { cancelled: false, cacheInvalidated: false, controller: new AbortController() };
@@ -98,7 +99,7 @@ async function analyzeTabs(forceRefresh = false) {
     const cacheKey = proposalCacheKey(tabs, settings.provider, selection);
     const cached = forceRefresh ? undefined : proposalCache.get(cacheKey);
     if (cached) {
-      return { ...cached.proposal, optimizationStep: 3, resultSource: 'cached', cacheAgeMs: cached.ageMs, tabsSentToModel: 0 };
+      return { ...cached.proposal, optimizationStep: 4, resultSource: 'cached', cacheAgeMs: cached.ageMs, tabsSentToModel: 0 };
     }
     const prepared = prepareAnalysis(tabs);
     const tabsByRequestId = new Map(prepared.modelTabs.map((tab, index) => [index + 1, tab]));
@@ -117,7 +118,19 @@ async function analyzeTabs(forceRefresh = false) {
         reasoningEffort: selection.reasoningEffort,
         tabs: hostTabs,
       },
-      { analysis, timeoutMs: HOST_REQUEST_TIMEOUT_MS },
+      {
+        analysis,
+        timeoutMs: HOST_REQUEST_TIMEOUT_MS,
+        onProgress: (preview) => {
+          if (analysis.cancelled || activeAnalysis !== analysis || typeof runId !== 'string' || runId.length > 128) return;
+          const restored = restoreTabReferences({ groups: preview.groups, closeCandidates: [] }, tabsByRequestId);
+          const { groups } = mergeLocalAnalysis(restored, prepared);
+          if (!groups.length) return;
+          void chrome.runtime.sendMessage({ type: 'analysis-progress', runId, groups }).catch(() => {
+            // Closing the popup must not interrupt inference or populate a partial cache entry.
+          });
+        },
+      },
     );
     if (analysis.cancelled) throw new Error('Analysis cancelled. No tabs were changed.');
     const proposal = mergeLocalAnalysis(restoreTabReferences(result, tabsByRequestId), prepared);
@@ -132,7 +145,7 @@ async function analyzeTabs(forceRefresh = false) {
     };
     if (!analysis.cacheInvalidated) proposalCache.set(cacheKey, reusable);
     return {
-      ...proposal, ...reusable, optimizationStep: 3,
+      ...proposal, ...reusable, optimizationStep: 4,
       resultSource: hostTabs.length < 2 ? 'local' : 'fresh',
       tabsSentToModel: hostTabs.length < 2 ? 0 : hostTabs.length,
     };
@@ -214,8 +227,8 @@ async function getEligibleTabs() {
     }));
 }
 
-function requestHost(payload, { analysis, timeoutMs = HOST_REQUEST_TIMEOUT_MS } = {}) {
-  return hostClient.request(payload, { signal: analysis?.controller.signal, timeoutMs });
+function requestHost(payload, { analysis, onProgress, timeoutMs = HOST_REQUEST_TIMEOUT_MS } = {}) {
+  return hostClient.request(payload, { signal: analysis?.controller.signal, onProgress, timeoutMs });
 }
 
 async function applyProposal(selection) {

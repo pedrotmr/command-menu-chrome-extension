@@ -19,6 +19,20 @@ let analysisCancelled = false;
 let settings;
 let models = [];
 let session;
+let currentRun;
+
+chrome.runtime.onMessage.addListener((message) => {
+  if (message?.type !== 'analysis-progress' || !currentRun?.running ||
+      message.runId !== currentRun.id || analysisCancelled || !message.groups?.length) return;
+  renderGroups(message.groups, true);
+  duplicatesRoot.replaceChildren();
+  results.classList.remove('hidden');
+  currentRun.firstGroupShownMs ??= performance.now() - currentRun.clickedAt;
+  $('#latency').textContent = `Receiving groups · first group ${Math.round(currentRun.firstGroupShownMs)} ms`;
+  $('#notice').textContent = `${message.groups.length} provisional group(s). Waiting for the full proposal before review.`;
+  $('#timing-label').textContent = 'Timing details · step 4';
+  $('#timing-details').textContent = `First group shown: ${Math.round(currentRun.firstGroupShownMs)} ms · Full proposal pending`;
+});
 
 connectButton.addEventListener('click', () =>
   run(connectButton, async () => {
@@ -90,22 +104,35 @@ organizeButton.addEventListener('click', () => void organizeTabs());
 $('#reanalyze').addEventListener('click', () => void organizeTabs(true));
 
 async function organizeTabs(forceRefresh = false) {
+  if (currentRun?.running) return;
   const clickedAt = performance.now();
+  const run = { id: crypto.randomUUID(), clickedAt, running: true };
+  currentRun = run;
+  proposal = undefined;
   analysisCancelled = false;
   clearMessage();
   organizeButton.disabled = true;
   organizeButton.textContent = 'Analyzing…';
   cancelButton.classList.remove('hidden');
   results.classList.add('hidden');
+  applyButton.disabled = true;
+  $('#reanalyze').disabled = true;
   try {
-    const result = await send({ type: 'analyze', forceRefresh });
+    const result = await send({ type: 'analyze', forceRefresh, runId: run.id });
     if (analysisCancelled) return;
     result.totalLatencyMs = performance.now() - clickedAt;
+    result.firstGroupShownMs = run.firstGroupShownMs;
     proposal = result;
     renderProposal(proposal);
+    applyButton.disabled = false;
   } catch (error) {
+    results.classList.add('hidden');
+    groupsRoot.replaceChildren();
+    duplicatesRoot.replaceChildren();
     showMessage(analysisCancelled ? 'Analysis cancelled. No tabs were changed.' : error.message, !analysisCancelled);
   } finally {
+    run.running = false;
+    $('#reanalyze').disabled = false;
     updateOrganizeAvailability();
     organizeButton.textContent = 'Organize tabs';
     cancelButton.classList.add('hidden');
@@ -114,6 +141,10 @@ async function organizeTabs(forceRefresh = false) {
 
 cancelButton.addEventListener('click', () => {
   analysisCancelled = true;
+  results.classList.add('hidden');
+  groupsRoot.replaceChildren();
+  duplicatesRoot.replaceChildren();
+  proposal = undefined;
   void send({ type: 'cancel-analysis' });
   showMessage('Analysis cancelled. No tabs were changed.', false);
 });
@@ -309,7 +340,7 @@ function updateOrganizeAvailability() {
     return;
   }
   const selection = settings?.selections?.[settings.provider];
-  organizeButton.disabled = !isConnected(session, settings.provider) || !selection?.modelId;
+  organizeButton.disabled = currentRun?.running || !isConnected(session, settings.provider) || !selection?.modelId;
 }
 
 function renderProposal(value) {
@@ -327,6 +358,9 @@ function renderProposal(value) {
   $('#timing-details').textContent = [
     `Total: ${Math.round(value.totalLatencyMs)} ms`,
     `Source: ${sourceLabel}`,
+    ...(fresh ? [Number.isFinite(value.firstGroupShownMs)
+      ? `First group shown: ${Math.round(value.firstGroupShownMs)} ms`
+      : 'First group shown: no streamed preview'] : []),
     `Sent to AI: ${value.tabsSentToModel} of ${value.tabsAnalyzed} tabs`,
     `Exact duplicate copies found: ${value.exactDuplicateCount}`,
     ...(Number.isFinite(value.cacheAgeMs) ? [`Cache age: ${Math.round(value.cacheAgeMs / 1000)} s`] : []),
@@ -338,34 +372,17 @@ function renderProposal(value) {
       ...(Number.isFinite(timings.firstTextMs)
         ? [`First text within request: ${Math.round(timings.firstTextMs)} ms`]
         : []),
+      ...(Number.isFinite(timings.firstGroupMs)
+        ? [`First group within host: ${Math.round(timings.firstGroupMs)} ms`]
+        : []),
       `Validation: ${Math.round(timings.validationMs)} ms`,
     ] : []),
     ...(Number.isFinite(value.outputCharacters) ? [`Output: ${value.outputCharacters} characters`] : []),
   ].join(' · ');
   $('#notice').textContent =
     `${value.tabsAnalyzed} tabs analyzed. ${value.groups.length} groups and ${value.closeCandidates.length} possible duplicates. Grouping is selected; closures need your explicit selection.`;
-  groupsRoot.replaceChildren();
+  renderGroups(value.groups);
   duplicatesRoot.replaceChildren();
-
-  for (const [index, group] of value.groups.entries()) {
-    const card = document.createElement('article');
-    card.className = 'card';
-    const heading = document.createElement('h3');
-    heading.textContent = group.name;
-    card.append(heading);
-    for (const tab of group.tabs) {
-      const input = checkbox(`group-${index}-${tab.id}`, tab.title, `group ${index}`);
-      input.checked = true;
-      input.dataset.groupIndex = String(index);
-      input.dataset.tabId = String(tab.id);
-      const details = document.createElement('small');
-      details.textContent = tab.url;
-      input.parentElement.querySelector('span').append(details);
-      if (tab.pinned) input.parentElement.querySelector('span').append(badge('pinned'));
-      card.append(input.parentElement);
-    }
-    groupsRoot.append(card);
-  }
 
   if (!value.closeCandidates.length) return;
   const section = document.createElement('article');
@@ -385,6 +402,29 @@ function renderProposal(value) {
     section.append(input.parentElement);
   }
   duplicatesRoot.append(section);
+}
+
+function renderGroups(groups, provisional = false) {
+  groupsRoot.replaceChildren();
+  for (const [index, group] of groups.entries()) {
+    const card = document.createElement('article');
+    card.className = 'card';
+    const heading = document.createElement('h3');
+    heading.textContent = group.name;
+    card.append(heading);
+    for (const tab of group.tabs) {
+      const input = checkbox(`group-${index}-${tab.id}`, tab.title, `group ${index}`);
+      input.checked = true;
+      input.disabled = provisional;
+      input.dataset.groupIndex = String(index);
+      input.dataset.tabId = String(tab.id);
+      const details = document.createElement('small');
+      details.textContent = tab.url;
+      input.parentElement.querySelector('span').append(details);
+      card.append(input.parentElement);
+    }
+    groupsRoot.append(card);
+  }
 }
 
 function reasoningLabel(value) {

@@ -9,12 +9,15 @@ async function harness(t, tabs = [tab(11, 'https://example.com/a'), tab(22, 'htt
   const previousChrome = globalThis.chrome;
   let listener;
   let settings = { provider: 'codex', selections: { codex: { modelId: 'gpt-6-luna', reasoningEffort: 'low' } } };
-  const state = { tabs, calls: [], ports: [], deferred: [], pause: false, failNext: false, removed: [] };
+  const state = { tabs, calls: [], ports: [], deferred: [], pause: false, failNext: false, removed: [], previews: [], streamPreview: false };
   const event = () => {
     const listeners = [];
     return { addListener: (fn) => listeners.push(fn), emit: (value) => listeners.forEach((fn) => fn(value)) };
   };
   function reply(port, message) {
+    if (message.action === 'analyze' && state.streamPreview) {
+      port.onMessage.emit({ id: message.id, event: 'progress', data: { groups: [{ name: 'Docs', tabIds: [1, 2] }] } });
+    }
     if (message.action === 'analyze' && state.failNext) {
       state.failNext = false;
       port.onMessage.emit({ id: message.id, ok: false, error: 'provider unavailable' });
@@ -30,11 +33,13 @@ async function harness(t, tabs = [tab(11, 'https://example.com/a'), tab(22, 'htt
     runtime: {
       getURL: (path) => `chrome-extension://prototype/${path}`,
       onMessage: { addListener: (fn) => { listener = fn; } },
+      sendMessage: async (message) => { state.previews.push(message); },
       connectNative: () => {
         const port = {
           onMessage: event(), onDisconnect: event(), disconnected: false,
           disconnect() { if (!this.disconnected) { this.disconnected = true; this.onDisconnect.emit(); } },
           postMessage(message) {
+            if (message.action === 'cancel-analysis') return;
             if (message.action === 'analyze') state.calls.push(message);
             if (state.pause && message.action === 'analyze') state.deferred.push(() => reply(this, message));
             else queueMicrotask(() => reply(this, message));
@@ -131,7 +136,7 @@ test('invalidation while inference is pending prevents that response from repopu
   const pending = send({ type: 'analyze' });
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(state.deferred.length, 1);
-  await send({ type: 'apply', selection: { groups: [], closeIds: [] } });
+  await send({ type: 'disconnect', provider: 'codex' });
   state.deferred.shift()();
   await pending;
   state.pause = false;
@@ -146,4 +151,31 @@ test('applying a local closure skips a duplicate if its keeper has disappeared',
   assert.equal(applied.closedCount, 0);
   assert.equal(applied.skipped.length, 1);
   assert.deepEqual(state.removed, []);
+});
+
+test('progress expands original tabs, includes the popup run ID and cannot be applied or cached early', async (t) => {
+  const { state, send } = await harness(t);
+  state.pause = true;
+  const pending = send({ type: 'analyze', runId: 'popup-run' });
+  await new Promise((resolve) => setImmediate(resolve));
+  state.ports[0].onMessage.emit({
+    id: state.calls[0].id, event: 'progress', data: { groups: [{ name: 'Docs', tabIds: [1, 2] }] },
+  });
+  assert.equal(state.previews[0].runId, 'popup-run');
+  assert.deepEqual(state.previews[0].groups[0].tabs.map((tab) => tab.id), [11, 22, 33]);
+  await assert.rejects(send({ type: 'apply', selection: { groups: [], closeIds: [] } }), /full proposal/);
+  await assert.rejects(send({ type: 'analyze' }), /already running/);
+  state.deferred.shift()();
+  await pending;
+  assert.equal((await send({ type: 'analyze' })).resultSource, 'cached');
+});
+
+test('a response that fails after streaming a preview does not populate the cache', async (t) => {
+  const { state, send } = await harness(t);
+  state.streamPreview = true;
+  state.failNext = true;
+  await assert.rejects(send({ type: 'analyze', runId: 'failed-run' }), /provider unavailable/);
+  assert.equal(state.previews.length, 1);
+  assert.equal((await send({ type: 'analyze' })).resultSource, 'fresh');
+  assert.equal(state.calls.length, 2);
 });

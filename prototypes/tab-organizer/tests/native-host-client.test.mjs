@@ -145,3 +145,54 @@ test('provider errors preserve the host, while uncorrelated replies fail safely'
   await incompatible;
   assert.equal(port.disconnected, true);
 });
+
+test('progress belongs to its request and never settles the final response or releases the host', async (t) => {
+  const { client, ports } = harness(t);
+  const previews = [];
+  let settled = false;
+  const analysis = client.request({ action: 'analyze' }, { onProgress: (data) => previews.push(data) });
+  void analysis.then(() => { settled = true; });
+  const session = client.request({ action: 'session' });
+  const port = ports[0];
+  port.onMessage.emit({ id: port.sent[0].id, event: 'progress', data: { groups: ['Docs'] } });
+  await Promise.resolve();
+  assert.equal(settled, false);
+  assert.deepEqual(previews, [{ groups: ['Docs'] }]);
+  port.onMessage.emit({ id: port.sent[1].id, ok: true, data: 'connected' });
+  assert.equal(await session, 'connected');
+  port.onMessage.emit({ id: port.sent[0].id, ok: true, data: 'full proposal' });
+  assert.equal(await analysis, 'full proposal');
+  port.onMessage.emit({ id: port.sent[0].id, event: 'progress', data: 'late preview' });
+  assert.equal(previews.length, 1);
+  assert.equal(port.disconnected, false);
+});
+
+test('cancelled requests suppress subsequent progress and preview errors cannot replace the final response', async (t) => {
+  const { client, ports } = harness(t);
+  const controller = new AbortController();
+  let previews = 0;
+  const rejected = assert.rejects(client.request({ action: 'analyze' }, {
+    signal: controller.signal, onProgress: () => { previews++; },
+  }), /cancelled/);
+  const port = ports[0];
+  controller.abort();
+  port.onMessage.emit({ id: port.sent[0].id, event: 'progress', data: 'late' });
+  port.onMessage.emit({ id: port.sent[0].id, ok: false, error: 'cancelled' });
+  await rejected;
+  assert.equal(previews, 0);
+  const final = client.request({ action: 'analyze' }, { onProgress: () => { throw new Error('preview display failed'); } });
+  const id = port.sent.at(-1).id;
+  port.onMessage.emit({ id, event: 'progress', data: 'partial' });
+  port.onMessage.emit({ id, ok: true, data: 'full proposal' });
+  assert.equal(await final, 'full proposal');
+});
+
+test('progress does not postpone a request deadline', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const { client, ports } = harness(t);
+  const rejected = assert.rejects(client.request({ action: 'analyze' }), /did not reply in time/);
+  t.mock.timers.tick(119_999);
+  ports[0].onMessage.emit({ id: ports[0].sent[0].id, event: 'progress', data: 'still generating' });
+  t.mock.timers.tick(1);
+  await rejected;
+});

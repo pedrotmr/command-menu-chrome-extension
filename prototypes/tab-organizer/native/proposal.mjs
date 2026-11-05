@@ -1,7 +1,7 @@
 import { filterGroupTabIds } from './proposal-members.mjs';
 
 export const PROPOSAL_INSTRUCTIONS = [
-  'Organize browser tabs from metadata only. Return compact JSON with exactly two keys: groups and closeCandidates.',
+  'Organize browser tabs from metadata only. Return compact JSON with exactly two keys: groups and closeCandidates. Write groups first.',
   'Each group has name (at most 3 words) and tabIds (integer IDs). Do not include a summary or group explanations.',
   'Each closeCandidates entry has tabId (integer) and reason (at most 8 words explaining the duplicate).',
   'Use only temporary request-local IDs from the supplied records; do not invent IDs or treat them as browser IDs.',
