@@ -29,7 +29,7 @@
           Provider
           <select id="provider" disabled>
             <option value="codex">Codex models · ChatGPT plan</option>
-            <option value="anthropic">Anthropic · Claude Console API</option>
+            <option value="anthropic">Claude Code · Claude plan</option>
           </select>
         </label>
         <p id="provider-help" class="notice"></p>
@@ -41,15 +41,9 @@
             >Manage ChatGPT usage</a
           >
         </div>
-        <div id="anthropic-connection" class="connection-actions hidden">
-          <label class="field" for="anthropic-key">
-            Claude Console API key
-            <input id="anthropic-key" type="password" autocomplete="off" spellcheck="false" />
-          </label>
-          <button id="connect-anthropic" class="secondary" type="button" disabled>Connect Anthropic</button>
-          <button id="disconnect-anthropic" class="secondary hidden" type="button">Remove saved key</button>
-          <a href="https://platform.claude.com/settings/keys" target="_blank" rel="noreferrer">Open Claude Console API keys</a>
-          <small>Saved in macOS Keychain. API usage is billed to your Console organization.</small>
+        <div id="claude-connection" class="connection-actions hidden">
+          <button id="connect-claude" class="secondary" type="button" disabled>Sign in with Claude Code</button>
+          <small>Sign-in opens the installed Claude Code CLI in Terminal. Its credentials stay under Claude Code's control.</small>
         </div>
 
         <p id="connection" class="status" role="status">Checking connection…</p>
@@ -60,12 +54,12 @@
           </select>
         </label>
         <label class="field" for="reasoning">
-          Reasoning
+          Reasoning effort
           <select id="reasoning" disabled>
             <option value="default">Provider default</option>
           </select>
         </label>
-        <button id="refresh-models" class="secondary" type="button" disabled>Refresh models</button>
+        <button id="refresh-models" class="secondary" type="button" disabled>Reload model options</button>
       </section>
 
       <div class="toolbar">

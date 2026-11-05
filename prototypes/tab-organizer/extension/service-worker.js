@@ -4,6 +4,7 @@ const SETTINGS_KEY = 'tabOrganizerProviderSettings';
 const MAX_TABS = 100;
 const HOST_REQUEST_TIMEOUT_MS = 2 * 60 * 1000;
 const SIGN_IN_TIMEOUT_MS = 5 * 60 * 1000;
+const CLI_LAUNCH_TIMEOUT_MS = 30 * 1000;
 const PROVIDERS = new Set(['codex', 'anthropic']);
 let activeAnalysis;
 
@@ -28,10 +29,11 @@ async function handleMessage(message) {
     case 'session':
       return requestHost({ action: 'session', provider: requireProvider(message.provider) });
     case 'connect':
-      if (requireProvider(message.provider) !== 'codex') throw new Error('Choose Anthropic in provider settings to connect it.');
+      if (requireProvider(message.provider) !== 'codex') throw new Error('Choose Codex in provider settings to connect it.');
       return requestHost({ action: 'sign-in', provider: 'codex' }, { timeoutMs: SIGN_IN_TIMEOUT_MS });
-    case 'connect-anthropic':
-      return requestHost({ action: 'anthropic-connect', apiKey: message.apiKey });
+    case 'connect-claude':
+      if (requireProvider(message.provider) !== 'anthropic') throw new Error('Choose Claude Code in provider settings to connect it.');
+      return requestHost({ action: 'claude-login', provider: 'anthropic' }, { timeoutMs: CLI_LAUNCH_TIMEOUT_MS });
     case 'disconnect':
       return requestHost({ action: 'disconnect', provider: requireProvider(message.provider) });
     case 'catalog':
@@ -124,7 +126,7 @@ function normalizeSelection(value) {
 }
 
 function requireProvider(provider) {
-  if (!PROVIDERS.has(provider)) throw new Error('Choose Codex or Anthropic in provider settings.');
+  if (!PROVIDERS.has(provider)) throw new Error('Choose Codex or Claude Code in provider settings.');
   return provider;
 }
 

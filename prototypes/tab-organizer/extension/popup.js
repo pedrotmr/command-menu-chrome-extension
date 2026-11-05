@@ -1,8 +1,7 @@
 const $ = (selector) => document.querySelector(selector);
 const connectButton = $('#connect');
 const disconnectButton = $('#disconnect');
-const connectAnthropicButton = $('#connect-anthropic');
-const disconnectAnthropicButton = $('#disconnect-anthropic');
+const connectClaudeButton = $('#connect-claude');
 const sampleButton = $('#sample');
 const organizeButton = $('#organize');
 const cancelButton = $('#cancel');
@@ -38,22 +37,12 @@ disconnectButton.addEventListener('click', () =>
   }),
 );
 
-connectAnthropicButton.addEventListener('click', () =>
-  run(connectAnthropicButton, async () => {
-    const apiKeyInput = $('#anthropic-key');
-    const apiKey = apiKeyInput.value;
-    apiKeyInput.value = '';
-    const savedSession = await send({ type: 'connect-anthropic', apiKey });
-    renderSession(savedSession);
-    await loadCatalog();
-  }),
-);
-
-disconnectAnthropicButton.addEventListener('click', () =>
-  run(disconnectAnthropicButton, async () => {
-    const savedSession = await send({ type: 'disconnect', provider: 'anthropic' });
-    renderSession(savedSession);
-    clearCatalog();
+connectClaudeButton.addEventListener('click', () =>
+  run(connectClaudeButton, async () => {
+    const result = await send({ type: 'connect-claude', provider: 'anthropic' });
+    if (result.status === 'login_started') {
+      connectionLabel.textContent = 'Claude Code opened in Terminal. Finish sign-in there, then reopen this popup to check the connection.';
+    }
   }),
 );
 
@@ -182,13 +171,13 @@ async function loadProvider() {
   const provider = settings.provider;
   const isCodex = provider === 'codex';
   $('#codex-connection').classList.toggle('hidden', !isCodex);
-  $('#anthropic-connection').classList.toggle('hidden', isCodex);
+  $('#claude-connection').classList.toggle('hidden', isCodex);
   $('#provider-help').textContent = isCodex
     ? 'Sign in with ChatGPT and grant plan usage. The installed Codex CLI supplies model and reasoning options; a listed model can still depend on your account access.'
-    : 'Connect with a Claude Console API key. This prototype does not use Claude.ai login or subscription credentials.';
+    : 'Claude Code handles sign-in through its own CLI in Terminal. The prototype does not read or store credentials. The CLI offers effort levels rather than a non-reasoning switch, and checks model access when used.';
   $('#privacy-copy').textContent = isCodex
     ? 'When you analyze tabs, titles, up to 2,048 URL characters, pinned state, current group names, and a temporary matching number go to OpenAI through ChatGPT plan usage. The number is not a Chrome tab ID. Codex app-server loads the model catalog; analysis runs through a request with no tools. Page contents and the browser password store are not read. URLs may contain sensitive data.'
-    : 'When you analyze tabs, titles, up to 2,048 URL characters, pinned state, current group names, and a temporary matching number go to Anthropic through the Claude Messages API. The number is not a Chrome tab ID. The Console API key stays in macOS Keychain. Page contents and the browser password store are not read. URLs may contain sensitive data.';
+    : 'When you analyze tabs, titles, up to 2,048 URL characters, pinned state, current group names, and a temporary matching number go to Claude Code through its local CLI and then to Anthropic. The number is not a Chrome tab ID. Claude Code credentials stay under the CLI’s control. The request disables built-in and MCP tools and does not save a session. Page contents and the browser password store are not read. URLs may contain sensitive data.';
 
   clearCatalog();
   session = await send({ type: 'session', provider });
@@ -219,14 +208,19 @@ function renderSession(value) {
           ? 'Reconnect your ChatGPT account to use Codex models.'
           : 'Not connected. Connect ChatGPT to use Codex models.';
   } else {
-    connectAnthropicButton.classList.remove('hidden');
-    connectAnthropicButton.textContent = connected ? 'Update Anthropic key' : 'Connect Anthropic';
-    disconnectAnthropicButton.classList.toggle('hidden', !connected);
+    connectClaudeButton.classList.toggle('hidden', connected);
+    connectClaudeButton.disabled = value?.status === 'not_installed';
     connectionLabel.textContent = connected
-      ? 'Anthropic Console connected. The API key is stored in macOS Keychain.'
-      : 'Not connected. Add a Claude Console API key to use Anthropic models.';
+      ? 'Claude Code is signed in with your Claude account.'
+      : value?.status === 'not_installed'
+        ? 'Claude Code CLI path is not registered. Install it if needed, then rerun the prototype setup.'
+        : value?.status === 'unsupported_auth'
+          ? 'Claude Code is signed in with an API key or another provider. This prototype requires Claude account sign-in; existing CLI credentials were left unchanged.'
+          : 'Not signed in. Start Claude Code sign-in in Terminal to use the Claude plan.';
   }
-  connectionLabel.dataset.error = String(value?.status === 'reauth_required');
+  connectionLabel.dataset.error = String(
+    value?.status === 'reauth_required' || value?.status === 'unsupported_auth' || value?.status === 'not_installed',
+  );
   updateOrganizeAvailability();
 }
 
@@ -316,7 +310,7 @@ function updateOrganizeAvailability() {
 function renderProposal(value) {
   results.classList.remove('hidden');
   const effort = value.reasoningEffort ? ` · ${reasoningLabel(value.reasoningEffort)}` : '';
-  const providerName = value.provider === 'anthropic' ? 'Anthropic' : 'Codex';
+  const providerName = value.provider === 'anthropic' ? 'Claude Code' : 'Codex';
   const displayName = models.find((model) => model.id === value.modelName)?.displayName || value.modelName || providerName;
   $('#latency').textContent = `${providerName} · ${Math.round(value.latencyMs)} ms · ${displayName}${effort}`;
   $('#notice').textContent =
@@ -412,7 +406,7 @@ void send({ type: 'get-settings' }).then(async (initialSettings) => {
   providerSelect.value = settings.provider;
   providerSelect.disabled = false;
   connectButton.disabled = false;
-  connectAnthropicButton.disabled = false;
+  connectClaudeButton.disabled = false;
   await loadProvider();
 }).catch((error) => {
   connectionLabel.textContent = error.message;
