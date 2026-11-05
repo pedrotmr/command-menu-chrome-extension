@@ -221,7 +221,7 @@ async function applyProposal(selection) {
         continue;
       }
       try {
-        const groupId = await chrome.tabs.group({ tabIds });
+        const groupId = await chrome.tabs.group({ tabIds, createProperties: { windowId } });
         await chrome.tabGroups.update(groupId, { title: group.name.slice(0, 60) });
         appliedGroups.push(group.name);
       } catch {
