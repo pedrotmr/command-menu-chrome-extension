@@ -77,6 +77,22 @@ The extension keeps one successful proposal in worker memory for at most five mi
 
 For step 4, the user reported **First group shown** at **5,704 ms** for Haiku low and **3,791 ms** for Luna low. Total completion times from those runs were not supplied. These measure first preview display from the popup click and cannot establish a completion-time improvement over the earlier Host measurements.
 
+The user then supplied the following detailed fresh step 4 runs. Both used low effort, analyzed 32 tabs, sent 27 records to AI, found 2 exact duplicate copies, and reused the companion. Times are milliseconds; this is one reported run per provider, not a controlled benchmark median.
+
+| Measurement | Luna low | Haiku low |
+| --- | ---: | ---: |
+| Total | 4,239 | 6,621 |
+| First group shown | 2,492 | 4,646 |
+| Host | 4,234 | 6,616 |
+| Auth check | 0 | 212 |
+| Request / CLI + request | 4,234 | 6,404 |
+| First text within request | 2,126 | 4,359 |
+| First group within host | 2,484 | 4,640 |
+| Validation | 0 | 0 |
+| Output characters (not tokens) | 320 | 557 |
+
+In these runs, group previews appeared **1,747 ms** before Luna completed and **1,975 ms** before Haiku completed. Time outside the host was only 5 ms in each run. Both request phases spent about 2.1 seconds after the first text delta; Haiku's extra wait was primarily before that delta, inside its combined CLI/request phase. These measurements do not separate CLI startup, networking, provider queueing, or model processing, so they cannot identify which caused that difference or establish a general provider speed ranking.
+
 After reloading the unpacked extension, keep the same tabs, model, and effort and leave proposals unapplied:
 
 - Run **Organize tabs** once and record **Fresh AI** Host/Total times, plus **Sent to AI** and exact-duplicate counts under **Timing details · step 4**.
