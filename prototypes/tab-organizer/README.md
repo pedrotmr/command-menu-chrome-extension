@@ -12,7 +12,7 @@ Installing the pinned DevKit currently reports dependency audit advisories, incl
 
 Tab title, up to 2,048 URL characters, pinned state, and existing group name are sent to ChatGPT with a temporary request-local number to match the response to each tab. That number is not the Chrome tab ID and is discarded after the response. The full URL stays in the extension for stale-tab checks. No page contents, cookies, or browsing history are read. Tab titles and URLs are untrusted input. The AI returns a proposal; the extension validates Chrome tab IDs against current browser state and requires a separate user selection before grouping or closing. Pinned tabs are protected from grouping and closing. Closed URLs can be reopened, but page state such as unsaved form data cannot be restored.
 
-The host prefers **GPT-6 Luna** when the signed-in account makes it available, then falls back to another listed model. GPT-6 Luna uses medium reasoning effort by default for Responses API requests; the pinned local SDK does not expose a per-request effort setting.
+The host prefers **GPT-6 Luna** when the signed-in account makes it available, then falls back to another listed model. For GPT-6 Luna, it requests `reasoning.effort: "none"` so the model skips reasoning tokens. The pinned local SDK does not expose this setting, so setup applies the small, idempotent patch in `apply-devkit-patch.mjs` to the local submodule working tree before building the SDK. This leaves the pinned submodule commit unchanged.
 
 ## Requirements
 
@@ -27,7 +27,9 @@ From the repository root:
 ```sh
 git submodule update --init --recursive
 npm ci --prefix prototypes/tab-organizer/vendor/sign-in-with-chatgpt-devkit
+node prototypes/tab-organizer/apply-devkit-patch.mjs
 npm run build -w @siwc/local --prefix prototypes/tab-organizer/vendor/sign-in-with-chatgpt-devkit
+node --test prototypes/tab-organizer/tests/non-reasoning.test.mjs
 ```
 
 1. Open `chrome://extensions`, turn on Developer mode, and load `prototypes/tab-organizer/extension` as an unpacked extension.

@@ -165,7 +165,7 @@ async function analyze(tabs) {
     return {
       ...plan,
       modelName: model.displayName,
-      ...(model.slug.toLowerCase() === 'gpt-6-luna' ? { reasoningEffort: 'medium' } : {}),
+      ...(model.slug.toLowerCase() === 'gpt-6-luna' ? { reasoningEffort: 'none' } : {}),
       tabsAnalyzed: snapshot.length,
       latencyMs: performance.now() - started,
     };

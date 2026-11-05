@@ -46,7 +46,7 @@ Chrome Native Messaging uses a length-prefixed JSON stdio protocol. The host's m
 
 The implementation is in [`prototypes/tab-organizer`](../../prototypes/tab-organizer/README.md). It creates seven local synthetic tabs across product docs, research notes, and trip planning, including an exact duplicate. The popup requests an AI proposal and exposes group and close selections before application.
 
-The native host prefers GPT-6 Luna when available in the signed-in account's model list, then falls back to another listed model. GPT-6 Luna uses medium reasoning effort by default for Responses API requests; the pinned local SDK does not expose a per-request effort setting.
+The native host prefers GPT-6 Luna when available in the signed-in account's model list, then falls back to another listed model. For GPT-6 Luna, the prototype explicitly requests `reasoning.effort: "none"`, which the API supports. Setup applies a small local patch to the pinned DevKit working tree so its Responses API request includes that parameter; the pinned submodule commit remains unchanged. The model selection and non-reasoning request have not yet been measured with a live account.
 
 Installing the full DevKit workspace reported 7 advisories (3 moderate, 4 high). The targeted `@siwc/local` runtime audit reported a high-severity advisory in its optional `undici` peer dependency. The SDK request path uses Node 22's built-in `fetch`, but the optional package is installed by the workspace and the advisory remains in the pinned upstream dependency tree. Review and resolve the dependency finding before any broader distribution.
 
