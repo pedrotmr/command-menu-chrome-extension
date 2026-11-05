@@ -20,6 +20,7 @@ const SIGN_IN_TIMEOUT_MS = 5 * 60 * 1000;
 const CLI_LAUNCH_TIMEOUT_MS = 30 * 1000;
 const PROVIDERS = new Set(['codex', 'anthropic']);
 let activeAnalysis;
+let recoveryQueue = Promise.resolve();
 const proposalCache = createProposalCache();
 
 function invalidateProposalCache() {
@@ -78,17 +79,27 @@ async function handleMessage(message) {
     }
     case 'apply':
       if (activeAnalysis) throw new Error('Wait for the full proposal before applying changes.');
-      invalidateProposalCache();
-      return applyProposal(message.selection);
+      return serializeRecovery(() => {
+        if (activeAnalysis) throw new Error('Wait for the full proposal before applying changes.');
+        return applyProposal(message.selection);
+      });
     case 'load-sample':
       invalidateProposalCache();
       return loadSampleTabs();
     case 'reopen':
-      invalidateProposalCache();
-      return reopenLastClosedTabs();
+      return serializeRecovery(reopenLastClosedTabs);
     default:
       throw new Error('Unknown prototype action.');
   }
+}
+
+function serializeRecovery(operation) {
+  const result = recoveryQueue.then(() => {
+    invalidateProposalCache();
+    return operation();
+  });
+  recoveryQueue = result.catch(() => {});
+  return result;
 }
 
 async function analyzeTabs(forceRefresh = false, runId) {

@@ -26,6 +26,12 @@ async function harness(
     removed: [],
     previews: [],
     streamPreview: false,
+    recovery: undefined,
+    pendingCreates: [],
+    pauseCreateOnce: false,
+    failCreates: false,
+    failRecoveryReadOnce: false,
+    created: [],
   };
   const event = () => {
     const listeners = [];
@@ -94,6 +100,16 @@ async function harness(
       },
       remove: async (id) => {
         state.removed.push(id);
+        state.tabs = state.tabs.filter((tab) => tab.id !== id);
+      },
+      create: async (properties) => {
+        state.created.push(properties);
+        if (state.pauseCreateOnce) {
+          state.pauseCreateOnce = false;
+          await new Promise((resolve) => state.pendingCreates.push(resolve));
+        }
+        if (state.failCreates) throw new Error('cannot reopen tab');
+        return { id: 100 + state.created.length };
       },
     },
     tabGroups: { query: async () => [] },
@@ -104,7 +120,21 @@ async function harness(
           settings = structuredClone(value.tabOrganizerProviderSettings);
         },
       },
-      session: { set: async () => {} },
+      session: {
+        get: async (key) => {
+          if (state.failRecoveryReadOnce) {
+            state.failRecoveryReadOnce = false;
+            throw new Error('recovery read failed');
+          }
+          return { [key]: structuredClone(state.recovery) };
+        },
+        set: async (value) => {
+          state.recovery = structuredClone(value.recentClosedTabs);
+        },
+        remove: async () => {
+          state.recovery = undefined;
+        },
+      },
     },
   };
   t.after(() => {
@@ -230,4 +260,45 @@ test('a response that fails after streaming a preview does not populate the cach
   assert.equal(state.previews.length, 1);
   assert.equal((await send({ type: 'analyze' })).resultSource, 'fresh');
   assert.equal(state.calls.length, 2);
+});
+
+for (const failReopen of [false, true]) {
+  test(`recovery batches survive overlapping reopen and close operations (reopen fails: ${failReopen})`, async (t) => {
+    const { state, send } = await harness(t);
+    state.recovery = [{ title: 'Old closed tab', url: 'https://old.example/', windowId: 1 }];
+    state.pauseCreateOnce = true;
+    state.failCreates = failReopen;
+    const reopening = send({ type: 'reopen' });
+    await new Promise((resolve) => setImmediate(resolve));
+    const closing = send({ type: 'apply', selection: { groups: [], closeIds: [tab(22, 'https://example.com/a')] } });
+    await new Promise((resolve) => setImmediate(resolve));
+    state.pendingCreates.shift()();
+    const [, applied] = await Promise.all([reopening, closing]);
+    assert.equal(applied.closedCount, 1);
+    assert.deepEqual(state.recovery, [{ title: 'Docs', url: 'https://example.com/a', windowId: 1 }]);
+  });
+}
+
+test('concurrent reopens consume a recovery batch only once', async (t) => {
+  const { state, send } = await harness(t);
+  state.recovery = [{ title: 'Old closed tab', url: 'https://old.example/', windowId: 1 }];
+  state.pauseCreateOnce = true;
+  const first = send({ type: 'reopen' });
+  await new Promise((resolve) => setImmediate(resolve));
+  const second = send({ type: 'reopen' });
+  await new Promise((resolve) => setImmediate(resolve));
+  state.pendingCreates.shift()();
+  const results = await Promise.all([first, second]);
+  assert.equal(state.created.length, 1);
+  assert.equal(results[0].reopened.length, 1);
+  assert.equal(results[1].reopened.length, 0);
+});
+
+test('failed recovery operations do not prevent later closing batches from being saved', async (t) => {
+  const { state, send } = await harness(t);
+  state.failRecoveryReadOnce = true;
+  await assert.rejects(send({ type: 'reopen' }), /recovery read failed/);
+  const result = await send({ type: 'apply', selection: { groups: [], closeIds: [tab(22, 'https://example.com/a')] } });
+  assert.equal(result.closedCount, 1);
+  assert.equal(state.recovery.length, 1);
 });
