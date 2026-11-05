@@ -122,6 +122,62 @@ button:disabled {
   border-radius: 9px;
   background: #fffdf9;
 }
+.settings-card {
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+.settings-card h2 {
+  margin-bottom: 10px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 9px;
+  font-weight: 600;
+}
+.field select,
+.field input {
+  width: 100%;
+  min-height: 36px;
+  padding: 7px 9px;
+  border: 1px solid #c9c5bc;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 400;
+}
+.field input {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.connection-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px 10px;
+  margin-top: 10px;
+}
+.connection-actions .field {
+  width: 100%;
+  margin-top: 0;
+}
+.connection-actions a {
+  color: #425543;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.connection-actions small {
+  flex-basis: 100%;
+  color: #77756d;
+}
+.settings-card .notice {
+  margin: 7px 0;
+}
+#refresh-models {
+  width: 100%;
+  margin-top: 9px;
+}
 .card h3 {
   margin: 0 0 6px;
   font-size: 13px;
@@ -177,12 +233,22 @@ button:disabled {
   .usage {
     color: #cedcbe;
   }
+  .connection-actions a {
+    color: #cedcbe;
+  }
+  .connection-actions small {
+    color: #b9b6ad;
+  }
   .privacy,
   .card {
     background: #292a26;
     border-color: #484941;
   }
   button {
+    border-color: #57594f;
+  }
+  .field select,
+  .field input {
     border-color: #57594f;
   }
   .primary {

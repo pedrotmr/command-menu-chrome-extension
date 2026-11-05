@@ -16,24 +16,62 @@
 
       <section class="privacy" aria-label="Data sent for analysis">
         <strong>What leaves this device</strong>
-        <p>
-          When you analyze tabs, titles, up to 2,048 URL characters, pinned state, and current group names go to
-          ChatGPT. A temporary number matches each result to its tab; it is not the Chrome tab ID. Page contents are not
-          read, and the browser password store is not accessed. A URL can itself contain sensitive data, such as an
-          access token in its query string, and that text may be sent.
+        <p id="privacy-copy">
+          When you analyze tabs, titles, up to 2,048 URL characters, pinned state, and current group names go to the
+          selected provider. Page contents are not read. A URL can contain sensitive data, such as an access token in
+          its query string, and that text may be sent.
         </p>
       </section>
 
+      <section class="card settings-card" aria-labelledby="settings-heading">
+        <h2 id="settings-heading">Provider settings</h2>
+        <label class="field" for="provider">
+          Provider
+          <select id="provider" disabled>
+            <option value="codex">Codex models · ChatGPT plan</option>
+            <option value="anthropic">Anthropic · Claude Console API</option>
+          </select>
+        </label>
+        <p id="provider-help" class="notice"></p>
+
+        <div id="codex-connection" class="connection-actions">
+          <button id="connect" class="secondary" type="button" disabled>Continue with ChatGPT</button>
+          <button id="disconnect" class="secondary hidden" type="button">Disconnect ChatGPT</button>
+          <a id="usage" class="usage hidden" href="https://chatgpt.com/settings/usage" target="_blank" rel="noreferrer"
+            >Manage ChatGPT usage</a
+          >
+        </div>
+        <div id="anthropic-connection" class="connection-actions hidden">
+          <label class="field" for="anthropic-key">
+            Claude Console API key
+            <input id="anthropic-key" type="password" autocomplete="off" spellcheck="false" />
+          </label>
+          <button id="connect-anthropic" class="secondary" type="button" disabled>Connect Anthropic</button>
+          <button id="disconnect-anthropic" class="secondary hidden" type="button">Remove saved key</button>
+          <a href="https://platform.claude.com/settings/keys" target="_blank" rel="noreferrer">Open Claude Console API keys</a>
+          <small>Saved in macOS Keychain. API usage is billed to your Console organization.</small>
+        </div>
+
+        <p id="connection" class="status" role="status">Checking connection…</p>
+        <label class="field" for="model">
+          Model
+          <select id="model" disabled>
+            <option value="">Connect a provider to load models</option>
+          </select>
+        </label>
+        <label class="field" for="reasoning">
+          Reasoning
+          <select id="reasoning" disabled>
+            <option value="default">Provider default</option>
+          </select>
+        </label>
+        <button id="refresh-models" class="secondary" type="button" disabled>Refresh models</button>
+      </section>
+
       <div class="toolbar">
-        <button id="connect" class="secondary" type="button">Continue with ChatGPT</button>
-        <button id="disconnect" class="secondary hidden" type="button">Disconnect</button>
         <button id="sample" class="secondary" type="button">Load sample tabs</button>
       </div>
-      <p id="connection" class="status" role="status">Checking connection…</p>
-      <a id="usage" class="usage hidden" href="https://chatgpt.com/settings/usage" target="_blank" rel="noreferrer"
-        >Manage ChatGPT usage</a
-      >
-      <button id="organize" class="primary" type="button">Organize tabs</button>
+      <button id="organize" class="primary" type="button" disabled>Organize tabs</button>
       <button id="cancel" class="secondary hidden" type="button">Cancel analysis</button>
 
       <section id="results" class="hidden" aria-live="polite">

@@ -1,8 +1,10 @@
 const HOST = 'com.keybar.tab_organizer';
 const CLOSED_KEY = 'recentClosedTabs';
+const SETTINGS_KEY = 'tabOrganizerProviderSettings';
 const MAX_TABS = 100;
 const HOST_REQUEST_TIMEOUT_MS = 2 * 60 * 1000;
 const SIGN_IN_TIMEOUT_MS = 5 * 60 * 1000;
+const PROVIDERS = new Set(['codex', 'anthropic']);
 let activeAnalysis;
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -24,11 +26,20 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 async function handleMessage(message) {
   switch (message.type) {
     case 'session':
-      return requestHost({ action: 'session' });
+      return requestHost({ action: 'session', provider: requireProvider(message.provider) });
     case 'connect':
-      return requestHost({ action: 'sign-in' }, { timeoutMs: SIGN_IN_TIMEOUT_MS });
+      if (requireProvider(message.provider) !== 'codex') throw new Error('Choose Anthropic in provider settings to connect it.');
+      return requestHost({ action: 'sign-in', provider: 'codex' }, { timeoutMs: SIGN_IN_TIMEOUT_MS });
+    case 'connect-anthropic':
+      return requestHost({ action: 'anthropic-connect', apiKey: message.apiKey });
     case 'disconnect':
-      return requestHost({ action: 'disconnect' });
+      return requestHost({ action: 'disconnect', provider: requireProvider(message.provider) });
+    case 'catalog':
+      return requestHost({ action: 'catalog', provider: requireProvider(message.provider) });
+    case 'get-settings':
+      return readSettings();
+    case 'save-settings':
+      return saveSettings(message.settings);
     case 'analyze':
       return analyzeTabs();
     case 'has-reopenable-tabs': {
@@ -51,6 +62,9 @@ async function analyzeTabs() {
   const analysis = { cancelled: false, cancelHostRequest: undefined };
   activeAnalysis = analysis;
   try {
+    const settings = await readSettings();
+    const selection = settings.selections[settings.provider];
+    if (!selection.modelId) throw new Error('Choose a provider model before organizing tabs.');
     const tabs = await getEligibleTabs();
     if (analysis.cancelled) throw new Error('Analysis cancelled. No tabs were changed.');
     if (tabs.length < 2) throw new Error('Open at least two web tabs, or load the sample tabs first.');
@@ -64,7 +78,13 @@ async function analyzeTabs() {
       group: tab.group,
     }));
     const result = await requestHost(
-      { action: 'analyze', tabs: hostTabs },
+      {
+        action: 'analyze',
+        provider: settings.provider,
+        modelId: selection.modelId,
+        reasoningEffort: selection.reasoningEffort,
+        tabs: hostTabs,
+      },
       { analysis, timeoutMs: HOST_REQUEST_TIMEOUT_MS },
     );
     if (analysis.cancelled) throw new Error('Analysis cancelled. No tabs were changed.');
@@ -72,6 +92,40 @@ async function analyzeTabs() {
   } finally {
     if (activeAnalysis === analysis) activeAnalysis = undefined;
   }
+}
+
+async function readSettings() {
+  const stored = await chrome.storage.local.get(SETTINGS_KEY);
+  return normalizeSettings(stored[SETTINGS_KEY]);
+}
+
+async function saveSettings(value) {
+  const settings = normalizeSettings(value);
+  await chrome.storage.local.set({ [SETTINGS_KEY]: settings });
+  return settings;
+}
+
+function normalizeSettings(value) {
+  const settings = {
+    provider: PROVIDERS.has(value?.provider) ? value.provider : 'codex',
+    selections: {
+      codex: normalizeSelection(value?.selections?.codex),
+      anthropic: normalizeSelection(value?.selections?.anthropic),
+    },
+  };
+  return settings;
+}
+
+function normalizeSelection(value) {
+  return {
+    modelId: typeof value?.modelId === 'string' ? value.modelId.slice(0, 200) : '',
+    reasoningEffort: typeof value?.reasoningEffort === 'string' ? value.reasoningEffort.slice(0, 32) : 'default',
+  };
+}
+
+function requireProvider(provider) {
+  if (!PROVIDERS.has(provider)) throw new Error('Choose Codex or Anthropic in provider settings.');
+  return provider;
 }
 
 function restoreTabReferences(proposal, tabsByRequestId) {

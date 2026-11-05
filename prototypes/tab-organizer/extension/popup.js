@@ -1,30 +1,87 @@
 const $ = (selector) => document.querySelector(selector);
 const connectButton = $('#connect');
 const disconnectButton = $('#disconnect');
+const connectAnthropicButton = $('#connect-anthropic');
+const disconnectAnthropicButton = $('#disconnect-anthropic');
 const sampleButton = $('#sample');
 const organizeButton = $('#organize');
 const cancelButton = $('#cancel');
 const applyButton = $('#apply');
 const connectionLabel = $('#connection');
+const providerSelect = $('#provider');
+const modelSelect = $('#model');
+const reasoningSelect = $('#reasoning');
 const results = $('#results');
 const groupsRoot = $('#groups');
 const duplicatesRoot = $('#duplicates');
 const message = $('#message');
 let proposal;
 let analysisCancelled = false;
+let settings;
+let models = [];
+let session;
 
 connectButton.addEventListener('click', () =>
   run(connectButton, async () => {
     connectionLabel.textContent = 'Complete the sign-in and permission flow in your browser…';
-    const session = await send({ type: 'connect' });
+    const session = await send({ type: 'connect', provider: 'codex' });
     renderSession(session);
+    await loadCatalog();
   }),
 );
 
 disconnectButton.addEventListener('click', () =>
   run(disconnectButton, async () => {
-    const session = await send({ type: 'disconnect' });
+    const session = await send({ type: 'disconnect', provider: 'codex' });
     renderSession(session);
+    clearCatalog();
+  }),
+);
+
+connectAnthropicButton.addEventListener('click', () =>
+  run(connectAnthropicButton, async () => {
+    const apiKeyInput = $('#anthropic-key');
+    const apiKey = apiKeyInput.value;
+    apiKeyInput.value = '';
+    const savedSession = await send({ type: 'connect-anthropic', apiKey });
+    renderSession(savedSession);
+    await loadCatalog();
+  }),
+);
+
+disconnectAnthropicButton.addEventListener('click', () =>
+  run(disconnectAnthropicButton, async () => {
+    const savedSession = await send({ type: 'disconnect', provider: 'anthropic' });
+    renderSession(savedSession);
+    clearCatalog();
+  }),
+);
+
+providerSelect.addEventListener('change', () =>
+  run(providerSelect, async () => {
+    settings.provider = providerSelect.value;
+    await saveSettings();
+    await loadProvider();
+  }),
+);
+
+$('#refresh-models').addEventListener('click', () => run($('#refresh-models'), loadCatalog));
+
+modelSelect.addEventListener('change', () =>
+  run(modelSelect, async () => {
+    const selection = settings.selections[settings.provider];
+    selection.modelId = modelSelect.value;
+    const model = models.find((candidate) => candidate.id === selection.modelId);
+    selection.reasoningEffort = model?.defaultReasoningEffort || 'default';
+    renderModelSettings();
+    await saveSettings();
+  }),
+);
+
+reasoningSelect.addEventListener('change', () =>
+  run(reasoningSelect, async () => {
+    settings.selections[settings.provider].reasoningEffort = reasoningSelect.value;
+    await saveSettings();
   }),
 );
 
@@ -55,7 +112,7 @@ organizeButton.addEventListener('click', async () => {
   } catch (error) {
     showMessage(analysisCancelled ? 'Analysis cancelled. No tabs were changed.' : error.message, !analysisCancelled);
   } finally {
-    organizeButton.disabled = false;
+    updateOrganizeAvailability();
     organizeButton.textContent = 'Organize tabs';
     cancelButton.classList.add('hidden');
   }
@@ -121,24 +178,147 @@ async function run(button, callback) {
   }
 }
 
-function renderSession(session) {
-  const signedIn = session?.sharing === true;
-  const hasSavedSession = session?.status === 'connected' || session?.status === 'reauth_required';
-  connectButton.classList.toggle('hidden', signedIn);
-  disconnectButton.classList.toggle('hidden', !hasSavedSession);
-  $('#usage').classList.toggle('hidden', !signedIn);
-  connectionLabel.textContent = signedIn
-    ? `Connected to ChatGPT${session.identity?.email ? ` as ${session.identity.email}` : ''}; plan usage is enabled.`
-    : session?.status === 'connected'
-      ? 'Signed in, but ChatGPT plan usage is not enabled for this connection. Reconnect and grant plan usage.'
-      : 'Not connected. Connect an eligible ChatGPT account to analyze tabs.';
-  connectionLabel.dataset.error = String(session?.status === 'reauth_required');
+async function loadProvider() {
+  const provider = settings.provider;
+  const isCodex = provider === 'codex';
+  $('#codex-connection').classList.toggle('hidden', !isCodex);
+  $('#anthropic-connection').classList.toggle('hidden', isCodex);
+  $('#provider-help').textContent = isCodex
+    ? 'Sign in with ChatGPT and grant plan usage. The installed Codex CLI supplies model and reasoning options; a listed model can still depend on your account access.'
+    : 'Connect with a Claude Console API key. This prototype does not use Claude.ai login or subscription credentials.';
+  $('#privacy-copy').textContent = isCodex
+    ? 'When you analyze tabs, titles, up to 2,048 URL characters, pinned state, current group names, and a temporary matching number go to OpenAI through ChatGPT plan usage. The number is not a Chrome tab ID. Codex app-server loads the model catalog; analysis runs through a request with no tools. Page contents and the browser password store are not read. URLs may contain sensitive data.'
+    : 'When you analyze tabs, titles, up to 2,048 URL characters, pinned state, current group names, and a temporary matching number go to Anthropic through the Claude Messages API. The number is not a Chrome tab ID. The Console API key stays in macOS Keychain. Page contents and the browser password store are not read. URLs may contain sensitive data.';
+
+  clearCatalog();
+  session = await send({ type: 'session', provider });
+  renderSession(session);
+  if (isConnected(session, provider)) await loadCatalog();
+  else updateOrganizeAvailability();
+}
+
+function isConnected(value, provider = settings?.provider) {
+  return provider === 'codex' ? value?.sharing === true : value?.status === 'connected';
+}
+
+function renderSession(value) {
+  session = value;
+  const provider = settings?.provider || 'codex';
+  const connected = isConnected(value, provider);
+  $('#refresh-models').disabled = !connected;
+  const hasSavedSession = value?.status === 'connected' || value?.status === 'reauth_required';
+  if (provider === 'codex') {
+    connectButton.classList.toggle('hidden', connected);
+    disconnectButton.classList.toggle('hidden', !hasSavedSession);
+    $('#usage').classList.toggle('hidden', !connected);
+    connectionLabel.textContent = connected
+      ? `Connected to ChatGPT${value.identity?.email ? ` as ${value.identity.email}` : ''}; plan usage is enabled.`
+      : value?.status === 'connected'
+        ? 'Signed in, but ChatGPT plan usage is not enabled. Reconnect and approve it.'
+        : value?.status === 'reauth_required'
+          ? 'Reconnect your ChatGPT account to use Codex models.'
+          : 'Not connected. Connect ChatGPT to use Codex models.';
+  } else {
+    connectAnthropicButton.classList.remove('hidden');
+    connectAnthropicButton.textContent = connected ? 'Update Anthropic key' : 'Connect Anthropic';
+    disconnectAnthropicButton.classList.toggle('hidden', !connected);
+    connectionLabel.textContent = connected
+      ? 'Anthropic Console connected. The API key is stored in macOS Keychain.'
+      : 'Not connected. Add a Claude Console API key to use Anthropic models.';
+  }
+  connectionLabel.dataset.error = String(value?.status === 'reauth_required');
+  updateOrganizeAvailability();
+}
+
+async function loadCatalog() {
+  const provider = settings.provider;
+  if (!isConnected(session, provider)) return;
+  modelSelect.disabled = true;
+  reasoningSelect.disabled = true;
+  modelSelect.replaceChildren(new Option('Loading models…', ''));
+  let catalog;
+  try {
+    catalog = await send({ type: 'catalog', provider });
+  } catch (error) {
+    clearCatalog();
+    throw error;
+  }
+  models = Array.isArray(catalog.models) ? catalog.models : [];
+  const selection = settings.selections[provider];
+  if (!models.some((model) => model.id === selection.modelId)) {
+    selection.modelId = chooseDefaultModel(models, provider)?.id || '';
+    const selectedModel = models.find((model) => model.id === selection.modelId);
+    selection.reasoningEffort = selectedModel?.defaultReasoningEffort || 'default';
+  }
+  renderModelSettings();
+  await saveSettings();
+  if (!models.length) showMessage('No models are available for this provider connection.', true);
+  else clearMessage();
+}
+
+function chooseDefaultModel(availableModels, provider) {
+  if (provider === 'codex') {
+    return availableModels.find((model) => model.id.toLowerCase() === 'gpt-6-luna') ||
+      availableModels.find((model) => `${model.id} ${model.displayName}`.toLowerCase().includes('luna')) ||
+      availableModels[0];
+  }
+  return availableModels.find((model) => `${model.id} ${model.displayName}`.toLowerCase().includes('haiku')) ||
+    availableModels[0];
+}
+
+function renderModelSettings() {
+  const selection = settings.selections[settings.provider];
+  const connected = isConnected(session, settings.provider);
+  $('#refresh-models').disabled = !connected;
+  modelSelect.replaceChildren();
+  if (!models.length) {
+    modelSelect.append(new Option(connected ? 'No models loaded' : 'Connect a provider to load models', ''));
+    modelSelect.disabled = true;
+    reasoningSelect.replaceChildren(new Option('Provider default', 'default'));
+    reasoningSelect.disabled = true;
+    updateOrganizeAvailability();
+    return;
+  }
+  for (const model of models) modelSelect.append(new Option(model.displayName, model.id));
+  modelSelect.value = selection.modelId;
+  modelSelect.disabled = !connected;
+
+  const selectedModel = models.find((model) => model.id === selection.modelId);
+  const choices = selectedModel?.reasoningEfforts || [{ value: 'default', label: 'Provider default' }];
+  reasoningSelect.replaceChildren(...choices.map((choice) => new Option(choice.label, choice.value)));
+  if (!choices.some((choice) => choice.value === selection.reasoningEffort)) {
+    selection.reasoningEffort = selectedModel?.defaultReasoningEffort || choices[0]?.value || 'default';
+  }
+  reasoningSelect.value = selection.reasoningEffort;
+  reasoningSelect.disabled = !connected || choices.length <= 1;
+  updateOrganizeAvailability();
+}
+
+function clearCatalog() {
+  models = [];
+  renderModelSettings();
+}
+
+async function saveSettings() {
+  settings = await send({ type: 'save-settings', settings });
+  updateOrganizeAvailability();
+}
+
+function updateOrganizeAvailability() {
+  if (!settings) {
+    organizeButton.disabled = true;
+    return;
+  }
+  const selection = settings?.selections?.[settings.provider];
+  organizeButton.disabled = !isConnected(session, settings.provider) || !selection?.modelId;
 }
 
 function renderProposal(value) {
   results.classList.remove('hidden');
-  const effort = value.reasoningEffort === 'none' ? ' · Non-reasoning' : '';
-  $('#latency').textContent = `${Math.round(value.latencyMs)} ms · ${value.modelName || 'ChatGPT'}${effort}`;
+  const effort = value.reasoningEffort ? ` · ${reasoningLabel(value.reasoningEffort)}` : '';
+  const providerName = value.provider === 'anthropic' ? 'Anthropic' : 'Codex';
+  const displayName = models.find((model) => model.id === value.modelName)?.displayName || value.modelName || providerName;
+  $('#latency').textContent = `${providerName} · ${Math.round(value.latencyMs)} ms · ${displayName}${effort}`;
   $('#notice').textContent =
     `${value.tabsAnalyzed} tabs analyzed. Grouping is selected; closures need your explicit selection.`;
   const summary = document.createElement('p');
@@ -191,6 +371,12 @@ function renderProposal(value) {
   duplicatesRoot.append(section);
 }
 
+function reasoningLabel(value) {
+  if (value === 'none') return 'Non-reasoning';
+  const label = value === 'xhigh' ? 'Extra high' : `${value[0].toUpperCase()}${value.slice(1)}`;
+  return `${label} effort`;
+}
+
 function checkbox(id, label, data) {
   const wrapper = document.createElement('label');
   wrapper.className = 'option';
@@ -221,7 +407,14 @@ function clearMessage() {
   message.removeAttribute('data-error');
 }
 
-void send({ type: 'session' }).then(renderSession, (error) => {
+void send({ type: 'get-settings' }).then(async (initialSettings) => {
+  settings = initialSettings;
+  providerSelect.value = settings.provider;
+  providerSelect.disabled = false;
+  connectButton.disabled = false;
+  connectAnthropicButton.disabled = false;
+  await loadProvider();
+}).catch((error) => {
   connectionLabel.textContent = error.message;
   connectionLabel.dataset.error = 'true';
 });
