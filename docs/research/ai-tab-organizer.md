@@ -46,6 +46,8 @@ Chrome Native Messaging uses a length-prefixed JSON stdio protocol. The host's m
 
 The implementation is in [`prototypes/tab-organizer`](../../prototypes/tab-organizer/README.md). It creates seven local synthetic tabs across product docs, research notes, and trip planning, including an exact duplicate. The popup requests an AI proposal and exposes group and close selections before application.
 
+The native host prefers GPT-6 Luna when available in the signed-in account's model list, then falls back to another listed model. GPT-6 Luna uses medium reasoning effort by default for Responses API requests; the pinned local SDK does not expose a per-request effort setting.
+
 Installing the full DevKit workspace reported 7 advisories (3 moderate, 4 high). The targeted `@siwc/local` runtime audit reported a high-severity advisory in its optional `undici` peer dependency. The SDK request path uses Node 22's built-in `fetch`, but the optional package is installed by the workspace and the advisory remains in the pinned upstream dependency tree. Review and resolve the dependency finding before any broader distribution.
 
 | Evidence                        | Result                                                                                                                                                                                                                            |
@@ -65,6 +67,7 @@ Run instructions and the noncommercial restriction are in the prototype README. 
 - OpenAI, [Sign in with ChatGPT: open-source app overview](https://developers.openai.com/siwc/token-sharing-open-source)
 - OpenAI, [Registration and sign-in](https://developers.openai.com/siwc/token-sharing-open-source/sign-in)
 - OpenAI, [Models and inference](https://developers.openai.com/siwc/token-sharing-open-source/models-and-inference)
+- OpenAI, [GPT-6 Luna](https://developers.openai.com/api/docs/models/gpt-6-luna) and [model selection](https://developers.openai.com/api/docs/guides/model-selection)
 - OpenAI, [Open-source Sign in with ChatGPT cookbook](https://developers.openai.com/cookbook/articles/sign-in-with-chatgpt)
 - OpenAI, [Codex app-server and authentication](https://learn.chatgpt.com/docs/app-server)
 - OpenAI, [Sign in with ChatGPT DevKit and license](https://github.com/openai/sign-in-with-chatgpt-devkit)

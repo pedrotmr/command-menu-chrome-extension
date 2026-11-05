@@ -12,6 +12,8 @@ Installing the pinned DevKit currently reports dependency audit advisories, incl
 
 Tab title, up to 2,048 URL characters, pinned state, and existing group name are sent to ChatGPT with a temporary request-local number to match the response to each tab. That number is not the Chrome tab ID and is discarded after the response. The full URL stays in the extension for stale-tab checks. No page contents, cookies, or browsing history are read. Tab titles and URLs are untrusted input. The AI returns a proposal; the extension validates Chrome tab IDs against current browser state and requires a separate user selection before grouping or closing. Pinned tabs are protected from grouping and closing. Closed URLs can be reopened, but page state such as unsaved form data cannot be restored.
 
+The host prefers **GPT-6 Luna** when the signed-in account makes it available, then falls back to another listed model. GPT-6 Luna uses medium reasoning effort by default for Responses API requests; the pinned local SDK does not expose a per-request effort setting.
+
 ## Requirements
 
 - macOS, Google Chrome, Node.js 22.12+, Git, and Xcode Command Line Tools.

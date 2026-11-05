@@ -122,7 +122,8 @@ async function analyze(tabs) {
       throw new Error('Sign-in is connected, but ChatGPT plan usage is not enabled. Reconnect and approve plan usage.');
     throw new Error('Connect an eligible ChatGPT account before analyzing tabs.');
   }
-  const [model] = await chatgpt.listModels();
+  const models = await chatgpt.listModels();
+  const model = selectFastModel(models);
   if (!model) throw new Error('No models are available for this connection. Check plan usage and try again.');
 
   const tabByModelId = new Map(snapshot.map((tab) => [tab.id, tab]));
@@ -164,6 +165,7 @@ async function analyze(tabs) {
     return {
       ...plan,
       modelName: model.displayName,
+      ...(model.slug.toLowerCase() === 'gpt-6-luna' ? { reasoningEffort: 'medium' } : {}),
       tabsAnalyzed: snapshot.length,
       latencyMs: performance.now() - started,
     };
@@ -173,6 +175,14 @@ async function analyze(tabs) {
   } finally {
     activeController = undefined;
   }
+}
+
+function selectFastModel(models) {
+  return (
+    models.find((model) => model.slug.toLowerCase() === 'gpt-6-luna') ??
+    models.find((model) => `${model.slug} ${model.displayName}`.toLowerCase().includes('luna')) ??
+    models[0]
+  );
 }
 
 function validateTab(tab) {

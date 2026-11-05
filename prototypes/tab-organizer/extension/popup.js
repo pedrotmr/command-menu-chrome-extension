@@ -137,7 +137,8 @@ function renderSession(session) {
 
 function renderProposal(value) {
   results.classList.remove('hidden');
-  $('#latency').textContent = `${Math.round(value.latencyMs)} ms · ${value.modelName || 'ChatGPT'}`;
+  const effort = value.reasoningEffort ? ` · ${value.reasoningEffort}` : '';
+  $('#latency').textContent = `${Math.round(value.latencyMs)} ms · ${value.modelName || 'ChatGPT'}${effort}`;
   $('#notice').textContent =
     `${value.tabsAnalyzed} tabs analyzed. Grouping is selected; closures need your explicit selection.`;
   const summary = document.createElement('p');
