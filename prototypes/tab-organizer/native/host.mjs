@@ -125,9 +125,9 @@ async function analyze(tabs) {
   const [model] = await chatgpt.listModels();
   if (!model) throw new Error('No models are available for this connection. Check plan usage and try again.');
 
-  const tabByModelId = new Map(snapshot.map((tab, index) => [index + 1, tab]));
-  const modelTabs = snapshot.map((tab, index) => ({
-    id: index + 1,
+  const tabByModelId = new Map(snapshot.map((tab) => [tab.id, tab]));
+  const modelTabs = snapshot.map((tab) => ({
+    id: tab.id,
     title: tab.title,
     url: tab.url.slice(0, 2048),
     pinned: tab.pinned,
@@ -218,7 +218,7 @@ function validateProposal(value, tabByModelId) {
     if (!name || names.has(key) || members.length < 2) continue;
     names.add(key);
     members.forEach((id) => assigned.add(id));
-    groups.push({ name, reason: group.reason.trim().slice(0, 200), tabs: members.map((id) => tabByModelId.get(id)) });
+    groups.push({ name, reason: group.reason.trim().slice(0, 200), tabIds: members });
   }
   const closeSeen = new Set();
   const closeCandidates = [];
@@ -226,7 +226,7 @@ function validateProposal(value, tabByModelId) {
     const tab = tabByModelId.get(candidate?.tabId);
     if (!tab || tab.pinned || closeSeen.has(tab.id) || typeof candidate.reason !== 'string') continue;
     closeSeen.add(tab.id);
-    closeCandidates.push({ ...tab, reason: candidate.reason.trim().slice(0, 240) });
+    closeCandidates.push({ tabId: tab.id, reason: candidate.reason.trim().slice(0, 240) });
   }
   return { summary: value.summary.trim().slice(0, 300), groups, closeCandidates };
 }

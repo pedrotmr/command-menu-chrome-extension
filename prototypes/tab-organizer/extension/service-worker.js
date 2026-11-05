@@ -55,12 +55,37 @@ async function analyzeTabs() {
     if (analysis.cancelled) throw new Error('Analysis cancelled. No tabs were changed.');
     if (tabs.length < 2) throw new Error('Open at least two web tabs, or load the sample tabs first.');
     if (tabs.length > MAX_TABS) throw new Error(`This prototype analyzes up to ${MAX_TABS} tabs at a time.`);
-    const result = await requestHost({ action: 'analyze', tabs }, { analysis, timeoutMs: HOST_REQUEST_TIMEOUT_MS });
+    const tabsByRequestId = new Map(tabs.map((tab, index) => [index + 1, tab]));
+    const hostTabs = tabs.map((tab, index) => ({
+      id: index + 1,
+      title: tab.title,
+      url: tab.url.slice(0, 2048),
+      pinned: tab.pinned,
+      group: tab.group,
+    }));
+    const result = await requestHost(
+      { action: 'analyze', tabs: hostTabs },
+      { analysis, timeoutMs: HOST_REQUEST_TIMEOUT_MS },
+    );
     if (analysis.cancelled) throw new Error('Analysis cancelled. No tabs were changed.');
-    return result;
+    return restoreTabReferences(result, tabsByRequestId);
   } finally {
     if (activeAnalysis === analysis) activeAnalysis = undefined;
   }
+}
+
+function restoreTabReferences(proposal, tabsByRequestId) {
+  const groups = proposal.groups
+    .map(({ tabIds, ...group }) => ({
+      ...group,
+      tabs: tabIds.map((id) => tabsByRequestId.get(id)).filter(Boolean),
+    }))
+    .filter((group) => group.tabs.length >= 2);
+  const closeCandidates = proposal.closeCandidates.flatMap(({ tabId, reason }) => {
+    const tab = tabsByRequestId.get(tabId);
+    return tab ? [{ ...tab, reason }] : [];
+  });
+  return { ...proposal, groups, closeCandidates };
 }
 
 function cancelActiveAnalysis() {
@@ -82,7 +107,7 @@ async function getEligibleTabs() {
       title: String(tab.title || 'Untitled tab').slice(0, 300),
       url: String(tab.url),
       pinned: Boolean(tab.pinned),
-      group: tab.groupId >= 0 ? groupById.get(tab.groupId) || 'Existing group' : '',
+      group: (tab.groupId >= 0 ? groupById.get(tab.groupId) || 'Existing group' : '').slice(0, 80),
     }));
 }
 

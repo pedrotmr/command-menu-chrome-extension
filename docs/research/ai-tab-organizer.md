@@ -36,7 +36,7 @@ Chrome Native Messaging uses a length-prefixed JSON stdio protocol. The host's m
 
 ## Data, safety, and recovery
 
-- Default analysis sends each tab's title, URL, pinned state, and existing group name to ChatGPT, plus a temporary request-local numeric handle to match the response. The handle is not the Chrome tab ID and is discarded after the response. Page contents, cookies, browsing history, and saved credentials are not collected.
+- Default analysis sends each tab's title, up to 2,048 URL characters, pinned state, and existing group name to ChatGPT, plus a temporary request-local numeric handle to match the response. The handle is not the Chrome tab ID and is discarded after the response. Full URLs remain in the extension for stale-tab checks. Page contents, cookies, browsing history, and saved credentials are not collected.
 - The pinned official SDK sets `store: false` in its Responses API request; model output is parsed and checked against the current snapshot. A title or URL is treated as untrusted text.
 - The review screen selects groups by default, but close candidates remain unchecked. Pinned tabs are skipped during grouping and excluded from closure. Application rechecks that Chrome tab IDs and URLs still match. A changed or closed tab is skipped, and partial failures are reported.
 - The extension stores the title, URL, and window ID for recently closed tabs in session storage, allowing tabs to be reopened. It cannot recover unsaved form state or other page memory.
