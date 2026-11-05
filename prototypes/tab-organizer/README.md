@@ -10,7 +10,7 @@ The DevKit is source-only and its current license is noncommercial. This prototy
 
 Installing the pinned DevKit currently reports dependency audit advisories, including a high-severity advisory in its optional `undici` dependency. Review the [research notes](../../docs/research/ai-tab-organizer.md) before running the prototype and resolve the upstream dependency finding before broader distribution.
 
-Only tab title, URL, pinned state, and existing group name are sent for analysis. No page contents, cookies, or browsing history are read. Tab titles and URLs are untrusted input. The AI returns a proposal; the extension validates tab IDs against current browser state and requires a separate user selection before grouping or closing. Pinned tabs cannot be closed. Closed URLs can be reopened, but page state such as unsaved form data cannot be restored.
+Tab title, URL, pinned state, and existing group name are sent to ChatGPT with a temporary request-local number to match the response to each tab. That number is not the Chrome tab ID and is discarded after the response. No page contents, cookies, or browsing history are read. Tab titles and URLs are untrusted input. The AI returns a proposal; the extension validates Chrome tab IDs against current browser state and requires a separate user selection before grouping or closing. Pinned tabs are protected from grouping and closing. Closed URLs can be reopened, but page state such as unsaved form data cannot be restored.
 
 ## Requirements
 

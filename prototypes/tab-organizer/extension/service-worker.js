@@ -161,25 +161,61 @@ async function applyProposal(selection) {
   if (!selection || !Array.isArray(selection.groups) || !Array.isArray(selection.closeIds)) {
     throw new Error('The selected proposal is invalid. Analyze the tabs again.');
   }
-  const liveTabs = await chrome.tabs.query({});
-  const liveById = new Map(liveTabs.filter((tab) => tab.id !== undefined).map((tab) => [tab.id, tab]));
   const closed = [];
   const skipped = [];
   const appliedGroups = [];
 
   for (const group of selection.groups) {
     const groupsByWindow = new Map();
-    for (const original of group.tabs) {
-      const current = liveById.get(original.id);
-      if (!current || current.url !== original.url || current.windowId === undefined) {
+    const initialTabs = await Promise.all(
+      group.tabs.map(async (original) => {
+        try {
+          return { original, current: await chrome.tabs.get(original.id) };
+        } catch {
+          return { original, current: undefined };
+        }
+      }),
+    );
+    for (const { original, current } of initialTabs) {
+      if (
+        !current ||
+        original.pinned ||
+        current.pinned ||
+        current.url !== original.url ||
+        current.windowId === undefined
+      ) {
         skipped.push(original.title);
         continue;
       }
       const windowTabs = groupsByWindow.get(current.windowId) || [];
-      windowTabs.push(current.id);
+      windowTabs.push(original);
       groupsByWindow.set(current.windowId, windowTabs);
     }
-    for (const tabIds of groupsByWindow.values()) {
+
+    for (const [windowId, originals] of groupsByWindow) {
+      const latestTabs = await Promise.all(
+        originals.map(async (original) => {
+          try {
+            return { original, current: await chrome.tabs.get(original.id) };
+          } catch {
+            return { original, current: undefined };
+          }
+        }),
+      );
+      const tabIds = [];
+      for (const { original, current } of latestTabs) {
+        if (
+          !current ||
+          original.pinned ||
+          current.pinned ||
+          current.url !== original.url ||
+          current.windowId !== windowId
+        ) {
+          skipped.push(original.title);
+          continue;
+        }
+        tabIds.push(current.id);
+      }
       if (tabIds.length < 2) {
         skipped.push(group.name);
         continue;

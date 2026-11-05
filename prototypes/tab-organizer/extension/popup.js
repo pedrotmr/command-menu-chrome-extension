@@ -123,8 +123,9 @@ async function run(button, callback) {
 
 function renderSession(session) {
   const signedIn = session?.sharing === true;
+  const hasSavedSession = session?.status === 'connected' || session?.status === 'reauth_required';
   connectButton.classList.toggle('hidden', signedIn);
-  disconnectButton.classList.toggle('hidden', !signedIn);
+  disconnectButton.classList.toggle('hidden', !hasSavedSession);
   $('#usage').classList.toggle('hidden', !signedIn);
   connectionLabel.textContent = signedIn
     ? `Connected to ChatGPT${session.identity?.email ? ` as ${session.identity.email}` : ''}; plan usage is enabled.`
