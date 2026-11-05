@@ -196,15 +196,19 @@ async function loadModelCatalog(provider) {
       const model = bySlug.get(accountModel.slug);
       if (!model) return [];
       const reasoningEfforts = codexEfforts(model);
-      return [{
-        id: accountModel.slug,
-        displayName: accountModel.displayName,
-        reasoningEfforts,
-        defaultReasoningEffort: chooseDefaultEffort(model.defaultReasoningEffort, reasoningEfforts),
-      }];
+      return [
+        {
+          id: accountModel.slug,
+          displayName: accountModel.displayName,
+          reasoningEfforts,
+          defaultReasoningEffort: chooseDefaultEffort(model.defaultReasoningEffort, reasoningEfforts),
+        },
+      ];
     });
     if (!models.length) {
-      throw new Error('Codex and ChatGPT returned different model catalogs. Update the Codex CLI, then refresh models.');
+      throw new Error(
+        'Codex and ChatGPT returned different model catalogs. Update the Codex CLI, then refresh models.',
+      );
     }
     return { provider, models };
   }
@@ -269,7 +273,10 @@ async function claudeSession(runtime, signal) {
     }));
   } catch (error) {
     if (error.code === 1 && typeof error.stdout === 'string') output = error.stdout;
-    else throw new Error('Could not check Claude Code sign-in. Open Terminal and run `claude auth status`.');
+    else
+      throw new Error('Could not check Claude Code sign-in. Open Terminal and run `claude auth status`.', {
+        cause: error,
+      });
   }
 
   let auth;
@@ -308,7 +315,9 @@ function claudeConnectionError(status) {
     return new Error('Claude Code CLI path is not registered. Install it if needed, then rerun the prototype setup.');
   }
   if (status === 'unsupported_auth') {
-    return new Error('Claude Code is signed in with a Console API key or another provider. This prototype requires Claude account sign-in; existing CLI credentials were left unchanged.');
+    return new Error(
+      'Claude Code is signed in with a Console API key or another provider. This prototype requires Claude account sign-in; existing CLI credentials were left unchanged.',
+    );
   }
   return new Error('Sign in to your Claude account through Claude Code before using this provider.');
 }
@@ -325,7 +334,12 @@ async function analyze(request) {
     throw new Error(`Analyze between 2 and ${MAX_TABS} tabs at a time.`);
   }
   requireProvider(provider);
-  if (typeof modelId !== 'string' || modelId.length < 1 || modelId.length > 200 || /[\u0000-\u001f\u007f]/.test(modelId)) {
+  if (
+    typeof modelId !== 'string' ||
+    modelId.length < 1 ||
+    modelId.length > 200 ||
+    Array.from(modelId).some((char) => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127)
+  ) {
     throw new Error('Choose a model before analyzing tabs.');
   }
   if (typeof reasoningEffort !== 'string' || reasoningEffort.length > 32) {
@@ -379,14 +393,17 @@ async function analyze(request) {
     };
     let responseText;
     if (provider === 'codex') {
-      const { requestOptions } = buildStreamRequest({ slug: modelId }, {
-        signal: controller.signal,
-        reasoningEffort: reasoningEffort === 'default' ? undefined : reasoningEffort,
-        instructions: PROPOSAL_INSTRUCTIONS,
-        onDelta: onText,
-        // The pinned SDK sets store: false in the Responses API request.
-        input,
-      });
+      const { requestOptions } = buildStreamRequest(
+        { slug: modelId },
+        {
+          signal: controller.signal,
+          reasoningEffort: reasoningEffort === 'default' ? undefined : reasoningEffort,
+          instructions: PROPOSAL_INSTRUCTIONS,
+          onDelta: onText,
+          // The pinned SDK sets store: false in the Responses API request.
+          input,
+        },
+      );
       const response = await chatgpt.streamResponse(requestOptions);
       responseText = response.text;
     } else {
@@ -405,9 +422,12 @@ async function analyze(request) {
     try {
       responseValue = JSON.parse(responseText);
     } catch (error) {
-      throw new Error(`${providerName(provider)} returned an incomplete proposal. Retry analysis; no browser changes were made.`, {
-        cause: error,
-      });
+      throw new Error(
+        `${providerName(provider)} returned an incomplete proposal. Retry analysis; no browser changes were made.`,
+        {
+          cause: error,
+        },
+      );
     }
     const plan = validateProposal(responseValue, tabByModelId);
     return {
@@ -448,22 +468,23 @@ async function ensureClaudeConnection(signal) {
 function requestClaudeCodeAnalysis({ claudePath, modelId, reasoningEffort, input, signal, onText }) {
   const args = [
     '--print',
-    '--output-format', 'stream-json',
+    '--output-format',
+    'stream-json',
     '--verbose',
     '--include-partial-messages',
     '--no-session-persistence',
-    '--max-turns', '1',
+    '--max-turns',
+    '1',
     '--safe-mode',
-    '--tools', '',
-    '--disallowedTools', 'mcp__*',
-    '--model', modelId,
+    '--tools',
+    '',
+    '--disallowedTools',
+    'mcp__*',
+    '--model',
+    modelId,
   ];
   if (reasoningEffort !== 'default') args.push('--effort', reasoningEffort);
-  args.push(
-    '--system-prompt',
-    PROPOSAL_INSTRUCTIONS,
-    'Analyze the browser tab metadata supplied on standard input.',
-  );
+  args.push('--system-prompt', PROPOSAL_INSTRUCTIONS, 'Analyze the browser tab metadata supplied on standard input.');
 
   return new Promise((resolve, reject) => {
     const child = spawn(claudePath, args, {
@@ -528,9 +549,13 @@ function requestClaudeCodeAnalysis({ claudePath, modelId, reasoningEffort, input
     });
     child.stdin.on('error', () => {});
     child.on('error', (error) => {
-      finish(new Error(error.code === 'ENOENT'
-        ? 'Claude Code could not be started. Rerun the prototype setup and check the CLI installation.'
-        : 'Claude Code could not be started. Check the local CLI installation.'));
+      finish(
+        new Error(
+          error.code === 'ENOENT'
+            ? 'Claude Code could not be started. Rerun the prototype setup and check the CLI installation.'
+            : 'Claude Code could not be started. Check the local CLI installation.',
+        ),
+      );
     });
     child.on('close', (code) => {
       if (settled) return;
@@ -539,7 +564,11 @@ function requestClaudeCodeAnalysis({ claudePath, modelId, reasoningEffort, input
         return;
       }
       if (code !== 0) {
-        finish(new Error('Claude Code could not complete the request. Check sign-in, model access, and subscription usage, then retry.'));
+        finish(
+          new Error(
+            'Claude Code could not complete the request. Check sign-in, model access, and subscription usage, then retry.',
+          ),
+        );
         return;
       }
       try {

@@ -22,16 +22,24 @@ let session;
 let currentRun;
 
 chrome.runtime.onMessage.addListener((message) => {
-  if (message?.type !== 'analysis-progress' || !currentRun?.running ||
-      message.runId !== currentRun.id || analysisCancelled || !message.groups?.length) return;
+  if (
+    message?.type !== 'analysis-progress' ||
+    !currentRun?.running ||
+    message.runId !== currentRun.id ||
+    analysisCancelled ||
+    !message.groups?.length
+  )
+    return;
   renderGroups(message.groups, true);
   duplicatesRoot.replaceChildren();
   results.classList.remove('hidden');
   currentRun.firstGroupShownMs ??= performance.now() - currentRun.clickedAt;
   $('#latency').textContent = `Receiving groups · first group ${Math.round(currentRun.firstGroupShownMs)} ms`;
-  $('#notice').textContent = `${message.groups.length} provisional group(s). Waiting for the full proposal before review.`;
+  $('#notice').textContent =
+    `${message.groups.length} provisional group(s). Waiting for the full proposal before review.`;
   $('#timing-label').textContent = 'Timing details · step 4';
-  $('#timing-details').textContent = `First group shown: ${Math.round(currentRun.firstGroupShownMs)} ms · Full proposal pending`;
+  $('#timing-details').textContent =
+    `First group shown: ${Math.round(currentRun.firstGroupShownMs)} ms · Full proposal pending`;
 });
 
 connectButton.addEventListener('click', () =>
@@ -55,7 +63,8 @@ connectClaudeButton.addEventListener('click', () =>
   run(connectClaudeButton, async () => {
     const result = await send({ type: 'connect-claude', provider: 'anthropic' });
     if (result.status === 'login_started') {
-      connectionLabel.textContent = 'Claude Code opened in Terminal. Finish sign-in there, then reopen this popup to check the connection.';
+      connectionLabel.textContent =
+        'Claude Code opened in Terminal. Finish sign-in there, then reopen this popup to check the connection.';
     }
   }),
 );
@@ -288,12 +297,16 @@ async function loadCatalog() {
 
 function chooseDefaultModel(availableModels, provider) {
   if (provider === 'codex') {
-    return availableModels.find((model) => model.id.toLowerCase() === 'gpt-6-luna') ||
+    return (
+      availableModels.find((model) => model.id.toLowerCase() === 'gpt-6-luna') ||
       availableModels.find((model) => `${model.id} ${model.displayName}`.toLowerCase().includes('luna')) ||
-      availableModels[0];
+      availableModels[0]
+    );
   }
-  return availableModels.find((model) => `${model.id} ${model.displayName}`.toLowerCase().includes('haiku')) ||
-    availableModels[0];
+  return (
+    availableModels.find((model) => `${model.id} ${model.displayName}`.toLowerCase().includes('haiku')) ||
+    availableModels[0]
+  );
 }
 
 function renderModelSettings() {
@@ -347,10 +360,12 @@ function renderProposal(value) {
   results.classList.remove('hidden');
   const effort = value.reasoningEffort ? ` · ${reasoningLabel(value.reasoningEffort)}` : '';
   const providerName = value.provider === 'anthropic' ? 'Claude Code' : 'Codex';
-  const displayName = models.find((model) => model.id === value.modelName)?.displayName || value.modelName || providerName;
+  const displayName =
+    models.find((model) => model.id === value.modelName)?.displayName || value.modelName || providerName;
   const fresh = value.resultSource === 'fresh';
   const sourceLabel = fresh ? 'Fresh AI' : value.resultSource === 'cached' ? 'Cached proposal' : 'Local result';
-  $('#latency').textContent = `${sourceLabel} · ${Math.round(fresh ? value.latencyMs : value.totalLatencyMs)} ms` +
+  $('#latency').textContent =
+    `${sourceLabel} · ${Math.round(fresh ? value.latencyMs : value.totalLatencyMs)} ms` +
     (value.resultSource === 'local' ? '' : ` · ${providerName} · ${displayName}${effort}`);
   $('#timing-label').textContent = `Timing details · step ${value.optimizationStep}`;
   const timings = value.timings;
@@ -358,25 +373,31 @@ function renderProposal(value) {
   $('#timing-details').textContent = [
     `Total: ${Math.round(value.totalLatencyMs)} ms`,
     `Source: ${sourceLabel}`,
-    ...(fresh ? [Number.isFinite(value.firstGroupShownMs)
-      ? `First group shown: ${Math.round(value.firstGroupShownMs)} ms`
-      : 'First group shown: no streamed preview'] : []),
+    ...(fresh
+      ? [
+          Number.isFinite(value.firstGroupShownMs)
+            ? `First group shown: ${Math.round(value.firstGroupShownMs)} ms`
+            : 'First group shown: no streamed preview',
+        ]
+      : []),
     `Sent to AI: ${value.tabsSentToModel} of ${value.tabsAnalyzed} tabs`,
     `Exact duplicate copies found: ${value.exactDuplicateCount}`,
     ...(Number.isFinite(value.cacheAgeMs) ? [`Cache age: ${Math.round(value.cacheAgeMs / 1000)} s`] : []),
     ...(fresh ? [`Host: ${Math.round(value.latencyMs)} ms`] : []),
     ...(typeof value.hostReused === 'boolean' ? [`Companion: ${value.hostReused ? 'reused' : 'new'}`] : []),
-    ...(timings ? [
-      `Auth check: ${Math.round(timings.authMs)} ms`,
-      `${requestLabel}: ${Math.round(timings.requestMs)} ms`,
-      ...(Number.isFinite(timings.firstTextMs)
-        ? [`First text within request: ${Math.round(timings.firstTextMs)} ms`]
-        : []),
-      ...(Number.isFinite(timings.firstGroupMs)
-        ? [`First group within host: ${Math.round(timings.firstGroupMs)} ms`]
-        : []),
-      `Validation: ${Math.round(timings.validationMs)} ms`,
-    ] : []),
+    ...(timings
+      ? [
+          `Auth check: ${Math.round(timings.authMs)} ms`,
+          `${requestLabel}: ${Math.round(timings.requestMs)} ms`,
+          ...(Number.isFinite(timings.firstTextMs)
+            ? [`First text within request: ${Math.round(timings.firstTextMs)} ms`]
+            : []),
+          ...(Number.isFinite(timings.firstGroupMs)
+            ? [`First group within host: ${Math.round(timings.firstGroupMs)} ms`]
+            : []),
+          `Validation: ${Math.round(timings.validationMs)} ms`,
+        ]
+      : []),
     ...(Number.isFinite(value.outputCharacters) ? [`Output: ${value.outputCharacters} characters`] : []),
   ].join(' · ');
   $('#notice').textContent =
@@ -463,17 +484,19 @@ function clearMessage() {
   message.removeAttribute('data-error');
 }
 
-void send({ type: 'get-settings' }).then(async (initialSettings) => {
-  settings = initialSettings;
-  providerSelect.value = settings.provider;
-  providerSelect.disabled = false;
-  connectButton.disabled = false;
-  connectClaudeButton.disabled = false;
-  await loadProvider();
-}).catch((error) => {
-  connectionLabel.textContent = error.message;
-  connectionLabel.dataset.error = 'true';
-});
+void send({ type: 'get-settings' })
+  .then(async (initialSettings) => {
+    settings = initialSettings;
+    providerSelect.value = settings.provider;
+    providerSelect.disabled = false;
+    connectButton.disabled = false;
+    connectClaudeButton.disabled = false;
+    await loadProvider();
+  })
+  .catch((error) => {
+    connectionLabel.textContent = error.message;
+    connectionLabel.dataset.error = 'true';
+  });
 
 void send({ type: 'has-reopenable-tabs' }).then((hasTabs) => {
   $('#reopen').classList.toggle('hidden', !hasTabs);

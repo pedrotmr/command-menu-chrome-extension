@@ -40,7 +40,11 @@ export function createNativeHostClient({ connect, lastError, idleMs = 60_000 }) 
       if (reply.event === 'progress') {
         const request = pending.get(reply.id);
         if (request && !request.signal?.aborted) {
-          try { request.onProgress?.(reply.data); } catch { /* A preview cannot replace the final reply. */ }
+          try {
+            request.onProgress?.(reply.data);
+          } catch {
+            /* A preview cannot replace the final reply. */
+          }
         }
         return;
       }
@@ -49,9 +53,13 @@ export function createNativeHostClient({ connect, lastError, idleMs = 60_000 }) 
     opened.onDisconnect.addListener(() => {
       const detail = lastError?.();
       if (port !== opened) return;
-      close(new Error(detail
-        ? `Local AI host failed (${detail}). Follow the prototype README setup steps.`
-        : 'The local AI host disconnected before replying. No tabs were changed; try again.'));
+      close(
+        new Error(
+          detail
+            ? `Local AI host failed (${detail}). Follow the prototype README setup steps.`
+            : 'The local AI host disconnected before replying. No tabs were changed; try again.',
+        ),
+      );
     });
     return opened;
   }

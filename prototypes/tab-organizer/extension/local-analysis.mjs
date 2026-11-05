@@ -31,33 +31,38 @@ export function prepareAnalysis(tabs) {
 }
 
 export function mergeLocalAnalysis(proposal, prepared) {
-  const groups = proposal.groups.map((group) => ({
-    ...group,
-    tabs: group.tabs.flatMap((tab) => prepared.membersByRepresentative.get(tab.id) || []),
-  })).filter((group) => group.tabs.length >= 2);
+  const groups = proposal.groups
+    .map((group) => ({
+      ...group,
+      tabs: group.tabs.flatMap((tab) => prepared.membersByRepresentative.get(tab.id) || []),
+    }))
+    .filter((group) => group.tabs.length >= 2);
   const seen = new Set();
   const closeCandidates = [
     ...prepared.localCloseCandidates,
     ...proposal.closeCandidates.filter((tab) => !prepared.keepIds.has(tab.id)),
-  ].filter((tab) => {
-    if (tab.pinned || seen.has(tab.id)) return false;
-    seen.add(tab.id);
-    return true;
-  }).slice(0, 5);
+  ]
+    .filter((tab) => {
+      if (tab.pinned || seen.has(tab.id)) return false;
+      seen.add(tab.id);
+      return true;
+    })
+    .slice(0, 5);
   return { ...proposal, groups, closeCandidates };
 }
 
 export function keeperMatches(candidate, keeper) {
-  return candidate.keepTabId !== candidate.id &&
-    keeper?.id === candidate.keepTabId && keeper.url === candidate.url;
+  return candidate.keepTabId !== candidate.id && keeper?.id === candidate.keepTabId && keeper.url === candidate.url;
 }
 
 export function proposalCacheKey(tabs, provider, selection) {
   return JSON.stringify([
-    provider, selection.modelId, selection.reasoningEffort,
-    [...tabs].sort((a, b) => a.id - b.id).map((tab) => [
-      tab.id, tab.url, tab.title, tab.pinned, tab.windowId, tab.groupId, tab.group,
-    ]),
+    provider,
+    selection.modelId,
+    selection.reasoningEffort,
+    [...tabs]
+      .sort((a, b) => a.id - b.id)
+      .map((tab) => [tab.id, tab.url, tab.title, tab.pinned, tab.windowId, tab.groupId, tab.group]),
   ]);
 }
 
@@ -76,6 +81,8 @@ export function createProposalCache({ now = () => performance.now(), ttlMs = 5 *
     set(key, proposal) {
       entry = { key, proposal: structuredClone(proposal), savedAt: now() };
     },
-    clear() { entry = undefined; },
+    clear() {
+      entry = undefined;
+    },
   };
 }

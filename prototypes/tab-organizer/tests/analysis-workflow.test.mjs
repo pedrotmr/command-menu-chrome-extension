@@ -4,12 +4,29 @@ import test from 'node:test';
 let importId = 0;
 const tab = (id, url, extra = {}) => ({ id, url, title: 'Docs', pinned: false, windowId: 1, groupId: -1, ...extra });
 
-async function harness(t, tabs = [tab(11, 'https://example.com/a'), tab(22, 'https://example.com/a'),
-  tab(33, 'https://example.com/b'), tab(44, 'https://example.com/pinned', { pinned: true })]) {
+async function harness(
+  t,
+  tabs = [
+    tab(11, 'https://example.com/a'),
+    tab(22, 'https://example.com/a'),
+    tab(33, 'https://example.com/b'),
+    tab(44, 'https://example.com/pinned', { pinned: true }),
+  ],
+) {
   const previousChrome = globalThis.chrome;
   let listener;
   let settings = { provider: 'codex', selections: { codex: { modelId: 'gpt-6-luna', reasoningEffort: 'low' } } };
-  const state = { tabs, calls: [], ports: [], deferred: [], pause: false, failNext: false, removed: [], previews: [], streamPreview: false };
+  const state = {
+    tabs,
+    calls: [],
+    ports: [],
+    deferred: [],
+    pause: false,
+    failNext: false,
+    removed: [],
+    previews: [],
+    streamPreview: false,
+  };
   const event = () => {
     const listeners = [];
     return { addListener: (fn) => listeners.push(fn), emit: (value) => listeners.forEach((fn) => fn(value)) };
@@ -23,21 +40,40 @@ async function harness(t, tabs = [tab(11, 'https://example.com/a'), tab(22, 'htt
       port.onMessage.emit({ id: message.id, ok: false, error: 'provider unavailable' });
       return;
     }
-    const data = message.action === 'analyze' ? {
-      groups: [{ name: 'Docs', tabIds: [1, 2] }], closeCandidates: [],
-      latencyMs: 100, timings: { authMs: 1, requestMs: 98, validationMs: 1 }, outputCharacters: 50,
-    } : { status: 'connected', sharing: true };
+    const data =
+      message.action === 'analyze'
+        ? {
+            groups: [{ name: 'Docs', tabIds: [1, 2] }],
+            closeCandidates: [],
+            latencyMs: 100,
+            timings: { authMs: 1, requestMs: 98, validationMs: 1 },
+            outputCharacters: 50,
+          }
+        : { status: 'connected', sharing: true };
     port.onMessage.emit({ id: message.id, ok: true, data });
   }
   globalThis.chrome = {
     runtime: {
       getURL: (path) => `chrome-extension://prototype/${path}`,
-      onMessage: { addListener: (fn) => { listener = fn; } },
-      sendMessage: async (message) => { state.previews.push(message); },
+      onMessage: {
+        addListener: (fn) => {
+          listener = fn;
+        },
+      },
+      sendMessage: async (message) => {
+        state.previews.push(message);
+      },
       connectNative: () => {
         const port = {
-          onMessage: event(), onDisconnect: event(), disconnected: false,
-          disconnect() { if (!this.disconnected) { this.disconnected = true; this.onDisconnect.emit(); } },
+          onMessage: event(),
+          onDisconnect: event(),
+          disconnected: false,
+          disconnect() {
+            if (!this.disconnected) {
+              this.disconnected = true;
+              this.onDisconnect.emit();
+            }
+          },
           postMessage(message) {
             if (message.action === 'cancel-analysis') return;
             if (message.action === 'analyze') state.calls.push(message);
@@ -56,13 +92,17 @@ async function harness(t, tabs = [tab(11, 'https://example.com/a'), tab(22, 'htt
         if (!found) throw new Error('tab closed');
         return structuredClone(found);
       },
-      remove: async (id) => { state.removed.push(id); },
+      remove: async (id) => {
+        state.removed.push(id);
+      },
     },
     tabGroups: { query: async () => [] },
     storage: {
       local: {
         get: async () => ({ tabOrganizerProviderSettings: structuredClone(settings) }),
-        set: async (value) => { settings = structuredClone(value.tabOrganizerProviderSettings); },
+        set: async (value) => {
+          settings = structuredClone(value.tabOrganizerProviderSettings);
+        },
       },
       session: { set: async () => {} },
     },
@@ -73,9 +113,10 @@ async function harness(t, tabs = [tab(11, 'https://example.com/a'), tab(22, 'htt
     else globalThis.chrome = previousChrome;
   });
   await import(`../extension/service-worker.js?test=${++importId}`);
-  const send = (message) => new Promise((resolve, reject) => {
-    listener(message, {}, (response) => response.ok ? resolve(response.result) : reject(new Error(response.error)));
-  });
+  const send = (message) =>
+    new Promise((resolve, reject) => {
+      listener(message, {}, (response) => (response.ok ? resolve(response.result) : reject(new Error(response.error))));
+    });
   return { state, send };
 }
 
@@ -86,8 +127,14 @@ test('fresh analysis reduces model input; repeat uses cache without stale reques
   assert.equal(first.tabsSentToModel, 2);
   assert.equal(first.tabsAnalyzed, 4);
   assert.equal(first.exactDuplicateCount, 1);
-  assert.deepEqual(state.calls[0].tabs.map((tab) => tab.url), ['https://example.com/a', 'https://example.com/b']);
-  assert.deepEqual(first.groups[0].tabs.map((tab) => tab.id), [11, 22, 33]);
+  assert.deepEqual(
+    state.calls[0].tabs.map((tab) => tab.url),
+    ['https://example.com/a', 'https://example.com/b'],
+  );
+  assert.deepEqual(
+    first.groups[0].tabs.map((tab) => tab.id),
+    [11, 22, 33],
+  );
   const cached = await send({ type: 'analyze' });
   assert.equal(cached.resultSource, 'cached');
   assert.equal(cached.tabsSentToModel, 0);
@@ -159,10 +206,15 @@ test('progress expands original tabs, includes the popup run ID and cannot be ap
   const pending = send({ type: 'analyze', runId: 'popup-run' });
   await new Promise((resolve) => setImmediate(resolve));
   state.ports[0].onMessage.emit({
-    id: state.calls[0].id, event: 'progress', data: { groups: [{ name: 'Docs', tabIds: [1, 2] }] },
+    id: state.calls[0].id,
+    event: 'progress',
+    data: { groups: [{ name: 'Docs', tabIds: [1, 2] }] },
   });
   assert.equal(state.previews[0].runId, 'popup-run');
-  assert.deepEqual(state.previews[0].groups[0].tabs.map((tab) => tab.id), [11, 22, 33]);
+  assert.deepEqual(
+    state.previews[0].groups[0].tabs.map((tab) => tab.id),
+    [11, 22, 33],
+  );
   await assert.rejects(send({ type: 'apply', selection: { groups: [], closeIds: [] } }), /full proposal/);
   await assert.rejects(send({ type: 'analyze' }), /already running/);
   state.deferred.shift()();

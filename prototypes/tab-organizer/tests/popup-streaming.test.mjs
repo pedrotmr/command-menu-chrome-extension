@@ -5,14 +5,28 @@ import { JSDOM } from 'jsdom';
 
 let importId = 0;
 const flush = () => new Promise((resolve) => setImmediate(resolve));
-const groups = [{ name: 'Docs', tabs: [
-  { id: 1, title: 'Docs A', url: 'https://example.com/a', pinned: false },
-  { id: 2, title: 'Docs B', url: 'https://example.com/b', pinned: false },
-] }];
+const groups = [
+  {
+    name: 'Docs',
+    tabs: [
+      { id: 1, title: 'Docs A', url: 'https://example.com/a', pinned: false },
+      { id: 2, title: 'Docs B', url: 'https://example.com/b', pinned: false },
+    ],
+  },
+];
 const finalProposal = () => ({
-  groups, closeCandidates: [], provider: 'codex', modelName: 'gpt-6-luna', reasoningEffort: 'low',
-  tabsAnalyzed: 2, tabsSentToModel: 2, exactDuplicateCount: 0, latencyMs: 100,
-  optimizationStep: 4, resultSource: 'fresh', outputCharacters: 100,
+  groups,
+  closeCandidates: [],
+  provider: 'codex',
+  modelName: 'gpt-6-luna',
+  reasoningEffort: 'low',
+  tabsAnalyzed: 2,
+  tabsSentToModel: 2,
+  exactDuplicateCount: 0,
+  latencyMs: 100,
+  optimizationStep: 4,
+  resultSource: 'fresh',
+  outputCharacters: 100,
   timings: { authMs: 0, requestMs: 100, validationMs: 0 },
 });
 
@@ -25,25 +39,38 @@ async function harness(t) {
   const analyses = [];
   const messages = [];
   const settings = {
-    provider: 'codex', selections: {
+    provider: 'codex',
+    selections: {
       codex: { modelId: 'gpt-6-luna', reasoningEffort: 'low' },
       anthropic: { modelId: '', reasoningEffort: 'default' },
     },
   };
-  globalThis.chrome = { runtime: {
-    onMessage: { addListener: (fn) => listeners.push(fn) },
-    sendMessage: (message) => {
-      messages.push(message);
-      if (message.type === 'analyze') return new Promise((resolve) => analyses.push({ message, resolve }));
-      const result = {
-        'get-settings': settings, 'save-settings': settings,
-        'session': { status: 'connected', sharing: true }, 'has-reopenable-tabs': false,
-        'catalog': { models: [{ id: 'gpt-6-luna', displayName: 'Luna', defaultReasoningEffort: 'low',
-          reasoningEfforts: [{ value: 'low', label: 'Low' }] }] },
-      }[message.type];
-      return Promise.resolve({ ok: true, result });
+  globalThis.chrome = {
+    runtime: {
+      onMessage: { addListener: (fn) => listeners.push(fn) },
+      sendMessage: (message) => {
+        messages.push(message);
+        if (message.type === 'analyze') return new Promise((resolve) => analyses.push({ message, resolve }));
+        const result = {
+          'get-settings': settings,
+          'save-settings': settings,
+          session: { status: 'connected', sharing: true },
+          'has-reopenable-tabs': false,
+          catalog: {
+            models: [
+              {
+                id: 'gpt-6-luna',
+                displayName: 'Luna',
+                defaultReasoningEffort: 'low',
+                reasoningEfforts: [{ value: 'low', label: 'Low' }],
+              },
+            ],
+          },
+        }[message.type];
+        return Promise.resolve({ ok: true, result });
+      },
     },
-  } };
+  };
   t.after(() => {
     dom.window.close();
     for (const [key, value] of Object.entries(previous)) {
@@ -74,7 +101,10 @@ test('popup shows read-only groups before completion and enables review only aft
   assert.equal($('#apply').disabled, true);
   assert.equal($('#reanalyze').disabled, true);
   $('#apply').click();
-  assert.equal(messages.some((message) => message.type === 'apply'), false);
+  assert.equal(
+    messages.some((message) => message.type === 'apply'),
+    false,
+  );
   analyses[0].resolve({ ok: true, result: finalProposal() });
   await flush();
   assert.equal($('#groups h3').textContent, 'Docs');

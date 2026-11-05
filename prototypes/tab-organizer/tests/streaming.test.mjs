@@ -13,7 +13,10 @@ test('extracts completed groups before the enclosing JSON is complete at every c
     assert.deepEqual(stream.push('],"closeCandidates":[]}'), []);
   }
   const stream = createGroupStream();
-  assert.deepEqual([...prefix].flatMap((char) => stream.push(char)), [group]);
+  assert.deepEqual(
+    [...prefix].flatMap((char) => stream.push(char)),
+    [group],
+  );
 });
 
 test('ignores braces, fake groups keys in strings, nested objects, and closure objects', () => {
@@ -30,7 +33,11 @@ test('incomplete objects never become previews, and streamed groups retain final
   const stream = createGroupStream();
   assert.deepEqual(stream.push('{"groups":[{"name":"Docs","tabIds":[1,'), []);
   const groups = stream.push('2,3,99,"4"]}');
-  const tabs = new Map([[1, { pinned: false }], [2, { pinned: true }], [3, { pinned: false }]]);
+  const tabs = new Map([
+    [1, { pinned: false }],
+    [2, { pinned: true }],
+    [3, { pinned: false }],
+  ]);
   assert.deepEqual(validateProposal({ groups, closeCandidates: [] }, tabs).groups, [{ name: 'Docs', tabIds: [1, 3] }]);
 });
 
@@ -41,15 +48,21 @@ test('oversized preview input stops extraction without inventing a group', () =>
 });
 
 const delta = (text, extra = {}) => ({
-  type: 'stream_event', event: { type: 'content_block_delta', delta: { type: 'text_delta', text } }, ...extra,
+  type: 'stream_event',
+  event: { type: 'content_block_delta', delta: { type: 'text_delta', text } },
+  ...extra,
 });
 
 test('Claude streaming extracts only main-response text deltas and trusts the final result separately', () => {
   const messages = [
     { type: 'system', subtype: 'init', account: 'not forwarded' },
-    delta('{"groups":['), delta('{"name":"Docs","tabIds":[1,2]}'),
+    delta('{"groups":['),
+    delta('{"name":"Docs","tabIds":[1,2]}'),
     delta('subagent text', { parent_tool_use_id: 'child' }),
-    { type: 'stream_event', event: { type: 'content_block_delta', delta: { type: 'thinking_delta', thinking: 'not forwarded' } } },
+    {
+      type: 'stream_event',
+      event: { type: 'content_block_delta', delta: { type: 'thinking_delta', thinking: 'not forwarded' } },
+    },
     { type: 'assistant', message: { content: [{ type: 'text', text: 'duplicate snapshot' }] } },
     { type: 'result', is_error: false, result: '{"groups":[],"closeCandidates":[]}' },
   ];
@@ -68,7 +81,10 @@ test('Claude missing, failed, malformed and oversized streams fail without expos
   stream.push(`${JSON.stringify(delta('partial'))}\n`);
   assert.throws(() => stream.finish(), /incomplete proposal/);
   stream.push(`${JSON.stringify({ type: 'result', is_error: true, result: 'sensitive raw error' })}\n`);
-  assert.throws(() => stream.finish(), (error) => /incomplete/.test(error.message) && !error.message.includes('sensitive'));
+  assert.throws(
+    () => stream.finish(),
+    (error) => /incomplete/.test(error.message) && !error.message.includes('sensitive'),
+  );
   assert.throws(() => createClaudeStream(() => {}).push('sensitive invalid JSON\n'), /unreadable response stream/);
   assert.throws(() => createClaudeStream(() => {}).push('x'.repeat(2 * 1024 * 1024 + 1)), /too much output/);
 });

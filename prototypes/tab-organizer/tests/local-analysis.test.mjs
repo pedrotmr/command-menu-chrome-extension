@@ -1,34 +1,76 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createProposalCache, keeperMatches, mergeLocalAnalysis, prepareAnalysis, proposalCacheKey } from '../extension/local-analysis.mjs';
+import {
+  createProposalCache,
+  keeperMatches,
+  mergeLocalAnalysis,
+  prepareAnalysis,
+  proposalCacheKey,
+} from '../extension/local-analysis.mjs';
 
-const tab = (id, url, extra = {}) => ({ id, url, title: 'Docs', pinned: false, windowId: 1, groupId: -1, group: '', ...extra });
+const tab = (id, url, extra = {}) => ({
+  id,
+  url,
+  title: 'Docs',
+  pinned: false,
+  windowId: 1,
+  groupId: -1,
+  group: '',
+  ...extra,
+});
 
 test('reduces exact copies to one model record and restores every unpinned member to its topic group', () => {
   const tabs = [tab(3, 'https://example.com/b'), tab(2, 'https://example.com/a'), tab(1, 'https://example.com/a')];
   const prepared = prepareAnalysis(tabs);
-  assert.deepEqual(prepared.modelTabs.map((tab) => tab.id), [1, 3]);
-  const result = mergeLocalAnalysis({
-    groups: [{ name: 'Docs', tabs: prepared.modelTabs }], closeCandidates: [],
-  }, prepared);
-  assert.deepEqual(result.groups[0].tabs.map((tab) => tab.id), [1, 2, 3]);
+  assert.deepEqual(
+    prepared.modelTabs.map((tab) => tab.id),
+    [1, 3],
+  );
+  const result = mergeLocalAnalysis(
+    {
+      groups: [{ name: 'Docs', tabs: prepared.modelTabs }],
+      closeCandidates: [],
+    },
+    prepared,
+  );
+  assert.deepEqual(
+    result.groups[0].tabs.map((tab) => tab.id),
+    [1, 2, 3],
+  );
   assert.equal(result.closeCandidates[0].id, 2);
   assert.equal(result.closeCandidates[0].keepTabId, 1);
 });
 
 test('prefers a pinned keeper, never sends pinned tabs, and never suggests closing them', () => {
   const prepared = prepareAnalysis([
-    tab(1, 'https://example.com/a'), tab(2, 'https://example.com/a'),
-    tab(3, 'https://example.com/a', { pinned: true }), tab(4, 'https://example.com/b', { pinned: true }),
+    tab(1, 'https://example.com/a'),
+    tab(2, 'https://example.com/a'),
+    tab(3, 'https://example.com/a', { pinned: true }),
+    tab(4, 'https://example.com/b', { pinned: true }),
   ]);
-  assert.deepEqual(prepared.modelTabs.map((tab) => tab.id), [1]);
-  assert.deepEqual(prepared.localCloseCandidates.map((tab) => [tab.id, tab.keepTabId]), [[1, 3], [2, 3]]);
+  assert.deepEqual(
+    prepared.modelTabs.map((tab) => tab.id),
+    [1],
+  );
+  assert.deepEqual(
+    prepared.localCloseCandidates.map((tab) => [tab.id, tab.keepTabId]),
+    [
+      [1, 3],
+      [2, 3],
+    ],
+  );
 });
 
 test('query strings, fragments, and URL characters beyond the provider limit remain distinct', () => {
   const longUrl = `https://example.com/${'a'.repeat(2100)}`;
-  const urls = ['https://example.com/?q=1', 'https://example.com/?q=2',
-    'https://example.com/#a', 'https://example.com/#b', `${longUrl}1`, `${longUrl}2`];
+  const urls = [
+    'https://example.com/?q=1',
+    'https://example.com/?q=2',
+    'https://example.com/#a',
+    'https://example.com/#b',
+    `${longUrl}1`,
+    `${longUrl}2`,
+  ];
   const prepared = prepareAnalysis(urls.map((url, i) => tab(i + 1, url)));
   assert.equal(prepared.modelTabs.length, urls.length);
   assert.equal(prepared.localCloseCandidates.length, 0);
@@ -38,7 +80,10 @@ test('keeps exact-URL keepers protected from AI closures and caps the combined s
   const tabs = Array.from({ length: 8 }, (_, i) => tab(i + 1, 'https://example.com/a'));
   const prepared = prepareAnalysis(tabs);
   const result = mergeLocalAnalysis({ groups: [], closeCandidates: [tabs[0], tabs[1]] }, prepared);
-  assert.deepEqual(result.closeCandidates.map((tab) => tab.id), [2, 3, 4, 5, 6]);
+  assert.deepEqual(
+    result.closeCandidates.map((tab) => tab.id),
+    [2, 3, 4, 5, 6],
+  );
   assert.equal(prepared.localCloseCandidates.length, 7);
 });
 
@@ -56,8 +101,13 @@ test('cache identity includes model settings and complete tab identity and metad
   const key = proposalCacheKey(tabs, 'codex', selection);
   assert.equal(proposalCacheKey([...tabs].reverse(), 'codex', selection), key);
   for (const changed of [
-    { id: 3 }, { url: `${tabs[0].url}2` }, { title: 'Updated' }, { pinned: true },
-    { windowId: 2 }, { groupId: 1 }, { group: 'New group' },
+    { id: 3 },
+    { url: `${tabs[0].url}2` },
+    { title: 'Updated' },
+    { pinned: true },
+    { windowId: 2 },
+    { groupId: 1 },
+    { group: 'New group' },
   ]) {
     assert.notEqual(proposalCacheKey([{ ...tabs[0], ...changed }, tabs[1]], 'codex', selection), key);
   }

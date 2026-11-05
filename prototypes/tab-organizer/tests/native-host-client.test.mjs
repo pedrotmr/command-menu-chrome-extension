@@ -12,9 +12,17 @@ function harness(t) {
   const client = createNativeHostClient({
     connect: () => {
       const port = {
-        sent: [], disconnected: false, onMessage: event(), onDisconnect: event(),
-        postMessage(message) { this.sent.push(message); },
-        disconnect() { this.disconnected = true; this.onDisconnect.emit(); },
+        sent: [],
+        disconnected: false,
+        onMessage: event(),
+        onDisconnect: event(),
+        postMessage(message) {
+          this.sent.push(message);
+        },
+        disconnect() {
+          this.disconnected = true;
+          this.onDisconnect.emit();
+        },
       };
       ports.push(port);
       return port;
@@ -117,7 +125,9 @@ test('a synchronous send failure clears the dead connection before retry', async
   const session = client.request({ action: 'session' });
   ports[0].onMessage.emit({ id: ports[0].sent[0].id, ok: true, data: 'connected' });
   await session;
-  ports[0].postMessage = () => { throw new Error('closed port'); };
+  ports[0].postMessage = () => {
+    throw new Error('closed port');
+  };
   await assert.rejects(client.request({ action: 'analyze' }), /could not receive/);
   assert.equal(ports[0].disconnected, true);
   const next = client.request({ action: 'session' });
@@ -151,7 +161,9 @@ test('progress belongs to its request and never settles the final response or re
   const previews = [];
   let settled = false;
   const analysis = client.request({ action: 'analyze' }, { onProgress: (data) => previews.push(data) });
-  void analysis.then(() => { settled = true; });
+  void analysis.then(() => {
+    settled = true;
+  });
   const session = client.request({ action: 'session' });
   const port = ports[0];
   port.onMessage.emit({ id: port.sent[0].id, event: 'progress', data: { groups: ['Docs'] } });
@@ -171,16 +183,32 @@ test('cancelled requests suppress subsequent progress and preview errors cannot 
   const { client, ports } = harness(t);
   const controller = new AbortController();
   let previews = 0;
-  const rejected = assert.rejects(client.request({ action: 'analyze' }, {
-    signal: controller.signal, onProgress: () => { previews++; },
-  }), /cancelled/);
+  const rejected = assert.rejects(
+    client.request(
+      { action: 'analyze' },
+      {
+        signal: controller.signal,
+        onProgress: () => {
+          previews++;
+        },
+      },
+    ),
+    /cancelled/,
+  );
   const port = ports[0];
   controller.abort();
   port.onMessage.emit({ id: port.sent[0].id, event: 'progress', data: 'late' });
   port.onMessage.emit({ id: port.sent[0].id, ok: false, error: 'cancelled' });
   await rejected;
   assert.equal(previews, 0);
-  const final = client.request({ action: 'analyze' }, { onProgress: () => { throw new Error('preview display failed'); } });
+  const final = client.request(
+    { action: 'analyze' },
+    {
+      onProgress: () => {
+        throw new Error('preview display failed');
+      },
+    },
+  );
   const id = port.sent.at(-1).id;
   port.onMessage.emit({ id, event: 'progress', data: 'partial' });
   port.onMessage.emit({ id, ok: true, data: 'full proposal' });

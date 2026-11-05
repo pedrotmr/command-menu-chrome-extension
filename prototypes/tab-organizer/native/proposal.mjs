@@ -14,7 +14,9 @@ export const PROPOSAL_INSTRUCTIONS = [
 
 export function validateProposal(value, tabByModelId) {
   if (!value || !Array.isArray(value.groups) || !Array.isArray(value.closeCandidates)) {
-    throw new Error('The selected model returned an incomplete proposal. Retry analysis; no browser changes were made.');
+    throw new Error(
+      'The selected model returned an incomplete proposal. Retry analysis; no browser changes were made.',
+    );
   }
   const names = new Set();
   const assigned = new Set();

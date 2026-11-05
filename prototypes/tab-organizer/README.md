@@ -2,6 +2,8 @@
 
 This isolated prototype evaluates tab grouping and duplicate cleanup in a separate Chrome profile. It does not add an organizer command to the released Keybar extension.
 
+Follow-up: [#37](https://github.com/pedrotmr/keybar/issues/37) explores a lightweight command-menu UX before integrating this into the existing extension. A full settings-style screen has not been selected.
+
 ## Chosen route
 
 The prototype has two provider choices:
@@ -66,6 +68,8 @@ security delete-generic-password -a anthropic-console-api-key -s com.keybar.tab-
 
 ## Evaluation notes
 
+Run `npm run test:tab-organizer` from the repository root for the 42 account-free prototype tests included in CI. After completing DevKit setup, `node --test prototypes/tab-organizer/tests/non-reasoning.test.mjs` additionally checks the built SDK's reasoning request and proposal-member safeguards. These local tests do not replace the signed-in synthetic evaluation in #36.
+
 Performance changes are being evaluated one at a time:
 
 1. **Shorter output:** models return group names and tab IDs without a summary or group explanations. Duplicate reasons are limited to eight words in the prompt. Both providers use the same response contract. User-reported step 1 Host times were Luna low **8,596 ms** and Haiku low **6,287 ms**; tab count and repeat count were not supplied, so these are observations rather than a benchmark median.
@@ -79,17 +83,17 @@ For step 4, the user reported **First group shown** at **5,704 ms** for Haiku lo
 
 The user then supplied the following detailed fresh step 4 runs. Both used low effort, analyzed 32 tabs, sent 27 records to AI, found 2 exact duplicate copies, and reused the companion. Times are milliseconds; this is one reported run per provider, not a controlled benchmark median.
 
-| Measurement | Luna low | Haiku low |
-| --- | ---: | ---: |
-| Total | 4,239 | 6,621 |
-| First group shown | 2,492 | 4,646 |
-| Host | 4,234 | 6,616 |
-| Auth check | 0 | 212 |
-| Request / CLI + request | 4,234 | 6,404 |
-| First text within request | 2,126 | 4,359 |
-| First group within host | 2,484 | 4,640 |
-| Validation | 0 | 0 |
-| Output characters (not tokens) | 320 | 557 |
+| Measurement                    | Luna low | Haiku low |
+| ------------------------------ | -------: | --------: |
+| Total                          |    4,239 |     6,621 |
+| First group shown              |    2,492 |     4,646 |
+| Host                           |    4,234 |     6,616 |
+| Auth check                     |        0 |       212 |
+| Request / CLI + request        |    4,234 |     6,404 |
+| First text within request      |    2,126 |     4,359 |
+| First group within host        |    2,484 |     4,640 |
+| Validation                     |        0 |         0 |
+| Output characters (not tokens) |      320 |       557 |
 
 In these runs, group previews appeared **1,747 ms** before Luna completed and **1,975 ms** before Haiku completed. Time outside the host was only 5 ms in each run. Both request phases spent about 2.1 seconds after the first text delta; Haiku's extra wait was primarily before that delta, inside its combined CLI/request phase. These measurements do not separate CLI startup, networking, provider queueing, or model processing, so they cannot identify which caused that difference or establish a general provider speed ranking.
 

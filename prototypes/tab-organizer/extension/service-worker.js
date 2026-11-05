@@ -1,5 +1,11 @@
 import { createNativeHostClient } from './native-host-client.mjs';
-import { createProposalCache, keeperMatches, mergeLocalAnalysis, prepareAnalysis, proposalCacheKey } from './local-analysis.mjs';
+import {
+  createProposalCache,
+  keeperMatches,
+  mergeLocalAnalysis,
+  prepareAnalysis,
+  proposalCacheKey,
+} from './local-analysis.mjs';
 
 const HOST = 'com.keybar.tab_organizer';
 const hostClient = createNativeHostClient({
@@ -46,11 +52,13 @@ async function handleMessage(message) {
       return session;
     }
     case 'connect':
-      if (requireProvider(message.provider) !== 'codex') throw new Error('Choose Codex in provider settings to connect it.');
+      if (requireProvider(message.provider) !== 'codex')
+        throw new Error('Choose Codex in provider settings to connect it.');
       invalidateProposalCache();
       return requestHost({ action: 'sign-in', provider: 'codex' }, { timeoutMs: SIGN_IN_TIMEOUT_MS });
     case 'connect-claude':
-      if (requireProvider(message.provider) !== 'anthropic') throw new Error('Choose Claude Code in provider settings to connect it.');
+      if (requireProvider(message.provider) !== 'anthropic')
+        throw new Error('Choose Claude Code in provider settings to connect it.');
       invalidateProposalCache();
       return requestHost({ action: 'claude-login', provider: 'anthropic' }, { timeoutMs: CLI_LAUNCH_TIMEOUT_MS });
     case 'disconnect':
@@ -99,7 +107,13 @@ async function analyzeTabs(forceRefresh = false, runId) {
     const cacheKey = proposalCacheKey(tabs, settings.provider, selection);
     const cached = forceRefresh ? undefined : proposalCache.get(cacheKey);
     if (cached) {
-      return { ...cached.proposal, optimizationStep: 4, resultSource: 'cached', cacheAgeMs: cached.ageMs, tabsSentToModel: 0 };
+      return {
+        ...cached.proposal,
+        optimizationStep: 4,
+        resultSource: 'cached',
+        cacheAgeMs: cached.ageMs,
+        tabsSentToModel: 0,
+      };
     }
     const prepared = prepareAnalysis(tabs);
     const tabsByRequestId = new Map(prepared.modelTabs.map((tab, index) => [index + 1, tab]));
@@ -110,28 +124,37 @@ async function analyzeTabs(forceRefresh = false, runId) {
       pinned: tab.pinned,
       group: tab.group,
     }));
-    const result = hostTabs.length < 2 ? { groups: [], closeCandidates: [] } : await requestHost(
-      {
-        action: 'analyze',
-        provider: settings.provider,
-        modelId: selection.modelId,
-        reasoningEffort: selection.reasoningEffort,
-        tabs: hostTabs,
-      },
-      {
-        analysis,
-        timeoutMs: HOST_REQUEST_TIMEOUT_MS,
-        onProgress: (preview) => {
-          if (analysis.cancelled || activeAnalysis !== analysis || typeof runId !== 'string' || runId.length > 128) return;
-          const restored = restoreTabReferences({ groups: preview.groups, closeCandidates: [] }, tabsByRequestId);
-          const { groups } = mergeLocalAnalysis(restored, prepared);
-          if (!groups.length) return;
-          void chrome.runtime.sendMessage({ type: 'analysis-progress', runId, groups }).catch(() => {
-            // Closing the popup must not interrupt inference or populate a partial cache entry.
-          });
-        },
-      },
-    );
+    const result =
+      hostTabs.length < 2
+        ? { groups: [], closeCandidates: [] }
+        : await requestHost(
+            {
+              action: 'analyze',
+              provider: settings.provider,
+              modelId: selection.modelId,
+              reasoningEffort: selection.reasoningEffort,
+              tabs: hostTabs,
+            },
+            {
+              analysis,
+              timeoutMs: HOST_REQUEST_TIMEOUT_MS,
+              onProgress: (preview) => {
+                if (
+                  analysis.cancelled ||
+                  activeAnalysis !== analysis ||
+                  typeof runId !== 'string' ||
+                  runId.length > 128
+                )
+                  return;
+                const restored = restoreTabReferences({ groups: preview.groups, closeCandidates: [] }, tabsByRequestId);
+                const { groups } = mergeLocalAnalysis(restored, prepared);
+                if (!groups.length) return;
+                void chrome.runtime.sendMessage({ type: 'analysis-progress', runId, groups }).catch(() => {
+                  // Closing the popup must not interrupt inference or populate a partial cache entry.
+                });
+              },
+            },
+          );
     if (analysis.cancelled) throw new Error('Analysis cancelled. No tabs were changed.');
     const proposal = mergeLocalAnalysis(restoreTabReferences(result, tabsByRequestId), prepared);
     const reusable = {
@@ -145,7 +168,9 @@ async function analyzeTabs(forceRefresh = false, runId) {
     };
     if (!analysis.cacheInvalidated) proposalCache.set(cacheKey, reusable);
     return {
-      ...proposal, ...reusable, optimizationStep: 4,
+      ...proposal,
+      ...reusable,
+      optimizationStep: 4,
       resultSource: hostTabs.length < 2 ? 'local' : 'fresh',
       tabsSentToModel: hostTabs.length < 2 ? 0 : hostTabs.length,
     };

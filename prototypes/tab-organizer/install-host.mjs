@@ -27,7 +27,10 @@ const shellQuote = (value) => `'${value.replaceAll("'", "'\\''")}'`;
 function resolveCodexPath() {
   let codexPath;
   try {
-    codexPath = execFileSync('/usr/bin/which', ['codex'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    codexPath = execFileSync('/usr/bin/which', ['codex'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
   } catch {
     throw new Error('Install the Codex CLI and make `codex` available in PATH before registering this prototype.');
   }
@@ -35,7 +38,10 @@ function resolveCodexPath() {
 
   if (codexPath.includes('/.asdf/shims/')) {
     try {
-      const asdfPath = execFileSync('/usr/bin/which', ['asdf'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+      const asdfPath = execFileSync('/usr/bin/which', ['asdf'], {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+      }).trim();
       if (!asdfPath.startsWith('/')) throw new Error('asdf could not be resolved.');
       const installed = execFileSync(asdfPath, ['which', 'codex'], {
         encoding: 'utf8',
@@ -44,7 +50,9 @@ function resolveCodexPath() {
       }).trim();
       if (installed.startsWith('/') && existsSync(installed)) codexPath = installed;
     } catch {
-      throw new Error('Could not resolve Codex through asdf. Run `asdf which codex` successfully, then register again.');
+      throw new Error(
+        'Could not resolve Codex through asdf. Run `asdf which codex` successfully, then register again.',
+      );
     }
   }
   if (!existsSync(codexPath)) throw new Error('The Codex CLI path does not exist. Reinstall Codex and try again.');

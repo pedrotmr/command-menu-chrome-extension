@@ -5,12 +5,18 @@ export function createClaudeStream(onText) {
   function consume(line) {
     if (!line.trim()) return;
     let message;
-    try { message = JSON.parse(line); } catch {
+    try {
+      message = JSON.parse(line);
+    } catch {
       throw new Error('Claude Code returned an unreadable response stream. Retry analysis.');
     }
-    if (message?.type === 'stream_event' && !message.parent_tool_use_id &&
-        message.event?.type === 'content_block_delta' && message.event.delta?.type === 'text_delta' &&
-        typeof message.event.delta.text === 'string') {
+    if (
+      message?.type === 'stream_event' &&
+      !message.parent_tool_use_id &&
+      message.event?.type === 'content_block_delta' &&
+      message.event.delta?.type === 'text_delta' &&
+      typeof message.event.delta.text === 'string'
+    ) {
       onText(message.event.delta.text);
     } else if (message?.type === 'result' && !message.parent_tool_use_id) result = message;
   }

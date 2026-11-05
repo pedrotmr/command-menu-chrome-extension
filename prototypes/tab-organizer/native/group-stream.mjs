@@ -31,7 +31,11 @@ export function createGroupStream() {
           else if (char === '"') {
             inString = false;
             if (depth === 1 && expectingKey) {
-              try { rootKey = JSON.parse(text.slice(stringStart, position + 1)); } catch { rootKey = undefined; }
+              try {
+                rootKey = JSON.parse(text.slice(stringStart, position + 1));
+              } catch {
+                rootKey = undefined;
+              }
               expectingKey = false;
             }
           }
@@ -48,7 +52,11 @@ export function createGroupStream() {
           depth++;
         } else if (char === '}') {
           if (inGroups && depth === 3 && groupStart !== undefined) {
-            try { completed.push(JSON.parse(text.slice(groupStart, position + 1))); } catch { /* Ignore an invalid preview object. */ }
+            try {
+              completed.push(JSON.parse(text.slice(groupStart, position + 1)));
+            } catch {
+              /* Ignore an invalid preview object. */
+            }
             groupStart = undefined;
           }
           depth--;
