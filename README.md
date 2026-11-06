@@ -9,6 +9,15 @@ Keybar is a keyboard-first command surface for Chrome, built with React, TypeScr
 - Open the separate Tab Switcher with **Control+A** on regular web pages, including macOS. It has no button in the Command Bar, and its shortcut does nothing on Chrome or extension pages.
 - Use **↑ / ↓** and **Enter** in the Command Bar. In the Tab Switcher, use **← / →** or **↑ / ↓** to cycle, then **Enter** to switch. **Escape** closes either surface. Chrome lets users change both shortcuts at `chrome://extensions/shortcuts`.
 
+## First time using Keybar
+
+1. Open Keybar from the toolbar on any page. On a regular page this opens the Command Bar over the page; on a Chrome or extension page it opens the popup. Choose **Keyboard shortcuts** in the Command Bar (or visit `chrome://extensions/shortcuts`) to see or change the assigned shortcuts. Chrome may reserve the suggested **Ctrl+T** / **Cmd+T** for a new tab, so assign a free shortcut if Keybar does not open with it.
+2. Type a browser task such as **mute tab**, **pin tab**, or **open downloads**, then use **↑ / ↓** and **Enter**. To switch to an open tab, type part of its title or website and press **Enter**. For the separate recent-tab strip, use its assigned shortcut; the suggested **Control+A** works on regular pages, including macOS, but neither shortcut works on Chrome or extension pages.
+3. Search commands and open tabs locally on your device. To search bookmarks and recent history, type a query and choose **Search bookmarks and history**. Chrome asks for any missing optional access at that point. Granted sources are read locally when the Command Bar opens; history search covers up to 500 visits from the last 30 days.
+4. To send a query to a search provider, type a prefix such as **g**, **yt**, **ai**, or **cl**, then press **Tab** to choose the provider and **Enter** to open its site. The query is included in that site's URL and sent by your browser. A plain unmatched query also offers Google web search; choosing it sends the query to Google.
+
+Real-user questions to validate later: Do people find the two surfaces and their separate shortcuts? Is the saved-pages choice clear before Chrome asks for access? Do users understand that a provider receives the query? These are follow-up validation questions, not blockers for the documented behavior.
+
 ## Command Bar
 
 Search commands, open tabs, direct addresses, and provider shortcuts in one place. Commands include tab renaming, moving, pinning, muting, grouping, copying a title or URL, closing and duplicating tabs, browser navigation, zoom, window actions, and Chrome's native Split View when the API is available.
