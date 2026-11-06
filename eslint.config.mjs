@@ -6,7 +6,15 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['dist/**', 'node_modules/**', 'build/**', 'coverage/**', '.ralph/**', 'release/**'],
+    ignores: [
+      'dist/**',
+      'node_modules/**',
+      'build/**',
+      'coverage/**',
+      '.ralph/**',
+      'release/**',
+      'prototypes/tab-organizer/vendor/**',
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "Keybar AI Tab Organizer (Prototype)",
+  "version": "0.1.0",
+  "description": "An isolated prototype for reviewing AI tab organization proposals.",
+  "permissions": ["tabs", "tabGroups", "storage", "nativeMessaging"],
+  "background": { "service_worker": "service-worker.js", "type": "module" },
+  "action": {
+    "default_title": "Organize tabs (prototype)",
+    "default_popup": "popup.html"
+  }
+}

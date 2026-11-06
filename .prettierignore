@@ -9,3 +9,6 @@ docs/research/
 release/
 test-results/
 playwright-report/
+prototypes/tab-organizer/vendor/
+# Collected competitor-review JSON is source evidence; preserve its captured form.
+docs/research/competitor-reviews/

@@ -1,0 +1,266 @@
+:root {
+  color-scheme: light dark;
+  font:
+    13px/1.45 -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  background: #f6f5f2;
+  color: #24241f;
+}
+
+* {
+  box-sizing: border-box;
+}
+body {
+  width: 390px;
+  max-height: 620px;
+  margin: 0;
+  overflow-y: auto;
+}
+main {
+  padding: 20px;
+}
+header {
+  margin-bottom: 16px;
+}
+.eyebrow {
+  margin: 0 0 5px;
+  color: #77756d;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+h1 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.2;
+}
+h2 {
+  margin: 0;
+  font-size: 15px;
+}
+.lede {
+  margin: 6px 0 0;
+  color: #625f58;
+}
+.privacy {
+  padding: 11px 12px;
+  margin-bottom: 14px;
+  border: 1px solid #d9d5cb;
+  border-radius: 10px;
+  background: #fffdf9;
+}
+.privacy p {
+  margin: 4px 0 0;
+  color: #625f58;
+}
+.toolbar {
+  display: flex;
+  gap: 8px;
+}
+button {
+  min-height: 36px;
+  padding: 8px 11px;
+  border: 1px solid #c9c5bc;
+  border-radius: 8px;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+.primary {
+  width: 100%;
+  margin-top: 8px;
+  border-color: #343d32;
+  background: #343d32;
+  color: white;
+  font-weight: 650;
+}
+.secondary {
+  background: transparent;
+}
+.status,
+.message,
+.notice {
+  margin: 8px 0;
+  color: #625f58;
+}
+.usage {
+  display: inline-block;
+  margin-bottom: 6px;
+  color: #425543;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.status[data-error='true'],
+.message[data-error='true'] {
+  color: #9c342a;
+}
+#results {
+  margin-top: 18px;
+  padding-top: 15px;
+  border-top: 1px solid #d9d5cb;
+}
+.result-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.latency {
+  color: #77756d;
+  font-size: 11px;
+}
+.card {
+  margin-top: 9px;
+  padding: 10px 11px;
+  border: 1px solid #d9d5cb;
+  border-radius: 9px;
+  background: #fffdf9;
+}
+.settings-card {
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+.settings-card h2 {
+  margin-bottom: 10px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 9px;
+  font-weight: 600;
+}
+.field select,
+.field input {
+  width: 100%;
+  min-height: 36px;
+  padding: 7px 9px;
+  border: 1px solid #c9c5bc;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 400;
+}
+.field input {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.connection-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px 10px;
+  margin-top: 10px;
+}
+.connection-actions .field {
+  width: 100%;
+  margin-top: 0;
+}
+.connection-actions a {
+  color: #425543;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.connection-actions small {
+  flex-basis: 100%;
+  color: #77756d;
+}
+.settings-card .notice {
+  margin: 7px 0;
+}
+#refresh-models {
+  width: 100%;
+  margin-top: 9px;
+}
+.card h3 {
+  margin: 0 0 6px;
+  font-size: 13px;
+}
+.option {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 7px;
+}
+.option input {
+  margin: 3px 0 0;
+}
+.option span {
+  min-width: 0;
+}
+.option small {
+  display: block;
+  color: #77756d;
+  overflow-wrap: anywhere;
+}
+.badge {
+  display: inline-block;
+  margin-left: 5px;
+  padding: 1px 5px;
+  border-radius: 8px;
+  background: #eeeae0;
+  color: #625f58;
+  font-size: 10px;
+}
+.hidden {
+  display: none;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    background: #20211e;
+    color: #f1f0eb;
+  }
+  .lede,
+  .eyebrow,
+  .privacy p,
+  .status,
+  .message,
+  .notice,
+  .latency,
+  .option small {
+    color: #b9b6ad;
+  }
+  .status[data-error='true'],
+  .message[data-error='true'] {
+    color: #ffaaa0;
+  }
+  .usage {
+    color: #cedcbe;
+  }
+  .connection-actions a {
+    color: #cedcbe;
+  }
+  .connection-actions small {
+    color: #b9b6ad;
+  }
+  .privacy,
+  .card {
+    background: #292a26;
+    border-color: #484941;
+  }
+  button {
+    border-color: #57594f;
+  }
+  .field select,
+  .field input {
+    border-color: #57594f;
+  }
+  .primary {
+    background: #d8e3cd;
+    color: #252821;
+    border-color: #d8e3cd;
+  }
+  .badge {
+    background: #41433c;
+    color: #e0ded6;
+  }
+  #results {
+    border-color: #484941;
+  }
+}

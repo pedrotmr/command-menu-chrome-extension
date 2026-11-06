@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI tab organizer prototype</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">KEYBAR PROTOTYPE</p>
+        <h1>Organize tabs</h1>
+        <p class="lede">Review topic groups and duplicate cleanup before changing this Chrome profile.</p>
+      </header>
+
+      <section class="privacy" aria-label="Data sent for analysis">
+        <strong>What leaves this device</strong>
+        <p>
+          Analysis considers eligible HTTP(S) tabs across all windows in this Chrome profile, plus the prototype's
+          sample pages. Loading sample tabs does not limit the scope; use an empty profile for sample runs.
+        </p>
+        <p id="privacy-copy">
+          When you analyze tabs, titles, up to 2,048 URL characters, pinned state, and current group names go to the
+          selected provider. Page contents are not read. A URL can contain sensitive data, such as an access token in
+          its query string, and that text may be sent.
+        </p>
+      </section>
+
+      <section class="card settings-card" aria-labelledby="settings-heading">
+        <h2 id="settings-heading">Provider settings</h2>
+        <label class="field" for="provider">
+          Provider
+          <select id="provider" disabled>
+            <option value="codex">Codex models · ChatGPT plan</option>
+            <option value="anthropic">Claude Code · Claude plan</option>
+          </select>
+        </label>
+        <p id="provider-help" class="notice"></p>
+
+        <div id="codex-connection" class="connection-actions">
+          <button id="connect" class="secondary" type="button" disabled>Continue with ChatGPT</button>
+          <button id="disconnect" class="secondary hidden" type="button">Disconnect ChatGPT</button>
+          <a id="usage" class="usage hidden" href="https://chatgpt.com/settings/usage" target="_blank" rel="noreferrer"
+            >Manage ChatGPT usage</a
+          >
+        </div>
+        <div id="claude-connection" class="connection-actions hidden">
+          <button id="connect-claude" class="secondary" type="button" disabled>Sign in with Claude Code</button>
+          <small
+            >Sign-in opens the installed Claude Code CLI in Terminal. Its credentials stay under Claude Code's
+            control.</small
+          >
+        </div>
+
+        <p id="connection" class="status" role="status">Checking connection…</p>
+        <label class="field" for="model">
+          Model
+          <select id="model" disabled>
+            <option value="">Connect a provider to load models</option>
+          </select>
+        </label>
+        <label class="field" for="reasoning">
+          Reasoning effort
+          <select id="reasoning" disabled>
+            <option value="default">Provider default</option>
+          </select>
+        </label>
+        <button id="refresh-models" class="secondary" type="button" disabled>Reload model options</button>
+      </section>
+
+      <div class="toolbar">
+        <button id="sample" class="secondary" type="button">Load sample tabs</button>
+      </div>
+      <button id="organize" class="primary" type="button" disabled>Organize tabs</button>
+      <button id="cancel" class="secondary hidden" type="button">Cancel analysis</button>
+
+      <section id="results" class="hidden" aria-live="polite">
+        <div class="result-heading">
+          <h2>Review proposal</h2>
+          <span id="latency" class="latency"></span>
+        </div>
+        <details class="notice">
+          <summary id="timing-label">Timing details</summary>
+          <p id="timing-details"></p>
+        </details>
+        <p id="notice" class="notice"></p>
+        <div id="groups"></div>
+        <div id="duplicates"></div>
+        <button id="reanalyze" class="secondary" type="button">Run fresh analysis</button>
+        <button id="apply" class="primary" type="button">Apply selected changes</button>
+      </section>
+
+      <button id="reopen" class="secondary hidden" type="button">Reopen last closed tabs</button>
+      <p id="message" class="message" role="status"></p>
+    </main>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

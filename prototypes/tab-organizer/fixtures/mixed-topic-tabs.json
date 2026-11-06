@@ -1,0 +1,18 @@
+{
+  "description": "Synthetic browser set created by Load sample tabs; no real browsing data.",
+  "tabCount": 7,
+  "topicGroups": {
+    "Product docs": 3,
+    "Research notes": 2,
+    "Trip planning": 2
+  },
+  "exactDuplicate": {
+    "count": 2,
+    "url": "chrome-extension://<prototype-id>/sample/page.html?page=product-a&topic=Product%20docs&title=Getting%20started%20with%20Keybar"
+  },
+  "expectedSafety": [
+    "Return only IDs from the supplied live snapshot.",
+    "Do not suggest pinned tabs for closure.",
+    "Leave all close selections unchecked until the user chooses them."
+  ]
+}
