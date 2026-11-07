@@ -286,3 +286,29 @@ test('the popup rejects Chrome Web Store pages before requesting site access', a
     await rm(profile, { recursive: true, force: true });
   }
 });
+
+test('a no-op restore returns its result when storage writes fail', async () => {
+  const profile = await mkdtemp(path.join(os.tmpdir(), 'keybar-title-noop-restore-'));
+  const extensionPath = path.resolve('prototypes/tab-title-rename');
+  let context;
+
+  try {
+    context = await chromium.launchPersistentContext(profile, {
+      channel: 'chromium',
+      headless: true,
+      args: [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`],
+    });
+    const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
+    const popup = await context.newPage();
+    await popup.goto(`chrome-extension://${new URL(worker.url()).host}/popup.html`);
+    await worker.evaluate(() => {
+      chrome.storage.local.set = () => Promise.reject(new Error('Storage unavailable'));
+    });
+
+    const result = await popup.evaluate(() => chrome.runtime.sendMessage({ action: 'title:restore', tabId: -1 }));
+    expect(result).toMatchObject({ success: false, reason: 'no-saved-title' });
+  } finally {
+    await context?.close();
+    await rm(profile, { recursive: true, force: true });
+  }
+});

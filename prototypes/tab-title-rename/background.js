@@ -123,7 +123,7 @@ function withOverridesMutation(update) {
   const mutation = overrideMutationTail.then(async () => {
     const { [OVERRIDES_KEY]: overrides = {} } = await chrome.storage.local.get(OVERRIDES_KEY);
     const result = await update(overrides);
-    await chrome.storage.local.set({ [OVERRIDES_KEY]: overrides });
+    if (result.success) await chrome.storage.local.set({ [OVERRIDES_KEY]: overrides });
     return result;
   });
 
