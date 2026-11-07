@@ -1,4 +1,5 @@
 const OVERRIDES_KEY = 'titleOverrides';
+let overrideMutationTail = Promise.resolve();
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.status === 'complete') {
@@ -12,33 +13,63 @@ chrome.runtime.onStartup.addListener(() => {
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.action === 'title:apply') {
-    void applyTitle(message.tabId, message.customName).then(sendResponse);
+    void applyTitle(message.tabId, message.customName, message.expectedOrigin).then(sendResponse, () =>
+      sendResponse({ success: false, reason: 'operation-failed' }),
+    );
     return true;
   }
 
   if (message?.action === 'title:restore') {
-    void restoreTitle(message.tabId).then(sendResponse);
+    void restoreTitle(message.tabId).then(sendResponse, () =>
+      sendResponse({ success: false, reason: 'operation-failed' }),
+    );
     return true;
   }
 });
 
-async function applyTitle(tabId, customName) {
-  const tab = await chrome.tabs.get(tabId);
-  const origin = getOrigin(tab.url);
-  const hasAccess = origin && (await chrome.permissions.contains({ origins: [`${origin}/*`] }));
+async function applyTitle(tabId, customName, expectedOrigin, expectedCustomName) {
+  const normalizedName = normalizeTitle(customName);
 
-  if (!hasAccess) return { success: false, reason: 'site-access-required' };
+  if (!normalizedName) return { success: false, reason: 'empty-title' };
 
-  const { [OVERRIDES_KEY]: overrides = {} } = await chrome.storage.local.get(OVERRIDES_KEY);
-  const [result] = await chrome.scripting.executeScript({
-    target: { tabId },
-    func: setPageTitle,
-    args: [customName],
+  return withOverridesMutation(async (overrides) => {
+    const tab = await chrome.tabs.get(tabId);
+    const origin = getOrigin(tab.url);
+
+    if (!origin || origin !== expectedOrigin) {
+      return { success: false, reason: 'origin-mismatch' };
+    }
+
+    if (expectedCustomName) {
+      const saved = overrides[String(tabId)];
+
+      if (saved?.origin !== expectedOrigin || saved.customName !== expectedCustomName) {
+        return { success: false, reason: 'stale-override' };
+      }
+    }
+
+    const hasAccess = await chrome.permissions.contains({ origins: [`${origin}/*`] });
+
+    if (!hasAccess) return { success: false, reason: 'site-access-required' };
+
+    const [result] = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: setPageTitle,
+      args: [normalizedName, expectedOrigin],
+    });
+    const applied = result?.result;
+
+    if (!applied?.applied) {
+      return { success: false, reason: applied?.reason ?? 'injection-failed' };
+    }
+
+    overrides[String(tabId)] = {
+      origin,
+      customName: normalizedName,
+      originalTitle: applied.originalTitle,
+    };
+    return { success: true, originalTitle: applied.originalTitle };
   });
-  const originalTitle = result?.result?.originalTitle;
-  overrides[String(tabId)] = { origin, customName, originalTitle };
-  await chrome.storage.local.set({ [OVERRIDES_KEY]: overrides });
-  return { success: true, originalTitle };
 }
 
 async function applySavedTitle(tabId, url) {
@@ -51,41 +82,60 @@ async function applySavedTitle(tabId, url) {
   if (!override || origin !== override.origin) return;
 
   try {
-    await applyTitle(tabId, override.customName);
+    await applyTitle(tabId, override.customName, override.origin, override.customName);
   } catch {
     // The site may not have been granted after a session restore.
   }
 }
 
 async function restoreTitle(tabId) {
-  const { [OVERRIDES_KEY]: overrides = {} } = await chrome.storage.local.get(OVERRIDES_KEY);
-  const override = overrides[String(tabId)];
+  return withOverridesMutation(async (overrides) => {
+    const override = overrides[String(tabId)];
 
-  if (!override) return { success: false, reason: 'no-saved-title' };
+    if (!override) return { success: false, reason: 'no-saved-title' };
 
-  const tab = await chrome.tabs.get(tabId);
+    const tab = await chrome.tabs.get(tabId);
 
-  if (getOrigin(tab.url) !== override.origin) {
-    return { success: false, reason: 'origin-mismatch' };
-  }
-
-  try {
-    const [result] = await chrome.scripting.executeScript({
-      target: { tabId },
-      func: restorePageTitle,
-      args: [override.originalTitle ?? '', override.customName],
-    });
-
-    if (!result?.result?.restored) {
-      return { success: false, reason: 'title-not-overridden' };
+    if (getOrigin(tab.url) !== override.origin) {
+      return { success: false, reason: 'origin-mismatch' };
     }
-  } catch {
-    return { success: false, reason: 'restore-failed' };
-  }
 
-  delete overrides[String(tabId)];
-  await chrome.storage.local.set({ [OVERRIDES_KEY]: overrides });
-  return { success: true };
+    try {
+      const [result] = await chrome.scripting.executeScript({
+        target: { tabId },
+        func: restorePageTitle,
+        args: [override.originalTitle ?? '', override.customName, override.origin],
+      });
+
+      if (!result?.result?.restored) {
+        return { success: false, reason: 'title-not-overridden' };
+      }
+    } catch {
+      return { success: false, reason: 'restore-failed' };
+    }
+
+    delete overrides[String(tabId)];
+    return { success: true };
+  });
+}
+
+function withOverridesMutation(update) {
+  const mutation = overrideMutationTail.then(async () => {
+    const { [OVERRIDES_KEY]: overrides = {} } = await chrome.storage.local.get(OVERRIDES_KEY);
+    const result = await update(overrides);
+    await chrome.storage.local.set({ [OVERRIDES_KEY]: overrides });
+    return result;
+  });
+
+  overrideMutationTail = mutation.then(
+    () => undefined,
+    () => undefined,
+  );
+  return mutation;
+}
+
+function normalizeTitle(value) {
+  return value.replace(/[\t\n\f\r ]+/g, ' ').trim();
 }
 
 function getOrigin(url) {
@@ -97,31 +147,45 @@ function getOrigin(url) {
   }
 }
 
-function setPageTitle(customName) {
+function setPageTitle(customName, expectedOrigin) {
+  if (window.location.origin !== expectedOrigin) {
+    return { applied: false, reason: 'origin-mismatch' };
+  }
+
   const stateKey = '__keybarTitleRenamePrototype';
   const state = window[stateKey] ?? {
     originalTitle: document.title,
     observer: null,
   };
   state.customName = customName;
+  state.origin = expectedOrigin;
   window[stateKey] = state;
   document.title = customName;
 
   if (!state.observer) {
     state.observer = new MutationObserver(() => {
-      if (document.title !== state.customName) document.title = state.customName;
+      if (window.location.origin === state.origin && document.title !== state.customName) {
+        document.title = state.customName;
+      }
     });
     state.observer.observe(document.head, { childList: true, characterData: true, subtree: true });
   }
 
-  return { originalTitle: state.originalTitle };
+  return { applied: true, originalTitle: state.originalTitle };
 }
 
-function restorePageTitle(originalTitle, customName) {
+function restorePageTitle(originalTitle, customName, expectedOrigin) {
   const stateKey = '__keybarTitleRenamePrototype';
   const state = window[stateKey];
 
-  if (!state || state.customName !== customName) return { restored: false };
+  if (
+    window.location.origin !== expectedOrigin ||
+    !state ||
+    state.origin !== expectedOrigin ||
+    state.customName !== customName
+  ) {
+    return { restored: false };
+  }
 
   state?.observer?.disconnect();
   delete window[stateKey];

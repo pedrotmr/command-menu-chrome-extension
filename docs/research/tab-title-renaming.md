@@ -4,7 +4,7 @@
 
 The page title can be replaced by injecting code into the page and setting `document.title`. Keybar's existing `activeTab` and `scripting` permissions support an on-demand override after the user invokes Keybar on a regular page. Chrome retains the temporary grant through same-origin navigation, including reload, so Keybar can reinject after those loads without optional host access while the grant remains active.
 
-Once that grant ends—after a different-origin navigation or tab close—Keybar cannot inject again without host access. For background reapplication after a browser restart and session restore, recommend optional host access for the restored page's current origin, requested when a user chooses to show a name in Chrome's tab strip. This adds no access to unrelated sites. No permission was added to Keybar; the product and permission decision is tracked separately in issue [#39](https://github.com/pedrotmr/keybar/issues/39).
+Once that grant ends—after a different-origin navigation or tab close—the user can invoke Keybar again to grant access to the current page. Optional host access is needed for automatic background reapplication without a fresh invocation, including after a browser restart and session restore. Recommend requesting it for the restored page's current origin when a user chooses to show a name in Chrome's tab strip. This adds no access to unrelated sites. No permission was added to Keybar; the product and permission decision is tracked separately in issue [#39](https://github.com/pedrotmr/keybar/issues/39).
 
 On pages where access is not granted, keep the existing Keybar-only custom name. Chrome pages, extension pages, the Chrome Web Store, and other restricted pages cannot be scripted.
 
@@ -20,14 +20,14 @@ On pages where access is not granted, keep the existing Keybar-only custom name.
 
 The isolated [prototype](../../prototypes/tab-title-rename/README.md) confirms the page-side behavior in Chromium. The focused browser test launches the popup without a tab-ID parameter, grants the fixture origin, applies a custom title, resists a same-document SPA title update, reapplies after same-origin reload and navigation, restores the new document's original title, prevents a restore from site A from changing site B's title, and confirms Chrome rejects injection into `chrome://version`.
 
-The prototype also shows the permission boundary: its popup requests the current origin only. The automated fixture grants its two test origins (`title-prototype.test` and `other-title.test`) at extension load so it can run headlessly without an interactive Chrome permission prompt. The automated test does not exercise Chrome's permission prompt or denial path. The prototype does not alter Keybar's manifest.
+The prototype also shows the permission boundary: its popup requests the current origin only. The main automated fixture grants its two test origins (`title-prototype.test` and `other-title.test`) at extension load so it can run headlessly without an interactive Chrome permission prompt; the test verifies the requested origin but does not exercise Chrome's permission prompt or denial path. A separate temporary fixture grants `<all_urls>`, confirms injection succeeds on an ordinary web page, then confirms Chrome blocks `chrome://version`. These fixtures do not alter Keybar's manifest.
 
 ### Navigation and identity
 
 - **SPA title updates:** A `MutationObserver` can restore the custom title when the page changes it. The prototype demonstrates this behavior.
 - **Same-origin reload:** Chrome documents that `activeTab` survives same-origin navigation, including reloads; the service worker can reinject while that grant remains active. The prototype demonstrates the reinjection behavior using its granted test origin.
-- **Different-origin navigation:** The temporary `activeTab` grant is revoked. Per-origin site access is needed before reinjecting on the new origin.
-- **Browser restart and session restore:** `activeTab` is temporary and tied to the invoked tab, so it cannot be relied on after the tab is closed and restored. Optional host access for the matching origin permits reinjection, but Keybar must first identify the restored tab. Keybar already reattaches custom names only on a unique URL/title match. Reuse that reconciliation, and do not key durable state only by tab ID.
+- **Different-origin navigation:** The temporary `activeTab` grant is revoked. Invoking Keybar again can grant access to the new page; optional host access is needed only for automatic background reinjection without a fresh invocation.
+- **Browser restart and session restore:** `activeTab` is temporary and tied to the invoked tab, so the user must invoke Keybar again for on-demand injection after restore. Optional host access for the matching origin permits automatic reinjection, but Keybar must first identify the restored tab. Keybar already reattaches custom names only on a unique URL/title match. Reuse that reconciliation, and do not key durable state only by tab ID.
 - **Restricted pages:** Chrome blocks injection regardless of this prototype's site-access flow. Leave those tabs' Chrome titles unchanged.
 
 ## Implementation decision
