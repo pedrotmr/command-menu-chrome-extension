@@ -38,9 +38,14 @@ The observer only lives in the current document. Reset must remove it and restor
 
 ## Recommendation and decision
 
-File the first implementation as a temporary override for the active tab after an explicit Keybar invocation. This fits the existing `activeTab` and `scripting` permissions. Retain the page's latest title so Reset can restore it, and document that reload, cross-origin navigation, closing, and browser restart can end the override. Same-origin reload reinjection should be verified while implementing.
+The technical constraint is clear, but the product decision is unresolved: displaying a custom name in Chrome's tab strip requires changing the page's `document.title`. That conflicts with Keybar's current product promise in [PRODUCT.md](../../PRODUCT.md), the [README](../../README.md), the [store listing copy](../launch/chrome-web-store.md), and the [privacy policy](../launch/privacy-policy.md). Preserve that promise until Pedro decides whether to change it. This research does not authorize implementation or permission changes.
 
-Pedro's product decision is whether this temporary behavior is useful as the first version, or whether the feature should wait for optional per-site host access so names can be reapplied after reload and session restore. [Issue #40](https://github.com/pedrotmr/keybar/issues/40) records those choices and scopes implementation to the current permission model until that decision is made.
+If Pedro approves changing that promise, two implementation scopes are feasible:
+
+1. **Temporary active-tab override:** inject after an explicit Keybar invocation using the existing `activeTab` and `scripting` permissions. Observe same-document title updates and make Reset restore the page's latest title. Same-origin reload reinjection needs implementation proof; cross-origin navigation, closing, and browser restart can end the override.
+2. **Persistent per-site override:** request optional host access only for sites the user chooses, then reapply after reload and session restore. This requires site-specific permission UX and permission-management controls. Do not add required broad host permissions.
+
+Pedro's exact decision is whether to keep the current promise and not implement tab-strip renaming, or approve changing the promise and choose one of these scopes. [Issue #40](https://github.com/pedrotmr/keybar/issues/40) records that decision and keeps both scopes unselected until then.
 
 ## Proof and sources
 
